@@ -155,7 +155,7 @@ export function ProfilesPage() {
           <button
             type="button"
             className="btn-primary"
-            onClick={() => navigate("/play/schulte/classic")}
+            onClick={() => navigate("/training")}
             disabled={!activeUserId}
           >
             Перейти к тренировке

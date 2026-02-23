@@ -7,14 +7,17 @@ test.describe("NeuroSprint smoke", () => {
     await page.getByTestId("create-profile-btn").click();
     await expect(page.getByText("Активный профиль:")).toBeVisible();
 
-    await page.goto("/play/schulte/classic");
+    await page.goto("/training/schulte");
+    await page.getByRole("button", { name: "Classic+" }).click();
+    await page.getByRole("button", { name: "Начать тренировку" }).click();
+    await page.getByTestId("schulte-start").click();
     for (let i = 1; i <= 25; i += 1) {
       await page.getByRole("button", { name: String(i), exact: true }).click();
     }
-    await expect(page.getByTestId("classic-result")).toBeVisible();
+    await expect(page.getByTestId("schulte-result")).toBeVisible();
 
-    await page.goto("/stats");
-    await expect(page.getByTestId("stats-page")).toBeVisible();
+    await page.goto("/stats/individual");
+    await expect(page.getByTestId("stats-individual-page")).toBeVisible();
   });
 
   test("timed mode completes and shows metrics", async ({ page }) => {
@@ -23,9 +26,13 @@ test.describe("NeuroSprint smoke", () => {
     await page.getByTestId("create-profile-btn").click();
     await expect(page.getByText("Активный профиль:")).toBeVisible();
 
-    await page.goto("/play/schulte/timed");
-    await page.getByRole("button", { name: "30 с" }).click();
-    await page.waitForSelector('[data-testid="timed-result"]', { timeout: 40_000 });
-    await expect(page.getByTestId("timed-result")).toBeVisible();
+    await page.goto("/training/schulte");
+    await page.getByRole("button", { name: "Timed+" }).click();
+    await page.getByRole("button", { name: "Расширенные параметры" }).click();
+    await page.selectOption("#time-limit", "30");
+    await page.getByRole("button", { name: "Начать тренировку" }).click();
+    await page.getByTestId("schulte-start").click();
+    await page.waitForSelector('[data-testid="schulte-result"]', { timeout: 45_000 });
+    await expect(page.getByTestId("schulte-result")).toBeVisible();
   });
 });

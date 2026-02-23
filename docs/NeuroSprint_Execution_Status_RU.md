@@ -1,44 +1,33 @@
-# NeuroSprint Execution Status (RU)
+﻿# NeuroSprint Execution Status (RU)
 
 ## Дата/время
-- 2026-02-23
+- 2026-02-24 02:57
 
-## Completed
-- Создан каркас приложения (Vite/React/TS) и структура папок.
-- Добавлены конфиги PWA, Vitest и Playwright.
-- Реализованы:
-  - профили пользователей;
-  - активный пользователь и route guard;
-  - режимы Шульте Classic и Timed;
-  - сохранение сессий в IndexedDB через Dexie;
-  - статистика по дням с графиками.
-- Добавлены документы:
-  - `docs/NeuroSprint_MVP_Roadmap_RU.md`;
-  - `docs/NeuroSprint_Execution_Status_RU.md`.
-- Добавлен стартовый набор unit/integration/e2e smoke тестов.
-- Установлены зависимости (через локальный кеш проекта `.npm-cache`).
-- Подтверждено:
-  - `npm run build` проходит;
-  - `npm test` проходит;
-  - `npm run test:e2e` проходит (через системный `msedge`).
-- Внедрен route-based code splitting (`React.lazy` + `Suspense`), предупреждение о chunk > 500KB снято.
-- Зафиксирован альфа-релиз: `docs/ALPHA_v0.1.0_RELEASE_NOTES_RU.md`.
-- Добавлена инструкция Android/PWA и варианты APK: `docs/ANDROID_TEST_AND_APK_OPTIONS_RU.md`.
+## Что завершено
+- MVP (M0-M6) реализован и стабилизирован.
+- Выполнен переход на новую IA: `Главная | Тренировки | Статистика | Профили | Настройки`.
+- Добавлены маршруты `training`/`stats individual/group` и редиректы со старых путей.
+- Реализованы режимы `Classic+`, `Timed+`, `Reverse` с единым стартом сессии.
+- Добавлены пресеты и расширенные параметры режима.
+- Добавлена адаптивная сложность (оценка по окну из 3 сессий) + ручной override.
+- Расширена статистика пользователя: тренды, week-over-week, рекомендации.
+- Обновлена Dexie схема до v3, добавлены таблицы для групповой аналитики.
+- Обновлены и расширены тесты unit/integration/e2e.
 
-## In Progress
-- Ручная проверка PWA-install/offline на Android.
+## Что в работе
+- v0.3.A: полноценная визуализация и фильтры групповой статистики (`/stats/group`).
 
-## Blockers
-- Глобальные env-переменные прокси (`HTTP_PROXY/HTTPS_PROXY/ALL_PROXY`) в окружении могут ломать `npm install`.
+## Блокеры
+- Нет технических блокеров на текущий момент.
 
-## Next 3 Tasks
-1. Инициализировать git-репозиторий и сделать первый alpha-коммит.
-2. Опубликовать на GitHub (remote + push).
-3. Провести Android smoke-check по инструкции из `docs/ANDROID_TEST_AND_APK_OPTIONS_RU.md`.
+## Следующие 3 шага
+1. Доделать экран групповой статистики: лучший/средний/худший, перцентиль, фильтры периода.
+2. Добавить сценарии с fixture-данными на 30+ профилей для проверки масштаба.
+3. Прогнать полный регресс (`build`, `unit`, `e2e`) и зафиксировать следующий alpha.
 
-## Quick Start Commands
+## Команды для быстрого старта
 ```powershell
-npm install --ignore-scripts
+npm install
 npm run dev
 npm run build
 npm test

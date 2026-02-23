@@ -2,10 +2,9 @@ import { NavLink } from "react-router-dom";
 
 const navItems = [
   { to: "/", label: "Главная" },
-  { to: "/profiles", label: "Профили" },
-  { to: "/play/schulte/classic", label: "Classic" },
-  { to: "/play/schulte/timed", label: "Timed" },
+  { to: "/training", label: "Тренировки" },
   { to: "/stats", label: "Статистика" },
+  { to: "/profiles", label: "Профили" },
   { to: "/settings", label: "Настройки" }
 ];
 
@@ -26,4 +25,3 @@ export function MainNav() {
     </nav>
   );
 }
-

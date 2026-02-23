@@ -12,18 +12,30 @@ const ProfilesPage = lazy(() =>
     default: module.ProfilesPage
   }))
 );
-const SchulteClassicPage = lazy(() =>
-  import("../pages/SchulteClassicPage").then((module) => ({
-    default: module.SchulteClassicPage
+const TrainingHubPage = lazy(() =>
+  import("../pages/TrainingHubPage").then((module) => ({
+    default: module.TrainingHubPage
   }))
 );
-const SchulteTimedPage = lazy(() =>
-  import("../pages/SchulteTimedPage").then((module) => ({
-    default: module.SchulteTimedPage
+const SchulteSetupPage = lazy(() =>
+  import("../pages/SchulteSetupPage").then((module) => ({
+    default: module.SchulteSetupPage
   }))
 );
-const StatsPage = lazy(() =>
-  import("../pages/StatsPage").then((module) => ({ default: module.StatsPage }))
+const SchulteSessionPage = lazy(() =>
+  import("../pages/SchulteSessionPage").then((module) => ({
+    default: module.SchulteSessionPage
+  }))
+);
+const StatsIndividualPage = lazy(() =>
+  import("../pages/StatsIndividualPage").then((module) => ({
+    default: module.StatsIndividualPage
+  }))
+);
+const StatsGroupPage = lazy(() =>
+  import("../pages/StatsGroupPage").then((module) => ({
+    default: module.StatsGroupPage
+  }))
 );
 const SettingsPage = lazy(() =>
   import("../pages/SettingsPage").then((module) => ({
@@ -41,26 +53,54 @@ export function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/profiles" element={<ProfilesPage />} />
               <Route
-                path="/play/schulte/classic"
+                path="/training"
                 element={
                   <RequireActiveUser>
-                    <SchulteClassicPage />
+                    <TrainingHubPage />
                   </RequireActiveUser>
                 }
+              />
+              <Route
+                path="/training/schulte"
+                element={
+                  <RequireActiveUser>
+                    <SchulteSetupPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/schulte/:mode"
+                element={
+                  <RequireActiveUser>
+                    <SchulteSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/play/schulte/classic"
+                element={<Navigate to="/training/schulte/classic_plus" replace />}
               />
               <Route
                 path="/play/schulte/timed"
+                element={<Navigate to="/training/schulte/timed_plus" replace />}
+              />
+              <Route
+                path="/stats"
+                element={<Navigate to="/stats/individual" replace />}
+              />
+              <Route
+                path="/stats/individual"
                 element={
                   <RequireActiveUser>
-                    <SchulteTimedPage />
+                    <StatsIndividualPage />
                   </RequireActiveUser>
                 }
               />
               <Route
-                path="/stats"
+                path="/stats/group"
                 element={
                   <RequireActiveUser>
-                    <StatsPage />
+                    <StatsGroupPage />
                   </RequireActiveUser>
                 }
               />

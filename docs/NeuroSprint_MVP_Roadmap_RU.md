@@ -1,120 +1,99 @@
-# NeuroSprint MVP Roadmap (RU)
+﻿# NeuroSprint MVP Roadmap (RU)
 
-## Scope (In/Out)
-### In scope
+## Scope
+### In scope (MVP)
 - Профили пользователей на одном устройстве.
 - Активный пользователь в `localStorage` (`ns.activeUserId`).
-- Модуль Таблица Шульте: `Classic` и `Timed`.
-- Сохранение сессий в `IndexedDB` (Dexie).
+- Таблица Шульте: `Classic`, `Timed`, `Reverse`.
+- Сохранение сессий в IndexedDB (Dexie).
 - Статистика по дням (`localDate` в формате `YYYY-MM-DD`).
-- PWA-конфигурация (manifest + SW auto-update).
-- Минималистичный детский UX с крупной сеткой и видимыми метриками.
+- PWA (installable/offline).
+- Детский, понятный интерфейс с крупными интерактивными элементами.
 
 ### Out of scope
-- Любая серверная часть, облачная синхронизация, аккаунты.
-- Режим класса, CSV, панель учителя.
-- Дополнительные когнитивные модули (N-back, Sprint Math и т.д.).
+- Backend/облако/аккаунты.
+- Синхронизация между устройствами.
+- Именной публичный leaderboard.
 
 ## Architecture Baseline
 - Frontend: `React + TypeScript + Vite`.
 - Routing: `react-router-dom`.
-- Data layer: `Dexie` (IndexedDB), таблицы `users`, `sessions`.
+- Data layer: `Dexie` (`users`, `sessions`, `userModeProfiles`, `classGroups`, `groupMembers`).
 - Charts: `Recharts`.
 - PWA: `vite-plugin-pwa`.
-- Testing baseline: `Vitest`, `Testing Library`, `Playwright`.
-- Структура: `app/pages/entities/features/shared/widgets`.
+- Tests: `Vitest`, `Testing Library`, `Playwright`.
 
 ## Milestones
-| Milestone | Scope | Status | Notes |
+| Milestone | Содержание | Статус | Факт |
 |---|---|---|---|
-| M0 Bootstrap | Vite/React/TS, роутинг, PWA plugin, базовый shell | Done | Каркас и стили готовы |
-| M1 Data Layer + Profiles | Dexie schema, репозитории, CRUD профилей, active user | Done | Реализованы user/session repositories |
-| M2 Schulte Classic | 5x5 grid, последовательность 1..25, таймер, errors, save session | Done | Сохранение и score включены |
-| M3 Schulte Timed | 30/60/90, nextSpawn, метрики timed, save session | Done | Штраф ошибок configurable |
-| M4 Stats | Daily aggregation Classic/Timed, графики, empty states | Done | Группировка по `localDate` |
-| M5 UX Hardening | Крупные кнопки, видимые метрики, устойчивые empty/error states | Done | Unit/integration/e2e smoke подтверждены |
-| M6 PWA Hardening | Проверка install/offline, SW поведение, иконки | In progress | Build/PWA generation подтверждены, нужен Android offline install smoke |
+| M0 | Bootstrap + базовый shell | Done | Завершено |
+| M1 | Data layer + профили | Done | Завершено |
+| M2 | Schulte Classic | Done | Завершено |
+| M3 | Schulte Timed | Done | Завершено |
+| M4 | Stats (daily) | Done | Завершено |
+| M5 | UX hardening | Done | Завершено |
+| M6 | PWA hardening | Done | Завершено на уровне desktop/PWA smoke |
+| v0.2.A | IA/маршруты/TrainingHub + setup | Done | Завершено |
+| v0.2.B | 3 режима Шульте + unified start | Done | Завершено |
+| v0.2.C | Адаптация + индивидуальная статистика v2 | Done | Завершено |
+| v0.3.A | Группы + групповая аналитика | In progress | Модель и таблицы добавлены, UI частично |
 
 ## Interfaces & Contracts
 ### Routes
 - `/`
+- `/training`
+- `/training/schulte`
+- `/training/schulte/:mode`
+- `/stats/individual`
+- `/stats/group`
 - `/profiles`
-- `/play/schulte/classic`
-- `/play/schulte/timed`
-- `/stats`
 - `/settings`
 
 ### localStorage keys
 - `ns.activeUserId`
 - `ns.settings`
+- `ns.trainingSetups`
 
-### Domain types
-- `Mode = "classic" | "timed"`
-- `User`
-- `Difficulty`
-- `Session`
-- `ClassicDailyPoint`
-- `TimedDailyPoint`
-- `AppSettings`
+### Domain contracts (актуально)
+- `Mode = "classic" | "timed" | "reverse"`
+- `Session` расширен полями `moduleId`, `modeId`, `level`, `presetId`, `adaptiveSource`.
+- Добавлены `UserModeProfile`, `AdaptiveDecision`, `ClassGroup`, `GroupMember`.
 
 ### Repository contracts
-- `userRepository.create(name): Promise<User>`
-- `userRepository.list(): Promise<User[]>`
-- `userRepository.rename(id, name): Promise<void>`
-- `userRepository.remove(id): Promise<void>`
-- `sessionRepository.save(session): Promise<void>`
-- `sessionRepository.listByUser(userId): Promise<Session[]>`
-- `sessionRepository.listByUserMode(userId, mode): Promise<Session[]>`
-- `sessionRepository.aggregateDailyClassic(userId): Promise<ClassicDailyPoint[]>`
-- `sessionRepository.aggregateDailyTimed(userId): Promise<TimedDailyPoint[]>`
-
-### Scoring contracts
-- `clampAccuracy(value): number`
-- `calcClassicMetrics(input): ClassicMetrics`
-- `calcTimedMetrics(input): TimedMetrics`
-- `toLocalDateKey(input): string`
+- `userRepository.create/list/rename/remove`
+- `sessionRepository.save/listByUser/listByUserMode/aggregateDailyClassic/aggregateDailyTimed`
+- `trainingRepository.getUserModeProfile/saveUserModeProfile/listRecentSessionsByMode/evaluateAdaptiveLevel`
+- `groupRepository.createGroup/listGroups/addMember/removeMember/aggregateGroupStats/getUserPercentileInGroup`
 
 ## Test Matrix
 ### Unit
-- `tests/unit/scoring.test.ts`
-- `tests/unit/grid.test.ts`
-- `tests/unit/session-aggregation.test.ts`
+- scoring, grid generation, session aggregation
+- presets, adaptive rules, percentile
 
 ### Integration
-- `tests/integration/schulte-grid.test.tsx`
+- training hub
+- pwa status bar
+- schulte grid behavior
 
 ### E2E smoke
-- `tests/e2e/smoke.spec.ts`
-
-### Planned additions
-- Integration tests для `ProfilesPage` и route guard.
-- E2E smoke для offline-проверки после прогрева PWA.
+- first run: profile -> classic -> stats
+- timed mode finish and metrics
 
 ## Execution Log
-- 2026-02-23:
-  - Инициализирован проектный каркас и конфиги.
-  - Добавлены типы, утилиты формул, генератор сетки.
-  - Реализованы `Classic` и `Timed` страницы с сохранением результатов.
-  - Реализованы профили, выбор активного пользователя, route guard.
-  - Реализована статистика с агрегацией по дням и графиками.
-  - Добавлены дорожная карта и статусный документ для восстановления контекста.
-  - Исправлены ошибки сборки TypeScript (`virtual:pwa-register`, test config typing).
-  - Подтверждены `npm run build`, `npm test`, `npm run test:e2e`.
-  - E2E переведены на системный `msedge`, чтобы не зависеть от `playwright install`.
-  - Добавлен route-based code splitting, предупреждение о большом чанке устранено.
+- 2026-02-23: Реализован MVP с профилями, Classic/Timed, статистикой, PWA и тестами.
+- 2026-02-24: Реализованы v0.2 изменения: новая IA, TrainingHub, setup-панель, `Classic+`, `Timed+`, `Reverse`, адаптивные профили, расширенная статистика, миграции Dexie v2/v3, новые unit/integration/e2e проверки.
 
 ## Risks & Decisions
 ### Decisions
-- `localDate` хранится в `Session` при записи для стабильной дневной агрегации.
-- В `Timed` score рассчитывается через `max(0, speed)`.
-- Ошибки не блокируют ввод в обоих режимах.
+- Данные остаются локальными (offline-first), без backend.
+- Legacy-маршруты сохраняются через редиректы.
+- Legacy-сессии мигрируются с дефолтными значениями полей v0.2.
 
 ### Risks
-- В текущем окружении npm работает в `only-if-cached`, зависимости не устанавливаются.
-- Глобальные proxy env-переменные в окружении могут ломать `npm install`.
-- Для PWA все еще нужна ручная проверка install/offline на Android.
+- Большие локальные выборки (класс 30+) требуют контроля производительности агрегаций.
+- Необходима ручная проверка Android install/offline на реальных устройствах.
 
 ## Next Session Start
-1. Выполнить ручной Android smoke-check: install PWA и запуск офлайн.
-2. Зафиксировать результат в `Execution Log` и закрыть M6 при успехе.
-3. Опционально разбить главный чанк (route-based code splitting).
+1. Включить полноценные графики и фильтры на `/stats/group`.
+2. Добавить фикстуры на 30 учеников и интеграционный сценарий групповой аналитики.
+3. Закрыть v0.3.A и зафиксировать `alpha-v0.3.0`.

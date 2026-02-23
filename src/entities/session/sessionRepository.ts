@@ -1,8 +1,12 @@
 import { db } from "../../db/database";
+import { toLocalDateKey } from "../../shared/lib/date/date";
 import type {
   ClassicDailyPoint,
+  DailyProgressSummary,
+  ModeRecommendation,
   Session,
-  TimedDailyPoint
+  TimedDailyPoint,
+  TrainingModeId
 } from "../../shared/types/domain";
 
 function byDateAsc<T extends { date: string }>(a: T, b: T): number {
@@ -79,9 +83,126 @@ export function buildTimedDailyPoints(sessions: Session[]): TimedDailyPoint[] {
   return points.sort(byDateAsc);
 }
 
+export function buildDailyProgressSummary(
+  sessions: Session[],
+  date: string
+): DailyProgressSummary {
+  const dailySessions = sessions.filter((entry) => entry.localDate === date);
+  const classicSessions = dailySessions.filter((entry) => entry.modeId === "classic_plus");
+  const timedSessions = dailySessions.filter((entry) => entry.modeId === "timed_plus");
+  const reverseSessions = dailySessions.filter((entry) => entry.modeId === "reverse");
+
+  const bestClassicDurationMs = classicSessions.length
+    ? Math.min(...classicSessions.map((entry) => entry.durationMs))
+    : null;
+
+  const bestTimedScore = timedSessions.length
+    ? Math.max(...timedSessions.map((entry) => entry.score))
+    : null;
+
+  const bestReverseDurationMs = reverseSessions.length
+    ? Math.min(...reverseSessions.map((entry) => entry.durationMs))
+    : null;
+
+  const avgAccuracy = dailySessions.length
+    ? dailySessions.reduce((sum, entry) => sum + entry.accuracy, 0) /
+      dailySessions.length
+    : null;
+
+  return {
+    date,
+    sessionsTotal: dailySessions.length,
+    classicCount: classicSessions.length,
+    timedCount: timedSessions.length,
+    reverseCount: reverseSessions.length,
+    bestClassicDurationMs,
+    bestTimedScore,
+    bestReverseDurationMs,
+    avgAccuracy
+  };
+}
+
+function normalizeSession(session: Session): Session {
+  return {
+    ...session,
+    moduleId: session.moduleId ?? "schulte",
+    modeId:
+      session.modeId ??
+      (session.mode === "timed"
+        ? "timed_plus"
+        : session.mode === "reverse"
+          ? "reverse"
+          : "classic_plus"),
+    level: session.level ?? 1,
+    presetId: session.presetId ?? "legacy",
+    adaptiveSource: session.adaptiveSource ?? "legacy"
+  };
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+export function calculateStreak(localDates: string[]): number {
+  if (localDates.length === 0) {
+    return 0;
+  }
+
+  const uniqueSorted = [...new Set(localDates)].sort((a, b) => b.localeCompare(a));
+  let streak = 0;
+  let cursor = startOfDay(new Date());
+
+  for (const dateKey of uniqueSorted) {
+    const expected = toLocalDateKey(cursor);
+    if (dateKey !== expected) {
+      break;
+    }
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+}
+
+export function recommendModeFromSessions(sessions: Session[]): ModeRecommendation {
+  const modes: TrainingModeId[] = ["classic_plus", "timed_plus", "reverse"];
+  const byMode = new Map<TrainingModeId, Session[]>();
+
+  for (const modeId of modes) {
+    byMode.set(modeId, []);
+  }
+
+  for (const session of sessions) {
+    const bucket = byMode.get(session.modeId) ?? [];
+    bucket.push(session);
+    byMode.set(session.modeId, bucket);
+  }
+
+  const scores = modes.map((modeId) => {
+    const recent = (byMode.get(modeId) ?? [])
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+      .slice(0, 3);
+    if (recent.length === 0) {
+      return { modeId, score: 0 };
+    }
+    const avgAccuracy =
+      recent.reduce((sum, entry) => sum + entry.accuracy, 0) / recent.length;
+    return { modeId, score: avgAccuracy };
+  });
+
+  scores.sort((a, b) => a.score - b.score);
+  const selected = scores[0];
+  return {
+    modeId: selected.modeId,
+    reason:
+      "Рекомендуется режим с наименьшей текущей стабильностью точности.",
+    confidence: 0.75
+  };
+}
+
 export const sessionRepository = {
   async save(session: Session): Promise<void> {
-    await db.sessions.put(session);
+    await db.sessions.put(normalizeSession(session));
   },
 
   async listByUser(userId: string): Promise<Session[]> {
@@ -102,7 +223,7 @@ export const sessionRepository = {
     const sessions = await db.sessions
       .where("userId")
       .equals(userId)
-      .and((session) => session.mode === "classic")
+      .and((session) => session.modeId === "classic_plus")
       .toArray();
     return buildClassicDailyPoints(sessions);
   },
@@ -111,8 +232,95 @@ export const sessionRepository = {
     const sessions = await db.sessions
       .where("userId")
       .equals(userId)
-      .and((session) => session.mode === "timed")
+      .and((session) => session.modeId === "timed_plus")
       .toArray();
     return buildTimedDailyPoints(sessions);
+  },
+
+  async aggregateDailyByModeId(
+    userId: string,
+    modeId: TrainingModeId
+  ): Promise<TimedDailyPoint[] | ClassicDailyPoint[]> {
+    const sessions = await db.sessions
+      .where("userId")
+      .equals(userId)
+      .and((session) => session.modeId === modeId)
+      .toArray();
+
+    if (modeId === "timed_plus") {
+      return buildTimedDailyPoints(sessions);
+    }
+
+    return buildClassicDailyPoints(
+      sessions.map((session) => ({
+        ...session,
+        mode: "classic" as const
+      }))
+    );
+  },
+
+  async getDailyProgressSummary(
+    userId: string,
+    localDate = toLocalDateKey(new Date())
+  ): Promise<DailyProgressSummary> {
+    const sessions = await db.sessions
+      .where("[userId+localDate]")
+      .equals([userId, localDate])
+      .toArray();
+
+    return buildDailyProgressSummary(sessions, localDate);
+  },
+
+  async getIndividualInsights(userId: string): Promise<{
+    streakDays: number;
+    currentWeekAvgScore: number | null;
+    previousWeekAvgScore: number | null;
+    recommendation: ModeRecommendation;
+  }> {
+    const sessions = await db.sessions.where("userId").equals(userId).toArray();
+    if (sessions.length === 0) {
+      return {
+        streakDays: 0,
+        currentWeekAvgScore: null,
+        previousWeekAvgScore: null,
+        recommendation: {
+          modeId: "classic_plus",
+          reason: "Начните с базового режима Classic+.",
+          confidence: 0.6
+        }
+      };
+    }
+
+    const streakDays = calculateStreak(sessions.map((entry) => entry.localDate));
+
+    const now = new Date();
+    const startCurrentWeek = new Date(now);
+    startCurrentWeek.setDate(now.getDate() - 7);
+    const startPreviousWeek = new Date(now);
+    startPreviousWeek.setDate(now.getDate() - 14);
+
+    const currentWeek = sessions.filter(
+      (entry) => new Date(entry.timestamp) >= startCurrentWeek
+    );
+    const previousWeek = sessions.filter((entry) => {
+      const date = new Date(entry.timestamp);
+      return date >= startPreviousWeek && date < startCurrentWeek;
+    });
+
+    const currentWeekAvgScore = currentWeek.length
+      ? currentWeek.reduce((sum, entry) => sum + entry.score, 0) /
+        currentWeek.length
+      : null;
+    const previousWeekAvgScore = previousWeek.length
+      ? previousWeek.reduce((sum, entry) => sum + entry.score, 0) /
+        previousWeek.length
+      : null;
+
+    return {
+      streakDays,
+      currentWeekAvgScore,
+      previousWeekAvgScore,
+      recommendation: recommendModeFromSessions(sessions)
+    };
   }
 };

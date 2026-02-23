@@ -16,10 +16,10 @@ import { SchulteGrid } from "../shared/ui/SchulteGrid";
 import { StatCard } from "../shared/ui/StatCard";
 import type { Session } from "../shared/types/domain";
 
-type TimeLimit = 30 | 60 | 90;
+type TimeLimit = 30 | 45 | 60 | 90;
 
 function normalizeLimit(value: number): TimeLimit {
-  if (value === 30 || value === 60 || value === 90) {
+  if (value === 30 || value === 45 || value === 60 || value === 90) {
     return value;
   }
   return DEFAULT_SETTINGS.timedDefaultLimitSec;
@@ -38,6 +38,11 @@ function createTimedSession(
     id: createId(),
     userId,
     taskId: "schulte",
+    moduleId: "schulte",
+    modeId: "timed_plus",
+    level: 1,
+    presetId: "legacy",
+    adaptiveSource: "legacy",
     mode: "timed",
     timestamp: timestamp.toISOString(),
     localDate: toLocalDateKey(timestamp),
@@ -53,7 +58,8 @@ function createTimedSession(
       numbersCount: 25,
       mode: "timed",
       timeLimitSec,
-      errorPenalty
+      errorPenalty,
+      spawnStrategy: "same_cell"
     }
   };
 }
@@ -71,15 +77,16 @@ export function SchulteTimedPage() {
   const [nextSpawn, setNextSpawn] = useState(26);
   const [correctCount, setCorrectCount] = useState(0);
   const [errors, setErrors] = useState(0);
-  const [startedAtMs, setStartedAtMs] = useState<number>(() => Date.now());
+  const [startedAtMs, setStartedAtMs] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(timeLimitSec * 1000);
+  const [isRunning, setIsRunning] = useState(false);
   const [finished, setFinished] = useState(false);
   const [finalMetrics, setFinalMetrics] = useState<TimedMetrics | null>(null);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (finished) {
+    if (finished || !isRunning || startedAtMs === null) {
       return undefined;
     }
 
@@ -90,13 +97,14 @@ export function SchulteTimedPage() {
       if (left <= 0) {
         setRemainingMs(0);
         setFinished(true);
+        setIsRunning(false);
       } else {
         setRemainingMs(left);
       }
     }, 100);
 
     return () => window.clearInterval(timer);
-  }, [finished, startedAtMs, timeLimitSec]);
+  }, [finished, isRunning, startedAtMs, timeLimitSec]);
 
   useEffect(() => {
     if (!finished || finalMetrics) {
@@ -166,16 +174,26 @@ export function SchulteTimedPage() {
     setNextSpawn(26);
     setCorrectCount(0);
     setErrors(0);
-    setStartedAtMs(Date.now());
+    setStartedAtMs(null);
     setRemainingMs(nextLimit * 1000);
+    setIsRunning(false);
     setFinished(false);
     setFinalMetrics(null);
     setSaved(false);
     setSaveError(null);
   }
 
+  function startGame() {
+    if (isRunning || finished) {
+      return;
+    }
+
+    setStartedAtMs(Date.now());
+    setIsRunning(true);
+  }
+
   function onCellClick(value: number, index: number) {
-    if (finished) {
+    if (finished || !isRunning) {
       return;
     }
 
@@ -208,13 +226,14 @@ export function SchulteTimedPage() {
       </p>
 
       <div className="segmented-row">
-        {[30, 60, 90].map((limit) => (
+        {[30, 45, 60, 90].map((limit) => (
           <button
             key={limit}
             type="button"
             className={
               timeLimitSec === limit ? "btn-secondary is-active" : "btn-secondary"
             }
+            disabled={isRunning}
             onClick={() => chooseLimit(limit as TimeLimit)}
           >
             {limit} с
@@ -224,15 +243,35 @@ export function SchulteTimedPage() {
 
       <div className="stats-grid">
         <StatCard title="Осталось" value={formatSecondsFromMs(remainingMs)} />
-        <StatCard title="Следующее число" value={finished ? "Стоп" : String(expected)} />
+        <StatCard
+          title="Следующее число"
+          value={finished ? "Стоп" : isRunning ? String(expected) : "Готов"}
+        />
         <StatCard title="Верно" value={String(correctCount)} />
         <StatCard title="Ошибки" value={String(errors)} />
       </div>
 
-      <SchulteGrid values={grid} onCellClick={onCellClick} disabled={finished} />
+      {!isRunning && !finished ? (
+        <p className="status-line">Нажмите «Начать», когда будете готовы.</p>
+      ) : null}
+
+      <SchulteGrid
+        values={grid}
+        onCellClick={onCellClick}
+        disabled={finished || !isRunning}
+      />
 
       <div className="action-row">
-        <button type="button" className="btn-primary" onClick={() => resetGame()}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={startGame}
+          disabled={isRunning || finished}
+          data-testid="timed-start"
+        >
+          Начать
+        </button>
+        <button type="button" className="btn-secondary" onClick={() => resetGame()}>
           Новая попытка
         </button>
       </div>
@@ -252,4 +291,3 @@ export function SchulteTimedPage() {
     </section>
   );
 }
-

@@ -6,7 +6,7 @@ import {
 } from "../shared/lib/settings/settings";
 import type { AppSettings } from "../shared/types/domain";
 
-type TimeLimit = 30 | 60 | 90;
+type TimeLimit = 30 | 45 | 60 | 90;
 
 export function SettingsPage() {
   const initial = getSettings();
@@ -15,6 +15,9 @@ export function SettingsPage() {
   );
   const [timedErrorPenalty, setTimedErrorPenalty] = useState<number>(
     initial.timedErrorPenalty
+  );
+  const [dailyGoalSessions, setDailyGoalSessions] = useState<number>(
+    initial.dailyGoalSessions
   );
   const [message, setMessage] = useState<string | null>(null);
 
@@ -25,7 +28,11 @@ export function SettingsPage() {
       timedErrorPenalty:
         Number.isFinite(timedErrorPenalty) && timedErrorPenalty >= 0
           ? timedErrorPenalty
-          : DEFAULT_SETTINGS.timedErrorPenalty
+          : DEFAULT_SETTINGS.timedErrorPenalty,
+      dailyGoalSessions:
+        Number.isFinite(dailyGoalSessions) && dailyGoalSessions >= 1
+          ? Math.round(dailyGoalSessions)
+          : DEFAULT_SETTINGS.dailyGoalSessions
     };
     saveSettings(nextSettings);
     setMessage("Настройки сохранены.");
@@ -46,6 +53,7 @@ export function SettingsPage() {
           }
         >
           <option value={30}>30 секунд</option>
+          <option value={45}>45 секунд</option>
           <option value={60}>60 секунд</option>
           <option value={90}>90 секунд</option>
         </select>
@@ -60,6 +68,16 @@ export function SettingsPage() {
           onChange={(event) => setTimedErrorPenalty(Number(event.target.value))}
         />
 
+        <label htmlFor="daily-goal">Цель на день (сессий)</label>
+        <input
+          id="daily-goal"
+          type="number"
+          min={1}
+          max={20}
+          value={dailyGoalSessions}
+          onChange={(event) => setDailyGoalSessions(Number(event.target.value))}
+        />
+
         <button type="submit" className="btn-primary">
           Сохранить
         </button>
@@ -69,4 +87,3 @@ export function SettingsPage() {
     </section>
   );
 }
-

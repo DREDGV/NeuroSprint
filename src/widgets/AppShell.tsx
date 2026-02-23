@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { MainNav } from "./MainNav";
+import { PwaStatusBar } from "./PwaStatusBar";
 
 export function AppShell({ children }: PropsWithChildren) {
   return (
@@ -10,9 +11,9 @@ export function AppShell({ children }: PropsWithChildren) {
           <h1 className="app-title">Тренажер скорости мышления</h1>
         </div>
       </header>
+      <PwaStatusBar />
       <MainNav />
       <main className="app-content">{children}</main>
     </div>
   );
 }
-

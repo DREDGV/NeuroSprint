@@ -2,12 +2,14 @@ interface SchulteGridProps {
   values: number[];
   onCellClick: (value: number, index: number) => void;
   disabled?: boolean;
+  highlightValue?: number | null;
 }
 
 export function SchulteGrid({
   values,
   onCellClick,
-  disabled = false
+  disabled = false,
+  highlightValue = null
 }: SchulteGridProps) {
   return (
     <div className="schulte-grid" role="grid" aria-label="Таблица Шульте">
@@ -15,7 +17,11 @@ export function SchulteGrid({
         <button
           key={`${index}-${value}`}
           type="button"
-          className="grid-cell"
+          className={
+            highlightValue !== null && value === highlightValue
+              ? "grid-cell highlighted"
+              : "grid-cell"
+          }
           disabled={disabled}
           onClick={() => onCellClick(value, index)}
           data-testid={`cell-${index}`}
@@ -26,4 +32,3 @@ export function SchulteGrid({
     </div>
   );
 }
-

@@ -1,0 +1,467 @@
+import { useEffect, useMemo, useState } from "react";
+import { Navigate, useLocation, useParams } from "react-router-dom";
+import { useActiveUser } from "../app/ActiveUserContext";
+import { sessionRepository } from "../entities/session/sessionRepository";
+import { trainingRepository } from "../entities/training/trainingRepository";
+import { toLocalDateKey } from "../shared/lib/date/date";
+import { createId } from "../shared/lib/id";
+import { generateSchulteGrid } from "../shared/lib/random/grid";
+import {
+  calcClassicMetrics,
+  calcTimedMetrics
+} from "../shared/lib/scoring/scoring";
+import {
+  SCHULTE_MODES,
+  getPresetSetup,
+  gridSizeToNumbersCount
+} from "../shared/lib/training/presets";
+import { getTrainingSetup } from "../shared/lib/training/setupStorage";
+import { SchulteGrid } from "../shared/ui/SchulteGrid";
+import { StatCard } from "../shared/ui/StatCard";
+import type {
+  AdaptiveDecision,
+  AdaptiveSource,
+  Session,
+  TrainingModeId,
+  TrainingSetup
+} from "../shared/types/domain";
+
+interface SessionResult {
+  durationMs: number;
+  score: number;
+  accuracy: number;
+  speed: number;
+  effectiveCorrect?: number;
+}
+
+interface SessionNavState {
+  setup?: TrainingSetup;
+  level?: number;
+  adaptiveSource?: AdaptiveSource;
+}
+
+function isTrainingModeId(value: string | undefined): value is TrainingModeId {
+  return value === "classic_plus" || value === "timed_plus" || value === "reverse";
+}
+
+function modeToLegacy(modeId: TrainingModeId): Session["difficulty"]["mode"] {
+  if (modeId === "timed_plus") {
+    return "timed";
+  }
+  if (modeId === "reverse") {
+    return "reverse";
+  }
+  return "classic";
+}
+
+function initialExpected(modeId: TrainingModeId, numbersCount: number): number {
+  return modeId === "reverse" ? numbersCount : 1;
+}
+
+export function SchulteSessionPage() {
+  const { activeUserId } = useActiveUser();
+  const { mode } = useParams<{ mode: string }>();
+  const location = useLocation();
+  const state = (location.state as SessionNavState | null) ?? null;
+
+  if (!isTrainingModeId(mode)) {
+    return <Navigate to="/training/schulte" replace />;
+  }
+
+  const modeId = mode;
+  const selectedMode = SCHULTE_MODES.find((entry) => entry.id === modeId) ?? SCHULTE_MODES[0];
+
+  const [setup, setSetup] = useState<TrainingSetup>(() => state?.setup ?? getTrainingSetup(modeId));
+  const [level, setLevel] = useState<number>(() => state?.level ?? 3);
+  const [adaptiveSource, setAdaptiveSource] = useState<AdaptiveSource>(
+    () => state?.adaptiveSource ?? "auto"
+  );
+  const [loading, setLoading] = useState<boolean>(!state);
+
+  const numbersCount = useMemo(
+    () => gridSizeToNumbersCount(setup.gridSize),
+    [setup.gridSize]
+  );
+
+  const [grid, setGrid] = useState<number[]>(() => generateSchulteGrid(setup.gridSize));
+  const [expected, setExpected] = useState<number>(() =>
+    initialExpected(modeId, numbersCount)
+  );
+  const [nextSpawn, setNextSpawn] = useState<number>(() => numbersCount + 1);
+  const [errors, setErrors] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [startedAtMs, setStartedAtMs] = useState<number | null>(null);
+  const [remainingMs, setRemainingMs] = useState(setup.timeLimitSec * 1000);
+  const [tick, setTick] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [result, setResult] = useState<SessionResult | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [adaptiveDecision, setAdaptiveDecision] = useState<AdaptiveDecision | null>(null);
+
+  useEffect(() => {
+    if (isRunning || finished) {
+      return;
+    }
+    setGrid(generateSchulteGrid(setup.gridSize));
+    setExpected(initialExpected(modeId, numbersCount));
+    setNextSpawn(numbersCount + 1);
+    setRemainingMs(setup.timeLimitSec * 1000);
+  }, [finished, isRunning, modeId, numbersCount, setup.gridSize, setup.timeLimitSec]);
+
+  useEffect(() => {
+    if (!activeUserId || state) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const profile = await trainingRepository.getUserModeProfile(
+        activeUserId,
+        "schulte",
+        modeId
+      );
+      if (cancelled) {
+        return;
+      }
+
+      setSetup(getTrainingSetup(modeId) ?? getPresetSetup("standard"));
+      setLevel(profile.autoAdjust ? profile.level : profile.manualLevel ?? profile.level);
+      setAdaptiveSource(profile.autoAdjust ? "auto" : "manual");
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUserId, modeId, state]);
+
+  useEffect(() => {
+    if (modeId !== "timed_plus" || !isRunning || startedAtMs == null || finished) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - startedAtMs;
+      const left = setup.timeLimitSec * 1000 - elapsed;
+      if (left <= 0) {
+        setRemainingMs(0);
+        setIsRunning(false);
+        setFinished(true);
+        const metrics = calcTimedMetrics({
+          correctCount,
+          errors,
+          timeLimitSec: setup.timeLimitSec,
+          errorPenalty: setup.errorPenalty
+        });
+        setResult({
+          durationMs: setup.timeLimitSec * 1000,
+          score: metrics.score,
+          accuracy: metrics.accuracy,
+          speed: metrics.speed,
+          effectiveCorrect: metrics.effectiveCorrect
+        });
+      } else {
+        setRemainingMs(left);
+      }
+    }, 100);
+
+    return () => window.clearInterval(timer);
+  }, [
+    correctCount,
+    errors,
+    finished,
+    isRunning,
+    modeId,
+    setup.errorPenalty,
+    setup.timeLimitSec,
+    startedAtMs
+  ]);
+
+  useEffect(() => {
+    if (!isRunning || finished || modeId === "timed_plus") {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setTick((current) => current + 1);
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [finished, isRunning, modeId]);
+
+  useEffect(() => {
+    if (!activeUserId || !finished || !result || saved) {
+      return;
+    }
+
+    const timestamp = new Date();
+    const session: Session = {
+      id: createId(),
+      userId: activeUserId,
+      taskId: "schulte",
+      mode: modeToLegacy(modeId),
+      moduleId: "schulte",
+      modeId,
+      level,
+      presetId: setup.presetId,
+      adaptiveSource,
+      timestamp: timestamp.toISOString(),
+      localDate: toLocalDateKey(timestamp),
+      durationMs: result.durationMs,
+      score: result.score,
+      accuracy: result.accuracy,
+      speed: result.speed,
+      errors,
+      correctCount: modeId === "timed_plus" ? correctCount : undefined,
+      effectiveCorrect: modeId === "timed_plus" ? result.effectiveCorrect : undefined,
+      difficulty: {
+        gridSize: setup.gridSize,
+        numbersCount,
+        mode: modeToLegacy(modeId),
+        timeLimitSec: modeId === "timed_plus" ? setup.timeLimitSec : undefined,
+        errorPenalty: setup.errorPenalty,
+        hintsEnabled: setup.hintsEnabled,
+        spawnStrategy: setup.spawnStrategy
+      }
+    };
+
+    let cancelled = false;
+    void sessionRepository
+      .save(session)
+      .then(async () => {
+        if (cancelled) {
+          return;
+        }
+        setSaved(true);
+        setSaveError(null);
+
+        const decision = await trainingRepository.evaluateAdaptiveLevel(
+          activeUserId,
+          "schulte",
+          modeId
+        );
+        if (!cancelled) {
+          setAdaptiveDecision(decision);
+          setLevel(decision.nextLevel);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSaveError("Не удалось сохранить результат.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeUserId,
+    adaptiveSource,
+    correctCount,
+    errors,
+    finished,
+    level,
+    modeId,
+    numbersCount,
+    result,
+    saved,
+    setup.errorPenalty,
+    setup.gridSize,
+    setup.hintsEnabled,
+    setup.presetId,
+    setup.spawnStrategy,
+    setup.timeLimitSec
+  ]);
+
+  const elapsedMs = useMemo(() => {
+    if (!startedAtMs) {
+      return 0;
+    }
+    if (finished && result) {
+      return result.durationMs;
+    }
+    return Math.max(0, Date.now() - startedAtMs);
+  }, [finished, result, startedAtMs, tick]);
+
+  function resetGame() {
+    const freshGrid = generateSchulteGrid(setup.gridSize);
+    setGrid(freshGrid);
+    setExpected(initialExpected(modeId, numbersCount));
+    setNextSpawn(numbersCount + 1);
+    setErrors(0);
+    setCorrectCount(0);
+    setStartedAtMs(null);
+    setRemainingMs(setup.timeLimitSec * 1000);
+    setTick(0);
+    setIsRunning(false);
+    setFinished(false);
+    setResult(null);
+    setSaved(false);
+    setSaveError(null);
+    setAdaptiveDecision(null);
+  }
+
+  function startGame() {
+    if (isRunning || finished) {
+      return;
+    }
+    setStartedAtMs(Date.now());
+    setIsRunning(true);
+  }
+
+  function finishClassic(now: number) {
+    if (!startedAtMs) {
+      return;
+    }
+    const durationMs = Math.max(0, now - startedAtMs);
+    const metrics = calcClassicMetrics({
+      durationMs,
+      errors,
+      numbersCount
+    });
+
+    setResult({
+      durationMs,
+      score: metrics.score,
+      accuracy: metrics.accuracy,
+      speed: metrics.speed
+    });
+    setIsRunning(false);
+    setFinished(true);
+  }
+
+  function onCellClick(value: number, index: number) {
+    if (!isRunning || finished) {
+      return;
+    }
+
+    if (value !== expected) {
+      setErrors((current) => current + 1);
+      return;
+    }
+
+    if (modeId === "timed_plus") {
+      setCorrectCount((current) => current + 1);
+      setGrid((current) => {
+        const next = [...current];
+        next[index] = nextSpawn;
+
+        if (setup.spawnStrategy === "random_cell" && next.length > 1) {
+          let swapIndex = index;
+          while (swapIndex === index) {
+            swapIndex = Math.floor(Math.random() * next.length);
+          }
+          [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+        }
+
+        return next;
+      });
+      setExpected((current) => current + 1);
+      setNextSpawn((current) => current + 1);
+      return;
+    }
+
+    const now = Date.now();
+    if (modeId === "reverse") {
+      if (expected === 1) {
+        finishClassic(now);
+      } else {
+        setExpected((current) => current - 1);
+      }
+      return;
+    }
+
+    if (expected === numbersCount) {
+      finishClassic(now);
+    } else {
+      setExpected((current) => current + 1);
+    }
+  }
+
+  if (loading) {
+    return (
+      <section className="panel">
+        <p>Загрузка режима...</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel" data-testid="schulte-session-page">
+      <h2>Шульте: {selectedMode.title}</h2>
+      <p>{selectedMode.description}</p>
+
+      <div className="stats-grid">
+        {modeId === "timed_plus" ? (
+          <StatCard title="Осталось" value={`${(remainingMs / 1000).toFixed(1)} с`} />
+        ) : (
+          <StatCard title="Время" value={`${(elapsedMs / 1000).toFixed(1)} с`} />
+        )}
+        <StatCard
+          title="Следующее число"
+          value={finished ? "Готово" : isRunning ? String(expected) : "Старт"}
+        />
+        <StatCard title="Ошибки" value={String(errors)} />
+        <StatCard title="Уровень" value={String(level)} />
+      </div>
+
+      {setup.hintsEnabled && !finished ? (
+        <p className="status-line">Подсказка: найдите число {expected}</p>
+      ) : null}
+
+      {!isRunning && !finished ? (
+        <section className="session-brief">
+          <h3>Перед стартом</h3>
+          <p>Сетка: {setup.gridSize}x{setup.gridSize}</p>
+          <p>Штраф: {setup.errorPenalty}</p>
+          {modeId === "timed_plus" ? <p>Время: {setup.timeLimitSec} сек</p> : null}
+        </section>
+      ) : null}
+
+      <SchulteGrid
+        values={grid}
+        onCellClick={onCellClick}
+        disabled={!isRunning || finished}
+        highlightValue={setup.hintsEnabled ? expected : null}
+      />
+
+      <div className="action-row">
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={startGame}
+          disabled={isRunning || finished}
+          data-testid="schulte-start"
+        >
+          Начать
+        </button>
+        <button type="button" className="btn-secondary" onClick={resetGame}>
+          Новая попытка
+        </button>
+      </div>
+
+      {result ? (
+        <section className="result-box" data-testid="schulte-result">
+          <h3>Результат</h3>
+          <p>Точность: {(result.accuracy * 100).toFixed(1)}%</p>
+          <p>Скорость: {result.speed.toFixed(2)}</p>
+          <p>Score: {result.score.toFixed(2)}</p>
+          {modeId === "timed_plus" ? (
+            <p>effectiveCorrect: {(result.effectiveCorrect ?? 0).toFixed(2)}</p>
+          ) : null}
+          <p>{saved ? "Сессия сохранена." : "Сохраняем сессию..."}</p>
+          {adaptiveDecision ? (
+            <p className="status-line">
+              Адаптация: {adaptiveDecision.reason} (уровень {adaptiveDecision.previousLevel} →
+              {adaptiveDecision.nextLevel})
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {saveError ? <p className="error-text">{saveError}</p> : null}
+    </section>
+  );
+}
