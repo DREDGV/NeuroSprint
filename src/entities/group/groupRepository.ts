@@ -112,6 +112,17 @@ export const groupRepository = {
     return db.classGroups.orderBy("createdAt").toArray();
   },
 
+  async listGroupsForUser(userId: string): Promise<ClassGroup[]> {
+    const memberships = await db.groupMembers.where("userId").equals(userId).toArray();
+    if (memberships.length === 0) {
+      return [];
+    }
+
+    const groupIds = [...new Set(memberships.map((entry) => entry.groupId))];
+    const groups = await db.classGroups.bulkGet(groupIds);
+    return groups.filter((entry): entry is ClassGroup => Boolean(entry));
+  },
+
   async removeGroup(groupId: string): Promise<void> {
     await db.transaction("rw", db.classGroups, db.groupMembers, async () => {
       await db.classGroups.delete(groupId);

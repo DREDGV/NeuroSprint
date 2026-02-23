@@ -12,6 +12,7 @@ import {
   YAxis
 } from "recharts";
 import { groupRepository } from "../entities/group/groupRepository";
+import { sessionRepository } from "../entities/session/sessionRepository";
 import { userRepository } from "../entities/user/userRepository";
 import { SCHULTE_MODES } from "../shared/lib/training/presets";
 import { StatCard } from "../shared/ui/StatCard";
@@ -54,7 +55,10 @@ export function StatsGroupPage() {
   const [modeId, setModeId] = useState<TrainingModeId>("classic_plus");
   const [metric, setMetric] = useState<GroupMetric>("score");
   const [period, setPeriod] = useState<number | "all">(30);
+  const [compareGroupId, setCompareGroupId] = useState<string>("");
   const [summary, setSummary] = useState<GroupStatsSummary | null>(null);
+  const [globalAverage, setGlobalAverage] = useState<number | null>(null);
+  const [compareGroupAverage, setCompareGroupAverage] = useState<number | null>(null);
   const [trend, setTrend] = useState<GroupStatsPoint[]>([]);
   const [levelDistribution, setLevelDistribution] = useState<GroupLevelBucket[]>([]);
   const [members, setMembers] = useState<User[]>([]);
@@ -73,6 +77,9 @@ export function StatsGroupPage() {
 
     if (!groupId && loadedGroups.length > 0) {
       setGroupId(loadedGroups[0].id);
+    }
+    if (!compareGroupId && loadedGroups.length > 1) {
+      setCompareGroupId(loadedGroups[1].id);
     }
   }
 
@@ -127,11 +134,20 @@ export function StatsGroupPage() {
   }, [groupId, selectedUserId, users]);
 
   useEffect(() => {
+    if (compareGroupId && compareGroupId === groupId) {
+      const fallback = groups.find((entry) => entry.id !== groupId)?.id ?? "";
+      setCompareGroupId(fallback);
+    }
+  }, [compareGroupId, groupId, groups]);
+
+  useEffect(() => {
     if (!groupId) {
       setSummary(null);
       setTrend([]);
       setLevelDistribution([]);
       setPercentile(null);
+      setGlobalAverage(null);
+      setCompareGroupAverage(null);
       return;
     }
 
@@ -141,7 +157,7 @@ export function StatsGroupPage() {
 
     void (async () => {
       try {
-        const [stats, percentileResult] = await Promise.all([
+        const [stats, percentileResult, globalStats, compareStats] = await Promise.all([
           groupRepository.aggregateGroupStats(groupId, modeId, period, metric),
           selectedUserId
             ? groupRepository.getUserPercentileInGroup(
@@ -151,6 +167,10 @@ export function StatsGroupPage() {
                 metric,
                 period
               )
+            : Promise.resolve(null),
+          sessionRepository.getModeMetricSnapshot(modeId, metric, period),
+          compareGroupId
+            ? groupRepository.aggregateGroupStats(compareGroupId, modeId, period, metric)
             : Promise.resolve(null)
         ]);
 
@@ -162,6 +182,8 @@ export function StatsGroupPage() {
         setTrend(stats.trend);
         setLevelDistribution(stats.levelDistribution);
         setPercentile(percentileResult?.percentile ?? null);
+        setGlobalAverage(globalStats.summary.avg);
+        setCompareGroupAverage(compareStats?.summary.avg ?? null);
       } catch {
         if (!cancelled) {
           setError("Не удалось загрузить групповую статистику.");
@@ -176,7 +198,7 @@ export function StatsGroupPage() {
     return () => {
       cancelled = true;
     };
-  }, [groupId, metric, modeId, period, selectedUserId]);
+  }, [compareGroupId, groupId, metric, modeId, period, selectedUserId]);
 
   const usersOutsideGroup = useMemo(() => {
     const memberSet = new Set(members.map((entry) => entry.id));
@@ -348,6 +370,40 @@ export function StatsGroupPage() {
         <StatCard title="Сессий" value={String(summary?.sessionsTotal ?? 0)} />
         <StatCard title="Участников" value={String(summary?.membersTotal ?? 0)} />
       </div>
+
+      <section className="setup-block">
+        <h3>Сравнение групп и общей статистики</h3>
+        <div className="action-row">
+          <select
+            value={compareGroupId}
+            onChange={(event) => setCompareGroupId(event.target.value)}
+          >
+            <option value="">Выберите группу для сравнения</option>
+            {groups
+              .filter((entry) => entry.id !== groupId)
+              .map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        <div className="comparison-grid">
+          <StatCard title="Текущая группа" value={formatMetric(summary?.avg, metric)} />
+          <StatCard
+            title="Группа для сравнения"
+            value={formatMetric(compareGroupAverage, metric)}
+          />
+          <StatCard
+            title="Все пользователи"
+            value={formatMetric(globalAverage, metric)}
+          />
+        </div>
+        <p className="comparison-note">
+          Метрика сравнения: {metricTitle(metric)} за выбранный период.
+        </p>
+      </section>
 
       <section className="setup-block">
         <h3>Перцентиль ученика</h3>

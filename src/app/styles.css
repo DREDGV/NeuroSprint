@@ -46,16 +46,44 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #1d5d53;
+  background: linear-gradient(160deg, #f6fffc 0%, #e9fff8 100%);
+  border: 1px solid #b7e4d8;
+  box-shadow: inset 0 -6px 14px rgba(30, 127, 113, 0.12);
+}
+
 .eyebrow {
   margin: 0;
-  font-size: 12px;
+  font-size: 0.78rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
+.app-version {
+  margin-left: 6px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
 .app-title {
   margin: 8px 0 0;
-  font-size: clamp(1.35rem, 2.5vw, 2rem);
+  font-size: clamp(1.7rem, 3.8vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: 0.01em;
 }
 
 .pwa-status-bar {
@@ -280,6 +308,18 @@ body {
 
 .stats-grid.compact {
   margin-bottom: 0;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.comparison-note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.94rem;
 }
 
 .stat-card {

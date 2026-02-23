@@ -7,6 +7,7 @@ export type GridSize = 4 | 5 | 6;
 export type TimeLimitSec = 30 | 45 | 60 | 90;
 export type SpawnStrategy = "same_cell" | "random_cell";
 export type GroupMetric = "score" | "accuracy" | "speed";
+export type ComparePeriod = number | "all";
 
 export interface User {
   id: string;
@@ -173,6 +174,25 @@ export interface UserPercentileResult {
   percentile: number | null;
   userValue: number | null;
   sampleSize: number;
+}
+
+export interface UserMetricPoint {
+  userId: string;
+  value: number;
+  sessions: number;
+}
+
+export interface ModeMetricSummary {
+  best: number | null;
+  avg: number | null;
+  worst: number | null;
+  sessionsTotal: number;
+  usersTotal: number;
+}
+
+export interface ModeMetricSnapshot {
+  summary: ModeMetricSummary;
+  byUser: UserMetricPoint[];
 }
 
 export interface ModeRecommendation {

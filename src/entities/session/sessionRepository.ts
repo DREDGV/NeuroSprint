@@ -2,8 +2,11 @@ import { db } from "../../db/database";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import type {
   ClassicDailyPoint,
+  ComparePeriod,
   DailyProgressSummary,
+  GroupMetric,
   ModeRecommendation,
+  ModeMetricSnapshot,
   Session,
   TimedDailyPoint,
   TrainingModeId
@@ -141,6 +144,81 @@ function normalizeSession(session: Session): Session {
 
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function metricValue(session: Session, metric: GroupMetric): number {
+  if (metric === "accuracy") {
+    return session.accuracy * 100;
+  }
+  if (metric === "speed") {
+    return session.speed;
+  }
+  return session.score;
+}
+
+function normalizePeriod(period: ComparePeriod): ComparePeriod {
+  if (period === "all") {
+    return period;
+  }
+  if (!Number.isFinite(period) || period <= 0) {
+    return 30;
+  }
+  return Math.round(period);
+}
+
+function filterByPeriod(sessions: Session[], period: ComparePeriod): Session[] {
+  if (period === "all") {
+    return sessions;
+  }
+  const from = new Date();
+  from.setDate(from.getDate() - period);
+  return sessions.filter((session) => new Date(session.timestamp) >= from);
+}
+
+export function buildModeMetricSnapshot(
+  sessions: Session[],
+  metric: GroupMetric
+): ModeMetricSnapshot {
+  if (sessions.length === 0) {
+    return {
+      summary: {
+        best: null,
+        avg: null,
+        worst: null,
+        sessionsTotal: 0,
+        usersTotal: 0
+      },
+      byUser: []
+    };
+  }
+
+  const allValues = sessions.map((session) => metricValue(session, metric));
+  const perUserBuckets = new Map<string, number[]>();
+
+  sessions.forEach((session) => {
+    const bucket = perUserBuckets.get(session.userId) ?? [];
+    bucket.push(metricValue(session, metric));
+    perUserBuckets.set(session.userId, bucket);
+  });
+
+  const byUser = [...perUserBuckets.entries()]
+    .map(([userId, values]) => ({
+      userId,
+      value: values.reduce((sum, value) => sum + value, 0) / values.length,
+      sessions: values.length
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  return {
+    summary: {
+      best: Math.max(...allValues),
+      avg: allValues.reduce((sum, value) => sum + value, 0) / allValues.length,
+      worst: Math.min(...allValues),
+      sessionsTotal: sessions.length,
+      usersTotal: byUser.length
+    },
+    byUser
+  };
 }
 
 export function calculateStreak(localDates: string[]): number {
@@ -322,5 +400,16 @@ export const sessionRepository = {
       previousWeekAvgScore,
       recommendation: recommendModeFromSessions(sessions)
     };
+  },
+
+  async getModeMetricSnapshot(
+    modeId: TrainingModeId,
+    metric: GroupMetric,
+    period: ComparePeriod
+  ): Promise<ModeMetricSnapshot> {
+    const normalizedPeriod = normalizePeriod(period);
+    const sessions = await db.sessions.where("modeId").equals(modeId).toArray();
+    const filtered = filterByPeriod(sessions, normalizedPeriod);
+    return buildModeMetricSnapshot(filtered, metric);
   }
 };

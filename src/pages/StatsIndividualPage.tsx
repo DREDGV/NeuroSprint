@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Line,
@@ -9,15 +9,20 @@ import {
   YAxis
 } from "recharts";
 import { useActiveUser } from "../app/ActiveUserContext";
+import { groupRepository } from "../entities/group/groupRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
+import { userRepository } from "../entities/user/userRepository";
 import { SCHULTE_MODES } from "../shared/lib/training/presets";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
+  ClassGroup,
   ClassicDailyPoint,
+  GroupMetric,
   ModeRecommendation,
   TimedDailyPoint,
   TrainingModeId,
+  User,
   UserModeProfile
 } from "../shared/types/domain";
 
@@ -29,6 +34,26 @@ function calculateStability(values: number[]): number | null {
   const variance =
     values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
   return Math.sqrt(variance);
+}
+
+function metricTitle(metric: GroupMetric): string {
+  if (metric === "accuracy") {
+    return "Точность (%)";
+  }
+  if (metric === "speed") {
+    return "Скорость";
+  }
+  return "Score";
+}
+
+function formatMetricValue(value: number | null | undefined, metric: GroupMetric): string {
+  if (value == null) {
+    return "—";
+  }
+  if (metric === "accuracy") {
+    return `${value.toFixed(1)}%`;
+  }
+  return value.toFixed(2);
 }
 
 export function StatsIndividualPage() {
@@ -43,7 +68,20 @@ export function StatsIndividualPage() {
   const [previousWeekAvgScore, setPreviousWeekAvgScore] = useState<number | null>(null);
   const [accuracyStability, setAccuracyStability] = useState<number | null>(null);
   const [levelTrend, setLevelTrend] = useState<Array<{ date: string; avgLevel: number }>>([]);
+
+  const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<ClassGroup[]>([]);
+  const [compareMetric, setCompareMetric] = useState<GroupMetric>("score");
+  const [comparePeriod, setComparePeriod] = useState<number | "all">(30);
+  const [compareUserId, setCompareUserId] = useState("");
+  const [compareGroupId, setCompareGroupId] = useState("");
+  const [myMetricValue, setMyMetricValue] = useState<number | null>(null);
+  const [otherUserValue, setOtherUserValue] = useState<number | null>(null);
+  const [groupValue, setGroupValue] = useState<number | null>(null);
+  const [globalValue, setGlobalValue] = useState<number | null>(null);
+
   const [loading, setLoading] = useState(false);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,12 +95,15 @@ export function StatsIndividualPage() {
 
     void (async () => {
       try {
-        const [daily, insights, modeProfiles, sessions] = await Promise.all([
-          sessionRepository.aggregateDailyByModeId(activeUserId, modeId),
-          sessionRepository.getIndividualInsights(activeUserId),
-          trainingRepository.listUserModeProfiles(activeUserId),
-          trainingRepository.listRecentSessionsByMode(activeUserId, "schulte", modeId, 30)
-        ]);
+        const [daily, insights, modeProfiles, sessions, loadedUsers, loadedGroups] =
+          await Promise.all([
+            sessionRepository.aggregateDailyByModeId(activeUserId, modeId),
+            sessionRepository.getIndividualInsights(activeUserId),
+            trainingRepository.listUserModeProfiles(activeUserId),
+            trainingRepository.listRecentSessionsByMode(activeUserId, "schulte", modeId, 30),
+            userRepository.list(),
+            groupRepository.listGroupsForUser(activeUserId)
+          ]);
 
         if (cancelled) {
           return;
@@ -99,6 +140,26 @@ export function StatsIndividualPage() {
           }))
           .sort((a, b) => a.date.localeCompare(b.date));
         setLevelTrend(trend);
+
+        setUsers(loadedUsers);
+        setGroups(loadedGroups);
+
+        const firstOtherUser = loadedUsers.find((entry) => entry.id !== activeUserId);
+        if (!firstOtherUser) {
+          setCompareUserId("");
+        } else if (
+          !compareUserId ||
+          compareUserId === activeUserId ||
+          !loadedUsers.some((entry) => entry.id === compareUserId)
+        ) {
+          setCompareUserId(firstOtherUser.id);
+        }
+
+        if (loadedGroups.length === 0) {
+          setCompareGroupId("");
+        } else if (!compareGroupId || !loadedGroups.some((entry) => entry.id === compareGroupId)) {
+          setCompareGroupId(loadedGroups[0].id);
+        }
       } catch {
         if (!cancelled) {
           setError("Не удалось загрузить индивидуальную статистику.");
@@ -113,7 +174,56 @@ export function StatsIndividualPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeUserId, modeId]);
+  }, [activeUserId, compareGroupId, compareUserId, modeId]);
+
+  useEffect(() => {
+    if (!activeUserId) {
+      return;
+    }
+
+    let cancelled = false;
+    setComparisonLoading(true);
+
+    void (async () => {
+      try {
+        const [snapshot, groupStats] = await Promise.all([
+          sessionRepository.getModeMetricSnapshot(modeId, compareMetric, comparePeriod),
+          compareGroupId
+            ? groupRepository.aggregateGroupStats(compareGroupId, modeId, comparePeriod, compareMetric)
+            : Promise.resolve(null)
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const me = snapshot.byUser.find((entry) => entry.userId === activeUserId)?.value ?? null;
+        const other = compareUserId
+          ? snapshot.byUser.find((entry) => entry.userId === compareUserId)?.value ?? null
+          : null;
+
+        setMyMetricValue(me);
+        setOtherUserValue(other);
+        setGroupValue(groupStats?.summary.avg ?? null);
+        setGlobalValue(snapshot.summary.avg);
+      } catch {
+        if (!cancelled) {
+          setMyMetricValue(null);
+          setOtherUserValue(null);
+          setGroupValue(null);
+          setGlobalValue(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setComparisonLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUserId, compareGroupId, compareMetric, comparePeriod, compareUserId, modeId]);
 
   const selectedMode = useMemo(
     () => SCHULTE_MODES.find((entry) => entry.id === modeId) ?? SCHULTE_MODES[0],
@@ -127,6 +237,21 @@ export function StatsIndividualPage() {
     }
     return String(profile.autoAdjust ? profile.level : profile.manualLevel ?? profile.level);
   }, [modeId, profiles]);
+
+  const compareUserOptions = useMemo(
+    () => users.filter((entry) => entry.id !== activeUserId),
+    [activeUserId, users]
+  );
+
+  const compareUserName = useMemo(
+    () => users.find((entry) => entry.id === compareUserId)?.name ?? "Другой пользователь",
+    [compareUserId, users]
+  );
+
+  const compareGroupName = useMemo(
+    () => groups.find((entry) => entry.id === compareGroupId)?.name ?? "Моя группа",
+    [compareGroupId, groups]
+  );
 
   const chartData = useMemo(() => {
     if (modeId === "timed_plus") {
@@ -192,15 +317,92 @@ export function StatsIndividualPage() {
         />
       </div>
 
+      <section className="setup-block">
+        <h3>Сравнение результатов</h3>
+        <div className="settings-form">
+          <label htmlFor="compare-metric">Метрика сравнения</label>
+          <select
+            id="compare-metric"
+            value={compareMetric}
+            onChange={(event) => setCompareMetric(event.target.value as GroupMetric)}
+          >
+            <option value="score">Score</option>
+            <option value="accuracy">Accuracy</option>
+            <option value="speed">Speed</option>
+          </select>
+
+          <label htmlFor="compare-period">Период</label>
+          <select
+            id="compare-period"
+            value={String(comparePeriod)}
+            onChange={(event) =>
+              setComparePeriod(event.target.value === "all" ? "all" : Number(event.target.value))
+            }
+          >
+            <option value={7}>7 дней</option>
+            <option value={30}>30 дней</option>
+            <option value={90}>90 дней</option>
+            <option value="all">Все время</option>
+          </select>
+
+          <label htmlFor="compare-user">Пользователь</label>
+          <select
+            id="compare-user"
+            value={compareUserId}
+            onChange={(event) => setCompareUserId(event.target.value)}
+          >
+            <option value="">Выберите пользователя</option>
+            {compareUserOptions.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+
+          <label htmlFor="compare-group">Группа</label>
+          <select
+            id="compare-group"
+            value={compareGroupId}
+            onChange={(event) => setCompareGroupId(event.target.value)}
+          >
+            <option value="">Без группы</option>
+            {groups.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="comparison-grid">
+          <StatCard title="Я" value={formatMetricValue(myMetricValue, compareMetric)} />
+          <StatCard
+            title={compareUserName}
+            value={formatMetricValue(otherUserValue, compareMetric)}
+          />
+          <StatCard
+            title={compareGroupName}
+            value={formatMetricValue(groupValue, compareMetric)}
+          />
+          <StatCard
+            title="Все пользователи"
+            value={formatMetricValue(globalValue, compareMetric)}
+          />
+        </div>
+        <p className="comparison-note">
+          Сравнение по метрике: {metricTitle(compareMetric)} в режиме {selectedMode.title}.
+        </p>
+      </section>
+
       {recommendation ? (
         <p className="status-line">
-          Рекомендованный режим:{" "}
-          {SCHULTE_MODES.find((entry) => entry.id === recommendation.modeId)?.title}.{" "}
+          Рекомендованный режим: {SCHULTE_MODES.find((entry) => entry.id === recommendation.modeId)?.title}.{" "}
           {recommendation.reason}
         </p>
       ) : null}
 
       {loading ? <p>Загрузка статистики...</p> : null}
+      {comparisonLoading ? <p>Загрузка блока сравнения...</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
 
       {chartData.length === 0 ? (
