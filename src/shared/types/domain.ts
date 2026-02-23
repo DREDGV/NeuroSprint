@@ -153,6 +153,18 @@ export interface GroupStatsSummary {
   avg: number | null;
   worst: number | null;
   sessionsTotal: number;
+  membersTotal: number;
+}
+
+export interface GroupLevelBucket {
+  level: number;
+  count: number;
+}
+
+export interface GroupStatsResult {
+  summary: GroupStatsSummary;
+  trend: GroupStatsPoint[];
+  levelDistribution: GroupLevelBucket[];
 }
 
 export interface UserPercentileResult {

@@ -4,8 +4,9 @@ import { createId } from "../../shared/lib/id";
 import type {
   ClassGroup,
   GroupMember,
+  GroupLevelBucket,
   GroupMetric,
-  GroupStatsPoint,
+  GroupStatsResult,
   GroupStatsSummary,
   TrainingModeId,
   UserPercentileResult
@@ -24,13 +25,14 @@ function metricValue(
   return session.score;
 }
 
-function computeSummary(values: number[]): GroupStatsSummary {
+function computeSummary(values: number[], membersTotal: number): GroupStatsSummary {
   if (values.length === 0) {
     return {
       best: null,
       avg: null,
       worst: null,
-      sessionsTotal: 0
+      sessionsTotal: 0,
+      membersTotal
     };
   }
 
@@ -38,7 +40,8 @@ function computeSummary(values: number[]): GroupStatsSummary {
     best: Math.max(...values),
     avg: values.reduce((sum, value) => sum + value, 0) / values.length,
     worst: Math.min(...values),
-    sessionsTotal: values.length
+    sessionsTotal: values.length,
+    membersTotal
   };
 }
 
@@ -50,6 +53,40 @@ function normalizePeriodDays(period: number | "all"): number | "all" {
     return 30;
   }
   return Math.round(period);
+}
+
+function computeFromDate(period: number | "all"): Date | null {
+  if (period === "all") {
+    return null;
+  }
+  const from = new Date();
+  from.setDate(from.getDate() - period);
+  return from;
+}
+
+function filterByPeriod<T extends { timestamp: string }>(
+  sessions: T[],
+  period: number | "all"
+): T[] {
+  const fromDate = computeFromDate(period);
+  if (!fromDate) {
+    return sessions;
+  }
+  return sessions.filter((session) => new Date(session.timestamp) >= fromDate);
+}
+
+export function buildLevelDistribution(
+  sessions: Array<{ level: number }>
+): GroupLevelBucket[] {
+  const counters = new Map<number, number>();
+  sessions.forEach((session) => {
+    const level = Number.isFinite(session.level) ? Math.round(session.level) : 1;
+    const clamped = Math.max(1, Math.min(10, level));
+    counters.set(clamped, (counters.get(clamped) ?? 0) + 1);
+  });
+  return [...counters.entries()]
+    .map(([level, count]) => ({ level, count }))
+    .sort((a, b) => a.level - b.level);
 }
 
 export function calculatePercentile(values: number[], target: number): number | null {
@@ -121,13 +158,15 @@ export const groupRepository = {
     modeId: TrainingModeId,
     period: number | "all",
     metric: GroupMetric
-  ): Promise<{ summary: GroupStatsSummary; trend: GroupStatsPoint[] }> {
+  ): Promise<GroupStatsResult> {
     const normalizedPeriod = normalizePeriodDays(period);
     const members = await this.listMembers(groupId);
+    const membersTotal = members.length;
     if (members.length === 0) {
       return {
-        summary: computeSummary([]),
-        trend: []
+        summary: computeSummary([], membersTotal),
+        trend: [],
+        levelDistribution: []
       };
     }
 
@@ -138,18 +177,11 @@ export const groupRepository = {
       .and((session) => memberIds.has(session.userId))
       .toArray();
 
-    const filtered =
-      normalizedPeriod === "all"
-        ? sessions
-        : sessions.filter((session) => {
-            const date = new Date(session.timestamp);
-            const from = new Date();
-            from.setDate(from.getDate() - normalizedPeriod);
-            return date >= from;
-          });
+    const filtered = filterByPeriod(sessions, normalizedPeriod);
 
     const summaryValues = filtered.map((entry) => metricValue(metric, entry));
     const byDate = new Map<string, number[]>();
+    const levelDistribution = buildLevelDistribution(filtered);
 
     for (const session of filtered) {
       const key = session.localDate ?? toLocalDateKey(session.timestamp);
@@ -169,14 +201,16 @@ export const groupRepository = {
       .sort((a, b) => a.date.localeCompare(b.date));
 
     return {
-      summary: computeSummary(summaryValues),
-      trend
+      summary: computeSummary(summaryValues, membersTotal),
+      trend,
+      levelDistribution
     };
   },
 
   async getUserPercentileInGroup(
     groupId: string,
     userId: string,
+    modeId: TrainingModeId,
     metric: GroupMetric,
     period: number | "all"
   ): Promise<UserPercentileResult> {
@@ -192,33 +226,29 @@ export const groupRepository = {
       };
     }
 
-    const memberIds = members.map((entry) => entry.userId);
-    const fromDate =
-      normalizedPeriod === "all"
-        ? null
-        : (() => {
-            const date = new Date();
-            date.setDate(date.getDate() - normalizedPeriod);
-            return date;
-          })();
+    const memberIds = new Set(members.map((entry) => entry.userId));
+    const allModeSessions = await db.sessions
+      .where("modeId")
+      .equals(modeId)
+      .and((session) => memberIds.has(session.userId))
+      .toArray();
+    const filteredSessions = filterByPeriod(allModeSessions, normalizedPeriod);
 
     const perUserValues: Array<{ userId: string; value: number }> = [];
+    const byUser = new Map<string, number[]>();
+    filteredSessions.forEach((session) => {
+      const bucket = byUser.get(session.userId) ?? [];
+      bucket.push(metricValue(metric, session));
+      byUser.set(session.userId, bucket);
+    });
 
-    for (const memberId of memberIds) {
-      const sessions = await db.sessions
-        .where("userId")
-        .equals(memberId)
-        .and((session) => !fromDate || new Date(session.timestamp) >= fromDate)
-        .toArray();
-      if (sessions.length === 0) {
-        continue;
+    byUser.forEach((values, memberId) => {
+      if (values.length === 0) {
+        return;
       }
-
-      const avg =
-        sessions.reduce((sum, session) => sum + metricValue(metric, session), 0) /
-        sessions.length;
+      const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
       perUserValues.push({ userId: memberId, value: avg });
-    }
+    });
 
     if (perUserValues.length === 0) {
       return {

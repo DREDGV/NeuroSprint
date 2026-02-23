@@ -1,6 +1,9 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -14,12 +17,33 @@ import { SCHULTE_MODES } from "../shared/lib/training/presets";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   ClassGroup,
+  GroupLevelBucket,
   GroupMetric,
   GroupStatsPoint,
   GroupStatsSummary,
   TrainingModeId,
   User
 } from "../shared/types/domain";
+
+function metricTitle(metric: GroupMetric): string {
+  if (metric === "accuracy") {
+    return "Точность (%)";
+  }
+  if (metric === "speed") {
+    return "Скорость";
+  }
+  return "Score";
+}
+
+function formatMetric(value: number | null | undefined, metric: GroupMetric): string {
+  if (value == null) {
+    return "—";
+  }
+  if (metric === "accuracy") {
+    return `${value.toFixed(1)}%`;
+  }
+  return value.toFixed(2);
+}
 
 export function StatsGroupPage() {
   const [groups, setGroups] = useState<ClassGroup[]>([]);
@@ -32,13 +56,14 @@ export function StatsGroupPage() {
   const [period, setPeriod] = useState<number | "all">(30);
   const [summary, setSummary] = useState<GroupStatsSummary | null>(null);
   const [trend, setTrend] = useState<GroupStatsPoint[]>([]);
+  const [levelDistribution, setLevelDistribution] = useState<GroupLevelBucket[]>([]);
   const [members, setMembers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [percentile, setPercentile] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadBase() {
+  async function loadBase(): Promise<void> {
     const [loadedGroups, loadedUsers] = await Promise.all([
       groupRepository.listGroups(),
       userRepository.list()
@@ -56,9 +81,25 @@ export function StatsGroupPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function reloadMembers(targetGroupId: string): Promise<User[]> {
+    const membersRows = await groupRepository.listMembers(targetGroupId);
+    const memberSet = new Set(membersRows.map((entry) => entry.userId));
+    const mapped = users.filter((entry) => memberSet.has(entry.id));
+    setMembers(mapped);
+
+    if (mapped.length === 0) {
+      setSelectedUserId("");
+    } else if (!mapped.some((entry) => entry.id === selectedUserId)) {
+      setSelectedUserId(mapped[0].id);
+    }
+
+    return mapped;
+  }
+
   useEffect(() => {
     if (!groupId) {
       setMembers([]);
+      setSelectedUserId("");
       return;
     }
 
@@ -68,10 +109,14 @@ export function StatsGroupPage() {
       if (cancelled) {
         return;
       }
+
       const memberSet = new Set(membersRows.map((entry) => entry.userId));
       const mapped = users.filter((entry) => memberSet.has(entry.id));
       setMembers(mapped);
-      if (!selectedUserId && mapped.length > 0) {
+
+      if (mapped.length === 0) {
+        setSelectedUserId("");
+      } else if (!mapped.some((entry) => entry.id === selectedUserId)) {
         setSelectedUserId(mapped[0].id);
       }
     })();
@@ -85,6 +130,7 @@ export function StatsGroupPage() {
     if (!groupId) {
       setSummary(null);
       setTrend([]);
+      setLevelDistribution([]);
       setPercentile(null);
       return;
     }
@@ -101,17 +147,20 @@ export function StatsGroupPage() {
             ? groupRepository.getUserPercentileInGroup(
                 groupId,
                 selectedUserId,
+                modeId,
                 metric,
                 period
               )
             : Promise.resolve(null)
         ]);
+
         if (cancelled) {
           return;
         }
 
         setSummary(stats.summary);
         setTrend(stats.trend);
+        setLevelDistribution(stats.levelDistribution);
         setPercentile(percentileResult?.percentile ?? null);
       } catch {
         if (!cancelled) {
@@ -134,7 +183,7 @@ export function StatsGroupPage() {
     return users.filter((entry) => !memberSet.has(entry.id));
   }, [members, users]);
 
-  async function handleCreateGroup(event: FormEvent) {
+  async function handleCreateGroup(event: FormEvent): Promise<void> {
     event.preventDefault();
     if (newGroupName.trim().length < 2) {
       return;
@@ -144,31 +193,32 @@ export function StatsGroupPage() {
     await loadBase();
   }
 
-  async function handleAddMember() {
+  async function handleAddMember(): Promise<void> {
     if (!groupId || !memberToAdd) {
       return;
     }
     await groupRepository.addMember(groupId, memberToAdd);
     setMemberToAdd("");
-    const membersRows = await groupRepository.listMembers(groupId);
-    const memberSet = new Set(membersRows.map((entry) => entry.userId));
-    setMembers(users.filter((entry) => memberSet.has(entry.id)));
+    await reloadMembers(groupId);
   }
 
-  async function handleRemoveMember(userId: string) {
+  async function handleRemoveMember(userId: string): Promise<void> {
     if (!groupId) {
       return;
     }
     await groupRepository.removeMember(groupId, userId);
-    const membersRows = await groupRepository.listMembers(groupId);
-    const memberSet = new Set(membersRows.map((entry) => entry.userId));
-    setMembers(users.filter((entry) => memberSet.has(entry.id)));
+    await reloadMembers(groupId);
   }
+
+  const hasGroup = Boolean(groupId);
 
   return (
     <section className="panel" data-testid="stats-group-page">
       <h2>Групповая статистика</h2>
-      <p>Локальная аналитика класса: лучший, средний, худший и перцентиль.</p>
+      <p>
+        Локальная аналитика класса: лучший, средний, худший результат,
+        перцентиль ученика и распределение по уровням.
+      </p>
 
       <div className="segmented-row">
         <Link className="btn-secondary" to="/stats/individual">
@@ -240,12 +290,18 @@ export function StatsGroupPage() {
           }
         >
           <option value={7}>7 дней</option>
+          <option value={14}>14 дней</option>
           <option value={30}>30 дней</option>
+          <option value={90}>90 дней</option>
           <option value="all">Все время</option>
         </select>
       </div>
 
-      {groupId ? (
+      {!hasGroup ? (
+        <p className="status-line">Создайте группу и добавьте учеников, чтобы увидеть аналитику.</p>
+      ) : null}
+
+      {hasGroup ? (
         <section className="setup-block">
           <h3>Состав группы</h3>
           <div className="action-row">
@@ -285,10 +341,12 @@ export function StatsGroupPage() {
       ) : null}
 
       <div className="stats-grid compact">
-        <StatCard title="Лучший" value={summary?.best != null ? summary.best.toFixed(2) : "—"} />
-        <StatCard title="Средний" value={summary?.avg != null ? summary.avg.toFixed(2) : "—"} />
-        <StatCard title="Худший" value={summary?.worst != null ? summary.worst.toFixed(2) : "—"} />
+        <StatCard title="Метрика" value={metricTitle(metric)} />
+        <StatCard title="Лучший" value={formatMetric(summary?.best, metric)} />
+        <StatCard title="Средний" value={formatMetric(summary?.avg, metric)} />
+        <StatCard title="Худший" value={formatMetric(summary?.worst, metric)} />
         <StatCard title="Сессий" value={String(summary?.sessionsTotal ?? 0)} />
+        <StatCard title="Участников" value={String(summary?.membersTotal ?? 0)} />
       </div>
 
       <section className="setup-block">
@@ -315,12 +373,13 @@ export function StatsGroupPage() {
       {error ? <p className="error-text">{error}</p> : null}
 
       <div className="chart-box">
-        <h3>Динамика среднего по группе</h3>
+        <h3>Динамика по группе</h3>
         {trend.length === 0 ? (
           <p>Пока нет данных для выбранных фильтров.</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={trend}>
+              <CartesianGrid strokeDasharray="4 4" />
               <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
@@ -349,6 +408,23 @@ export function StatsGroupPage() {
                 dot={false}
               />
             </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      <div className="chart-box">
+        <h3>Распределение уровней</h3>
+        {levelDistribution.length === 0 ? (
+          <p>Недостаточно данных для гистограммы уровней.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={levelDistribution}>
+              <CartesianGrid strokeDasharray="4 4" />
+              <XAxis dataKey="level" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="count" name="Сессий" fill="#f2a93b" radius={[6, 6, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         )}
       </div>
