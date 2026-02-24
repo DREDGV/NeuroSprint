@@ -1,4 +1,6 @@
-import { FormEvent, useState } from "react";
+﻿import { FormEvent, useState } from "react";
+import { useActiveUser } from "../app/ActiveUserContext";
+import { generateDemoClassroomFixture } from "../shared/lib/fixtures/classroomFixture";
 import {
   DEFAULT_SETTINGS,
   getSettings,
@@ -9,6 +11,7 @@ import type { AppSettings } from "../shared/types/domain";
 type TimeLimit = 30 | 45 | 60 | 90;
 
 export function SettingsPage() {
+  const { setActiveUserId } = useActiveUser();
   const initial = getSettings();
   const [timedDefaultLimitSec, setTimedDefaultLimitSec] = useState<TimeLimit>(
     initial.timedDefaultLimitSec
@@ -20,6 +23,9 @@ export function SettingsPage() {
     initial.dailyGoalSessions
   );
   const [message, setMessage] = useState<string | null>(null);
+
+  const [fixtureBusy, setFixtureBusy] = useState(false);
+  const [fixtureMessage, setFixtureMessage] = useState<string | null>(null);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -36,6 +42,32 @@ export function SettingsPage() {
     };
     saveSettings(nextSettings);
     setMessage("Настройки сохранены.");
+  }
+
+  async function handleGenerateDemoFixture() {
+    setFixtureBusy(true);
+    setFixtureMessage(null);
+
+    try {
+      const summary = await generateDemoClassroomFixture({
+        groupsCount: 2,
+        studentsPerGroup: 15,
+        days: 14,
+        replaceExistingDemoData: true
+      });
+
+      if (summary.activeUserId) {
+        setActiveUserId(summary.activeUserId);
+      }
+
+      setFixtureMessage(
+        `Демо-данные созданы: ${summary.groupsCreated} групп, ${summary.usersCreated} учеников, ${summary.sessionsCreated} сессий.`
+      );
+    } catch {
+      setFixtureMessage("Не удалось сгенерировать демо-данные.");
+    } finally {
+      setFixtureBusy(false);
+    }
   }
 
   return (
@@ -84,6 +116,26 @@ export function SettingsPage() {
       </form>
 
       {message ? <p className="status-line">{message}</p> : null}
+
+      <section className="setup-block" data-testid="settings-fixture-block">
+        <h3>Тестовые данные для класса</h3>
+        <p>
+          Генерирует демо-набор для проверки групповой аналитики: 2 группы, 30 учеников
+          и история тренировок за 14 дней.
+        </p>
+        <div className="action-row">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => void handleGenerateDemoFixture()}
+            disabled={fixtureBusy}
+            data-testid="generate-demo-fixture-btn"
+          >
+            {fixtureBusy ? "Генерация..." : "Сгенерировать демо-класс (30+)"}
+          </button>
+        </div>
+        {fixtureMessage ? <p className="status-line">{fixtureMessage}</p> : null}
+      </section>
     </section>
   );
 }

@@ -371,7 +371,7 @@ export function StatsGroupPage() {
         <StatCard title="Участников" value={String(summary?.membersTotal ?? 0)} />
       </div>
 
-      <section className="setup-block">
+      <section className="setup-block" data-testid="group-comparison-block">
         <h3>Сравнение групп и общей статистики</h3>
         <div className="action-row">
           <select

@@ -317,7 +317,7 @@ export function StatsIndividualPage() {
         />
       </div>
 
-      <section className="setup-block">
+      <section className="setup-block" data-testid="individual-comparison-block">
         <h3>Сравнение результатов</h3>
         <div className="settings-form">
           <label htmlFor="compare-metric">Метрика сравнения</label>

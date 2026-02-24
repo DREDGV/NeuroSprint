@@ -36,7 +36,7 @@
 | v0.2.A | IA/маршруты/TrainingHub + setup | Done | Завершено |
 | v0.2.B | 3 режима Шульте + unified start | Done | Завершено |
 | v0.2.C | Адаптация + индивидуальная статистика v2 | Done | Завершено |
-| v0.3.A | Группы + групповая аналитика | In progress | Экран `/stats/group` покрывает фильтры, лучший/средний/худший, перцентиль и гистограмму уровней; остаются fixture-сценарии и hardening |
+| v0.3.A | Группы + групповая аналитика | Done | Добавлены fixture-данные 30+, сравнения `user/group/global`, integration/e2e контур и регрессионная проверка |
 
 ## Interfaces & Contracts
 ### Routes
@@ -62,8 +62,9 @@
 ### Repository contracts
 - `userRepository.create/list/rename/remove`
 - `sessionRepository.save/listByUser/listByUserMode/aggregateDailyClassic/aggregateDailyTimed`
+- `sessionRepository.getModeMetricSnapshot(modeId, metric, period)`
 - `trainingRepository.getUserModeProfile/saveUserModeProfile/listRecentSessionsByMode/evaluateAdaptiveLevel`
-- `groupRepository.createGroup/listGroups/addMember/removeMember/aggregateGroupStats/getUserPercentileInGroup`
+- `groupRepository.createGroup/listGroups/listGroupsForUser/addMember/removeMember/aggregateGroupStats/getUserPercentileInGroup`
 
 ## Test Matrix
 ### Unit
@@ -74,16 +75,20 @@
 - training hub
 - pwa status bar
 - schulte grid behavior
+- stats individual comparison block
+- stats group comparison block
 
 ### E2E smoke
 - first run: profile -> classic -> stats
 - timed mode finish and metrics
+- fixture generation -> individual/group comparison blocks
 
 ## Execution Log
 - 2026-02-23: Реализован MVP с профилями, Classic/Timed, статистикой, PWA и тестами.
 - 2026-02-24: Реализованы v0.2 изменения: новая IA, TrainingHub, setup-панель, `Classic+`, `Timed+`, `Reverse`, адаптивные профили, расширенная статистика, миграции Dexie v2/v3, новые unit/integration/e2e проверки.
 - 2026-02-24: Улучшена групповая аналитика v0.3.A: расширенные фильтры периода (7/14/30/90/all), гистограмма распределения уровней, исправлен расчет перцентиля с учетом `modeId`, добавлены unit-тесты на распределение уровней.
 - 2026-02-24: Добавлено отображение версии в шапке приложения и расширены сравнения статистики: на индивидуальном экране `пользователь/группа/все`, на групповом экране `группа/другая группа/все`.
+- 2026-02-24: Добавлен fixture-генератор `30+` в `Настройки` (2 группы, 30 учеников, 14 дней сессий), обновлен тестовый контур (integration + e2e) и подтвержден полный регресс (`npm test`, `npm run build`, `npm run test:e2e`).
 
 ## Risks & Decisions
 ### Decisions
@@ -96,6 +101,6 @@
 - Необходима ручная проверка Android install/offline на реальных устройствах.
 
 ## Next Session Start
-1. Добавить fixture-генератор на 30+ учеников и массовые сессии для проверки масштаба.
-2. Добавить integration/e2e сценарии для блоков сравнения (`user/group/global`) и `/stats/group`.
-3. Провести UX/hardening проход по v0.3.A и зафиксировать `alpha-v0.3.0`.
+1. Провести UX-polish для экранов статистики на мобильной ширине и длинных списках групп.
+2. Подготовить release-notes и зафиксировать `alpha-v0.3.0`.
+3. Перейти к `v0.3.B`: hardening и производительность агрегаций на больших локальных наборах.
