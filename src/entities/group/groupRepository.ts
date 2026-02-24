@@ -1,3 +1,4 @@
+import Dexie from "dexie";
 import { db } from "../../db/database";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import { createId } from "../../shared/lib/id";
@@ -83,19 +84,31 @@ function filterByPeriod(
 
 async function loadSessionsForMembersByMode(
   memberIds: string[],
-  modeId: TrainingModeId
+  modeId: TrainingModeId,
+  period: number | "all"
 ): Promise<Session[]> {
   if (memberIds.length === 0) {
     return [];
   }
 
+  const fromDateKey = computeFromDateKey(period);
   const perMember = await Promise.all(
-    memberIds.map((memberId) =>
-      db.sessions
-        .where("[userId+moduleId+modeId]")
-        .equals([memberId, "schulte", modeId])
-        .toArray()
-    )
+    memberIds.map((memberId) => {
+      if (!fromDateKey) {
+        return db.sessions
+          .where("[userId+moduleId+modeId]")
+          .equals([memberId, "schulte", modeId])
+          .toArray();
+      }
+
+      return db.sessions
+        .where("[userId+moduleId+modeId+localDate]")
+        .between(
+          [memberId, "schulte", modeId, fromDateKey],
+          [memberId, "schulte", modeId, Dexie.maxKey]
+        )
+        .toArray();
+    })
   );
 
   return perMember.flat();
@@ -208,7 +221,11 @@ export const groupRepository = {
     }
 
     const memberIds = members.map((entry) => entry.userId);
-    const sessions = await loadSessionsForMembersByMode(memberIds, modeId);
+    const sessions = await loadSessionsForMembersByMode(
+      memberIds,
+      modeId,
+      normalizedPeriod
+    );
 
     const filtered = filterByPeriod(sessions, normalizedPeriod);
 
@@ -260,7 +277,11 @@ export const groupRepository = {
     }
 
     const memberIds = members.map((entry) => entry.userId);
-    const allModeSessions = await loadSessionsForMembersByMode(memberIds, modeId);
+    const allModeSessions = await loadSessionsForMembersByMode(
+      memberIds,
+      modeId,
+      normalizedPeriod
+    );
     const filteredSessions = filterByPeriod(allModeSessions, normalizedPeriod);
 
     const perUserValues: Array<{ userId: string; value: number }> = [];

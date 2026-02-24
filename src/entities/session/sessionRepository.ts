@@ -1,3 +1,4 @@
+import Dexie from "dexie";
 import { db } from "../../db/database";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import type {
@@ -166,13 +167,23 @@ function normalizePeriod(period: ComparePeriod): ComparePeriod {
   return Math.round(period);
 }
 
+function getFromLocalDate(period: ComparePeriod): string | null {
+  if (period === "all") {
+    return null;
+  }
+  const from = new Date();
+  from.setDate(from.getDate() - period);
+  return toLocalDateKey(from);
+}
+
 function filterByPeriod(sessions: Session[], period: ComparePeriod): Session[] {
   if (period === "all") {
     return sessions;
   }
-  const from = new Date();
-  from.setDate(from.getDate() - period);
-  const fromLocalDate = toLocalDateKey(from);
+  const fromLocalDate = getFromLocalDate(period);
+  if (!fromLocalDate) {
+    return sessions;
+  }
 
   return sessions.filter((session) => {
     if (session.localDate) {
@@ -226,6 +237,21 @@ export function buildModeMetricSnapshot(
     },
     byUser
   };
+}
+
+async function loadModeSessions(
+  modeId: TrainingModeId,
+  period: ComparePeriod
+): Promise<Session[]> {
+  const fromLocalDate = getFromLocalDate(period);
+  if (!fromLocalDate) {
+    return db.sessions.where("modeId").equals(modeId).toArray();
+  }
+
+  return db.sessions
+    .where("[modeId+localDate]")
+    .between([modeId, fromLocalDate], [modeId, Dexie.maxKey])
+    .toArray();
 }
 
 export function calculateStreak(localDates: string[]): number {
@@ -415,7 +441,7 @@ export const sessionRepository = {
     period: ComparePeriod
   ): Promise<ModeMetricSnapshot> {
     const normalizedPeriod = normalizePeriod(period);
-    const sessions = await db.sessions.where("modeId").equals(modeId).toArray();
+    const sessions = await loadModeSessions(modeId, normalizedPeriod);
     const filtered = filterByPeriod(sessions, normalizedPeriod);
     return buildModeMetricSnapshot(filtered, metric);
   }

@@ -11,6 +11,17 @@ import {
 import type { AppSettings, GroupMetric, TrainingModeId } from "../shared/types/domain";
 
 type TimeLimit = 30 | 45 | 60 | 90;
+type BenchmarkPeriod = 30 | 90 | "all";
+
+function benchmarkThresholdMs(period: BenchmarkPeriod): number {
+  if (period === 30) {
+    return 350;
+  }
+  if (period === 90) {
+    return 700;
+  }
+  return 1_500;
+}
 
 export function SettingsPage() {
   const { setActiveUserId } = useActiveUser();
@@ -98,7 +109,7 @@ export function SettingsPage() {
 
     const metric: GroupMetric = "score";
     const modeId: TrainingModeId = "classic_plus";
-    const periods: Array<number | "all"> = [30, 90, "all"];
+    const periods: BenchmarkPeriod[] = [30, 90, "all"];
     const nowMs =
       typeof performance !== "undefined" && typeof performance.now === "function"
         ? () => performance.now()
@@ -111,7 +122,9 @@ export function SettingsPage() {
       lines.push(`Режим: ${modeId}, метрика: ${metric}`);
       lines.push(`Группа для замера: ${targetGroup?.name ?? "нет групп"}`);
 
+      let warnings = 0;
       for (const period of periods) {
+        const thresholdMs = benchmarkThresholdMs(period);
         const groupStart = nowMs();
         const groupStats = targetGroup
           ? await groupRepository.aggregateGroupStats(targetGroup.id, modeId, period, metric)
@@ -127,12 +140,22 @@ export function SettingsPage() {
         const globalDuration = nowMs() - globalStart;
 
         const periodLabel = period === "all" ? "all" : `${period}d`;
+        const isSlow = groupDuration > thresholdMs || globalDuration > thresholdMs;
+        if (isSlow) {
+          warnings += 1;
+        }
         lines.push(
           `[${periodLabel}] group=${groupDuration.toFixed(1)}ms (${groupStats?.summary.sessionsTotal ?? 0} сессий), ` +
-            `global=${globalDuration.toFixed(1)}ms (${globalStats.summary.sessionsTotal} сессий)`
+            `global=${globalDuration.toFixed(1)}ms (${globalStats.summary.sessionsTotal} сессий), ` +
+            `порог<=${thresholdMs}ms, статус=${isSlow ? "ВНИМАНИЕ" : "OK"}`
         );
       }
 
+      lines.push(
+        warnings === 0
+          ? "Итог: производительность в допустимом диапазоне."
+          : `Итог: обнаружено ${warnings} период(ов) выше порога.`
+      );
       setBenchmarkReport(lines.join("\n"));
     } catch {
       setBenchmarkReport("Не удалось выполнить замер агрегаций.");

@@ -64,6 +64,16 @@ export class NeuroSprintDatabase extends Dexie {
       classGroups: "id, name, createdAt",
       groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]"
     });
+
+    this.version(4).stores({
+      users: "id, name, createdAt",
+      sessions:
+        "id, userId, taskId, mode, timestamp, localDate, score, moduleId, modeId, level, [userId+localDate], [userId+mode+localDate], [userId+moduleId+modeId], [modeId+localDate], [userId+moduleId+modeId+localDate]",
+      userModeProfiles:
+        "id, userId, moduleId, modeId, updatedAt, [userId+moduleId+modeId]",
+      classGroups: "id, name, createdAt",
+      groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]"
+    });
   }
 }
 
