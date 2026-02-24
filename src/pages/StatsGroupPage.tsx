@@ -343,7 +343,7 @@ export function StatsGroupPage() {
             </button>
           </div>
 
-          <ul className="profiles-list">
+          <ul className="profiles-list scrollable">
             {members.map((member) => (
               <li key={member.id} className="profile-item">
                 <div>

@@ -26,6 +26,9 @@ export function SettingsPage() {
 
   const [fixtureBusy, setFixtureBusy] = useState(false);
   const [fixtureMessage, setFixtureMessage] = useState<string | null>(null);
+  const [fixtureGroupsCount, setFixtureGroupsCount] = useState(2);
+  const [fixtureStudentsPerGroup, setFixtureStudentsPerGroup] = useState(15);
+  const [fixtureDays, setFixtureDays] = useState(14);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -45,14 +48,28 @@ export function SettingsPage() {
   }
 
   async function handleGenerateDemoFixture() {
+    const groupsCount = Math.max(1, Math.min(8, Math.round(fixtureGroupsCount)));
+    const studentsPerGroup = Math.max(
+      1,
+      Math.min(40, Math.round(fixtureStudentsPerGroup))
+    );
+    const days = Math.max(3, Math.min(45, Math.round(fixtureDays)));
+
+    const approved = window.confirm(
+      `Сгенерировать демо-данные?\nГрупп: ${groupsCount}\nУчеников в группе: ${studentsPerGroup}\nДней: ${days}`
+    );
+    if (!approved) {
+      return;
+    }
+
     setFixtureBusy(true);
     setFixtureMessage(null);
 
     try {
       const summary = await generateDemoClassroomFixture({
-        groupsCount: 2,
-        studentsPerGroup: 15,
-        days: 14,
+        groupsCount,
+        studentsPerGroup,
+        days,
         replaceExistingDemoData: true
       });
 
@@ -120,9 +137,43 @@ export function SettingsPage() {
       <section className="setup-block" data-testid="settings-fixture-block">
         <h3>Тестовые данные для класса</h3>
         <p>
-          Генерирует демо-набор для проверки групповой аналитики: 2 группы, 30 учеников
-          и история тренировок за 14 дней.
+          Генерирует демо-набор для проверки групповой аналитики. Можно настроить
+          размер класса и период.
         </p>
+        <div className="fixture-grid">
+          <label htmlFor="fixture-groups">Групп</label>
+          <input
+            id="fixture-groups"
+            type="number"
+            min={1}
+            max={8}
+            value={fixtureGroupsCount}
+            onChange={(event) => setFixtureGroupsCount(Number(event.target.value))}
+            data-testid="fixture-groups-input"
+          />
+
+          <label htmlFor="fixture-students">Учеников в группе</label>
+          <input
+            id="fixture-students"
+            type="number"
+            min={1}
+            max={40}
+            value={fixtureStudentsPerGroup}
+            onChange={(event) => setFixtureStudentsPerGroup(Number(event.target.value))}
+            data-testid="fixture-students-input"
+          />
+
+          <label htmlFor="fixture-days">Дней истории</label>
+          <input
+            id="fixture-days"
+            type="number"
+            min={3}
+            max={45}
+            value={fixtureDays}
+            onChange={(event) => setFixtureDays(Number(event.target.value))}
+            data-testid="fixture-days-input"
+          />
+        </div>
         <div className="action-row">
           <button
             type="button"

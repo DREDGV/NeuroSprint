@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("NeuroSprint comparisons", () => {
   test("fixture generation enables individual and group comparison blocks", async ({ page }) => {
     await page.goto("/settings");
+    page.on("dialog", (dialog) => dialog.accept());
     await page.getByTestId("generate-demo-fixture-btn").click();
     await expect(page.getByText(/Демо-данные созданы:/)).toBeVisible({ timeout: 45_000 });
 
