@@ -8,6 +8,7 @@ import type {
   GroupMetric,
   GroupStatsResult,
   GroupStatsSummary,
+  Session,
   TrainingModeId,
   UserPercentileResult
 } from "../../shared/types/domain";
@@ -55,24 +56,49 @@ function normalizePeriodDays(period: number | "all"): number | "all" {
   return Math.round(period);
 }
 
-function computeFromDate(period: number | "all"): Date | null {
+function computeFromDateKey(period: number | "all"): string | null {
   if (period === "all") {
     return null;
   }
   const from = new Date();
   from.setDate(from.getDate() - period);
-  return from;
+  return toLocalDateKey(from);
 }
 
-function filterByPeriod<T extends { timestamp: string }>(
-  sessions: T[],
+function filterByPeriod(
+  sessions: Session[],
   period: number | "all"
-): T[] {
-  const fromDate = computeFromDate(period);
-  if (!fromDate) {
+): Session[] {
+  const fromDateKey = computeFromDateKey(period);
+  if (!fromDateKey) {
     return sessions;
   }
-  return sessions.filter((session) => new Date(session.timestamp) >= fromDate);
+  return sessions.filter((session) => {
+    if (session.localDate) {
+      return session.localDate >= fromDateKey;
+    }
+    return toLocalDateKey(session.timestamp) >= fromDateKey;
+  });
+}
+
+async function loadSessionsForMembersByMode(
+  memberIds: string[],
+  modeId: TrainingModeId
+): Promise<Session[]> {
+  if (memberIds.length === 0) {
+    return [];
+  }
+
+  const perMember = await Promise.all(
+    memberIds.map((memberId) =>
+      db.sessions
+        .where("[userId+moduleId+modeId]")
+        .equals([memberId, "schulte", modeId])
+        .toArray()
+    )
+  );
+
+  return perMember.flat();
 }
 
 export function buildLevelDistribution(
@@ -181,12 +207,8 @@ export const groupRepository = {
       };
     }
 
-    const memberIds = new Set(members.map((entry) => entry.userId));
-    const sessions = await db.sessions
-      .where("modeId")
-      .equals(modeId)
-      .and((session) => memberIds.has(session.userId))
-      .toArray();
+    const memberIds = members.map((entry) => entry.userId);
+    const sessions = await loadSessionsForMembersByMode(memberIds, modeId);
 
     const filtered = filterByPeriod(sessions, normalizedPeriod);
 
@@ -237,12 +259,8 @@ export const groupRepository = {
       };
     }
 
-    const memberIds = new Set(members.map((entry) => entry.userId));
-    const allModeSessions = await db.sessions
-      .where("modeId")
-      .equals(modeId)
-      .and((session) => memberIds.has(session.userId))
-      .toArray();
+    const memberIds = members.map((entry) => entry.userId);
+    const allModeSessions = await loadSessionsForMembersByMode(memberIds, modeId);
     const filteredSessions = filterByPeriod(allModeSessions, normalizedPeriod);
 
     const perUserValues: Array<{ userId: string; value: number }> = [];

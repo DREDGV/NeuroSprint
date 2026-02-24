@@ -172,7 +172,14 @@ function filterByPeriod(sessions: Session[], period: ComparePeriod): Session[] {
   }
   const from = new Date();
   from.setDate(from.getDate() - period);
-  return sessions.filter((session) => new Date(session.timestamp) >= from);
+  const fromLocalDate = toLocalDateKey(from);
+
+  return sessions.filter((session) => {
+    if (session.localDate) {
+      return session.localDate >= fromLocalDate;
+    }
+    return toLocalDateKey(session.timestamp) >= fromLocalDate;
+  });
 }
 
 export function buildModeMetricSnapshot(
