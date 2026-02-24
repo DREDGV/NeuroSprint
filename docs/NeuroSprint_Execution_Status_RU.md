@@ -1,7 +1,7 @@
 ﻿# NeuroSprint Execution Status (RU)
 
 ## Дата/время
-- 2026-02-24 14:29
+- 2026-02-24 15:13
 
 ## Что завершено
 - MVP (M0-M6) реализован и стабилизирован.
@@ -26,6 +26,8 @@
 - Полный регресс подтвержден: `npm test`, `npm run build`, `npm run test:e2e`.
 - Оптимизированы агрегации для групповой аналитики: выборки сессий по compound-index `[userId+moduleId+modeId]` и фильтрация по `localDate`.
 - После оптимизации подтверждены `npm test` и `npm run build`.
+- Зафиксирован релиз `alpha-v0.3.0`: версия проекта обновлена до `0.3.0`, добавлен документ `docs/ALPHA_v0.3.0_RELEASE_NOTES_RU.md`.
+- Полный регресс для релиз-кандидата подтвержден: `npm test`, `npm run build`, `npm run test:e2e`.
 
 ## Что в работе
 - v0.3.B: финальный hardening + performance polish перед `alpha-v0.3.0`.
