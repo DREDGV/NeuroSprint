@@ -1,12 +1,14 @@
 ﻿import { FormEvent, useState } from "react";
 import { useActiveUser } from "../app/ActiveUserContext";
+import { groupRepository } from "../entities/group/groupRepository";
+import { sessionRepository } from "../entities/session/sessionRepository";
 import { generateDemoClassroomFixture } from "../shared/lib/fixtures/classroomFixture";
 import {
   DEFAULT_SETTINGS,
   getSettings,
   saveSettings
 } from "../shared/lib/settings/settings";
-import type { AppSettings } from "../shared/types/domain";
+import type { AppSettings, GroupMetric, TrainingModeId } from "../shared/types/domain";
 
 type TimeLimit = 30 | 45 | 60 | 90;
 
@@ -29,6 +31,9 @@ export function SettingsPage() {
   const [fixtureGroupsCount, setFixtureGroupsCount] = useState(2);
   const [fixtureStudentsPerGroup, setFixtureStudentsPerGroup] = useState(15);
   const [fixtureDays, setFixtureDays] = useState(14);
+
+  const [benchmarkBusy, setBenchmarkBusy] = useState(false);
+  const [benchmarkReport, setBenchmarkReport] = useState<string | null>(null);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -84,6 +89,55 @@ export function SettingsPage() {
       setFixtureMessage("Не удалось сгенерировать демо-данные.");
     } finally {
       setFixtureBusy(false);
+    }
+  }
+
+  async function handleRunBenchmark() {
+    setBenchmarkBusy(true);
+    setBenchmarkReport(null);
+
+    const metric: GroupMetric = "score";
+    const modeId: TrainingModeId = "classic_plus";
+    const periods: Array<number | "all"> = [30, 90, "all"];
+    const nowMs =
+      typeof performance !== "undefined" && typeof performance.now === "function"
+        ? () => performance.now()
+        : () => Date.now();
+
+    try {
+      const groups = await groupRepository.listGroups();
+      const targetGroup = groups[0] ?? null;
+      const lines: string[] = [];
+      lines.push(`Режим: ${modeId}, метрика: ${metric}`);
+      lines.push(`Группа для замера: ${targetGroup?.name ?? "нет групп"}`);
+
+      for (const period of periods) {
+        const groupStart = nowMs();
+        const groupStats = targetGroup
+          ? await groupRepository.aggregateGroupStats(targetGroup.id, modeId, period, metric)
+          : null;
+        const groupDuration = nowMs() - groupStart;
+
+        const globalStart = nowMs();
+        const globalStats = await sessionRepository.getModeMetricSnapshot(
+          modeId,
+          metric,
+          period
+        );
+        const globalDuration = nowMs() - globalStart;
+
+        const periodLabel = period === "all" ? "all" : `${period}d`;
+        lines.push(
+          `[${periodLabel}] group=${groupDuration.toFixed(1)}ms (${groupStats?.summary.sessionsTotal ?? 0} сессий), ` +
+            `global=${globalDuration.toFixed(1)}ms (${globalStats.summary.sessionsTotal} сессий)`
+        );
+      }
+
+      setBenchmarkReport(lines.join("\n"));
+    } catch {
+      setBenchmarkReport("Не удалось выполнить замер агрегаций.");
+    } finally {
+      setBenchmarkBusy(false);
     }
   }
 
@@ -186,6 +240,23 @@ export function SettingsPage() {
           </button>
         </div>
         {fixtureMessage ? <p className="status-line">{fixtureMessage}</p> : null}
+
+        <div className="action-row">
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => void handleRunBenchmark()}
+            disabled={benchmarkBusy}
+            data-testid="run-benchmark-btn"
+          >
+            {benchmarkBusy ? "Измерение..." : "Измерить агрегации (30/90/all)"}
+          </button>
+        </div>
+        {benchmarkReport ? (
+          <pre className="benchmark-report" data-testid="benchmark-report">
+            {benchmarkReport}
+          </pre>
+        ) : null}
       </section>
     </section>
   );
