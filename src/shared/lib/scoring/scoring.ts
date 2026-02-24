@@ -53,7 +53,8 @@ export function calcClassicMetrics(input: ClassicMetricsInput): ClassicMetrics {
 
 export function calcTimedMetrics(input: TimedMetricsInput): TimedMetrics {
   const errorPenalty = input.errorPenalty ?? 0.5;
-  const effectiveCorrect = input.correctCount - input.errors * errorPenalty;
+  const rawEffectiveCorrect = input.correctCount - input.errors * errorPenalty;
+  const effectiveCorrect = Math.max(0, rawEffectiveCorrect);
   const minutes = input.timeLimitSec / 60;
   const speed = minutes > 0 ? effectiveCorrect / minutes : 0;
   const totalAttempts = input.correctCount + input.errors;
@@ -67,4 +68,3 @@ export function calcTimedMetrics(input: TimedMetricsInput): TimedMetrics {
     score
   };
 }
-

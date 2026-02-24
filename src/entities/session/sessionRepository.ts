@@ -1,6 +1,7 @@
 import Dexie from "dexie";
 import { db } from "../../db/database";
 import { toLocalDateKey } from "../../shared/lib/date/date";
+import { DEFAULT_AUDIO_SETTINGS } from "../../shared/lib/audio/audioSettings";
 import type {
   ClassicDailyPoint,
   ComparePeriod,
@@ -20,7 +21,7 @@ function byDateAsc<T extends { date: string }>(a: T, b: T): number {
 export function buildClassicDailyPoints(sessions: Session[]): ClassicDailyPoint[] {
   const grouped = new Map<string, Session[]>();
   for (const session of sessions) {
-    if (session.mode !== "classic") {
+    if (session.mode !== "classic" && session.mode !== "reverse") {
       continue;
     }
 
@@ -139,7 +140,9 @@ function normalizeSession(session: Session): Session {
           : "classic_plus"),
     level: session.level ?? 1,
     presetId: session.presetId ?? "legacy",
-    adaptiveSource: session.adaptiveSource ?? "legacy"
+    adaptiveSource: session.adaptiveSource ?? "legacy",
+    visualThemeId: session.visualThemeId ?? "classic_bw",
+    audioEnabledSnapshot: session.audioEnabledSnapshot ?? DEFAULT_AUDIO_SETTINGS
   };
 }
 
@@ -362,12 +365,7 @@ export const sessionRepository = {
       return buildTimedDailyPoints(sessions);
     }
 
-    return buildClassicDailyPoints(
-      sessions.map((session) => ({
-        ...session,
-        mode: "classic" as const
-      }))
-    );
+    return buildClassicDailyPoints(sessions);
   },
 
   async getDailyProgressSummary(

@@ -25,14 +25,12 @@ export const userRepository = {
   async remove(id: string): Promise<void> {
     await db.transaction(
       "rw",
-      db.users,
-      db.sessions,
-      db.userModeProfiles,
-      db.groupMembers,
+      [db.users, db.sessions, db.userModeProfiles, db.userPreferences, db.groupMembers],
       async () => {
       await db.users.delete(id);
       await db.sessions.where("userId").equals(id).delete();
       await db.userModeProfiles.where("userId").equals(id).delete();
+      await db.userPreferences.where("userId").equals(id).delete();
       await db.groupMembers.where("userId").equals(id).delete();
     }
     );

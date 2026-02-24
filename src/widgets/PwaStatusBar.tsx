@@ -15,9 +15,18 @@ function detectStandalone(): boolean {
   return Boolean(viaDisplayMode || nav.standalone);
 }
 
+function detectIosPlatform(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+  const ua = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod/.test(ua);
+}
+
 export function PwaStatusBar() {
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [isInstalled, setIsInstalled] = useState(detectStandalone);
+  const [isIos] = useState(detectIosPlatform);
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
 
@@ -91,6 +100,11 @@ export function PwaStatusBar() {
         >
           Установить приложение
         </button>
+      ) : null}
+      {!isInstalled && !canInstall && isIos ? (
+        <p className="pwa-status-text">
+          iPhone/iPad: Safari → Поделиться → На экран Домой.
+        </p>
       ) : null}
     </section>
   );

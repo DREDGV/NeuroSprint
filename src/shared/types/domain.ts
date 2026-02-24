@@ -3,11 +3,30 @@ export type TrainingModuleId = "schulte";
 export type TrainingModeId = "classic_plus" | "timed_plus" | "reverse";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
 export type TrainingPresetId = "easy" | "standard" | "intense" | "legacy";
-export type GridSize = 4 | 5 | 6;
+export type GridSize = 3 | 4 | 5 | 6;
 export type TimeLimitSec = 30 | 45 | 60 | 90;
 export type SpawnStrategy = "same_cell" | "random_cell";
 export type GroupMetric = "score" | "accuracy" | "speed";
 export type ComparePeriod = number | "all";
+export type SchulteThemeId = "classic_bw" | "contrast" | "soft" | "rainbow";
+
+export interface SchulteThemeConfig {
+  boardBg: string;
+  cellBg: string;
+  numberColor: string;
+  highlightColor: string;
+  successColor: string;
+  errorColor: string;
+}
+
+export interface AudioSettings {
+  muted: boolean;
+  volume: number;
+  startEnd: boolean;
+  click: boolean;
+  correct: boolean;
+  error: boolean;
+}
 
 export interface User {
   id: string;
@@ -44,6 +63,8 @@ export interface Session {
   errors: number;
   correctCount?: number;
   effectiveCorrect?: number;
+  visualThemeId?: SchulteThemeId;
+  audioEnabledSnapshot?: AudioSettings;
   difficulty: Difficulty;
 }
 
@@ -94,6 +115,8 @@ export interface TrainingSetup {
   errorPenalty: number;
   hintsEnabled: boolean;
   spawnStrategy: SpawnStrategy;
+  visualThemeId: SchulteThemeId;
+  customTheme: Partial<SchulteThemeConfig> | null;
   autoAdjust: boolean;
   manualLevel: number | null;
 }
@@ -139,6 +162,15 @@ export interface GroupMember {
   groupId: string;
   userId: string;
   joinedAt: string;
+}
+
+export interface UserPreference {
+  id: string;
+  userId: string;
+  schulteThemeId: SchulteThemeId;
+  schulteCustomTheme: Partial<SchulteThemeConfig> | null;
+  audioSettings: AudioSettings;
+  updatedAt: string;
 }
 
 export interface GroupStatsPoint {

@@ -11,6 +11,7 @@ import type {
   GroupStatsSummary,
   Session,
   TrainingModeId,
+  User,
   UserPercentileResult
 } from "../../shared/types/domain";
 
@@ -136,6 +137,18 @@ export function calculatePercentile(values: number[], target: number): number | 
   return (lessOrEqual / values.length) * 100;
 }
 
+export function computeMembershipMutation(
+  existingMemberships: GroupMember[],
+  targetGroupId: string
+): { alreadyInTarget: GroupMember | null; toRemoveIds: string[] } {
+  const alreadyInTarget =
+    existingMemberships.find((entry) => entry.groupId === targetGroupId) ?? null;
+  const toRemoveIds = existingMemberships
+    .filter((entry) => entry.groupId !== targetGroupId)
+    .map((entry) => entry.id);
+  return { alreadyInTarget, toRemoveIds };
+}
+
 export const groupRepository = {
   async createGroup(name: string): Promise<ClassGroup> {
     const group: ClassGroup = {
@@ -169,13 +182,15 @@ export const groupRepository = {
     });
   },
 
+  async renameGroup(groupId: string, name: string): Promise<void> {
+    await db.classGroups.update(groupId, { name: name.trim() });
+  },
+
   async addMember(groupId: string, userId: string): Promise<GroupMember> {
-    const existing = await db.groupMembers
-      .where("[groupId+userId]")
-      .equals([groupId, userId])
-      .first();
-    if (existing) {
-      return existing;
+    const existingMemberships = await db.groupMembers.where("userId").equals(userId).toArray();
+    const mutation = computeMembershipMutation(existingMemberships, groupId);
+    if (mutation.alreadyInTarget) {
+      return mutation.alreadyInTarget;
     }
 
     const member: GroupMember = {
@@ -184,8 +199,39 @@ export const groupRepository = {
       userId,
       joinedAt: new Date().toISOString()
     };
-    await db.groupMembers.add(member);
+
+    await db.transaction("rw", db.groupMembers, async () => {
+      for (const memberId of mutation.toRemoveIds) {
+        await db.groupMembers.delete(memberId);
+      }
+      await db.groupMembers.add(member);
+    });
+
     return member;
+  },
+
+  async assignStudent(groupId: string, userId: string): Promise<GroupMember> {
+    return this.addMember(groupId, userId);
+  },
+
+  async createStudent(groupId: string, name: string): Promise<User> {
+    const user: User = {
+      id: createId(),
+      name: name.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    await db.transaction("rw", db.users, db.groupMembers, async () => {
+      await db.users.add(user);
+      await db.groupMembers.add({
+        id: createId(),
+        groupId,
+        userId: user.id,
+        joinedAt: new Date().toISOString()
+      });
+    });
+
+    return user;
   },
 
   async removeMember(groupId: string, userId: string): Promise<void> {
@@ -201,6 +247,15 @@ export const groupRepository = {
 
   async listMembers(groupId: string): Promise<GroupMember[]> {
     return db.groupMembers.where("groupId").equals(groupId).toArray();
+  },
+
+  async listStudents(groupId: string): Promise<User[]> {
+    const members = await this.listMembers(groupId);
+    if (members.length === 0) {
+      return [];
+    }
+    const users = await db.users.bulkGet(members.map((entry) => entry.userId));
+    return users.filter((entry): entry is User => Boolean(entry));
   },
 
   async aggregateGroupStats(

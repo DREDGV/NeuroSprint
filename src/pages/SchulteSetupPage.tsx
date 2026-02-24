@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveUser } from "../app/ActiveUserContext";
+import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import {
   SCHULTE_MODES,
@@ -8,10 +9,15 @@ import {
   withLevelDefaults
 } from "../shared/lib/training/presets";
 import {
+  SCHULTE_THEME_OPTIONS,
+  resolveSchulteTheme
+} from "../shared/lib/training/themes";
+import {
   getTrainingSetup,
   saveTrainingSetup
 } from "../shared/lib/training/setupStorage";
 import type {
+  SchulteThemeConfig,
   TrainingModeId,
   TrainingPresetId,
   TrainingSetup,
@@ -38,9 +44,10 @@ export function SchulteSetupPage() {
 
     let cancelled = false;
     void (async () => {
-      const [storedSetup, modeProfile] = await Promise.all([
+      const [storedSetup, modeProfile, preference] = await Promise.all([
         Promise.resolve(getTrainingSetup(modeId)),
-        trainingRepository.getUserModeProfile(activeUserId, "schulte", modeId)
+        trainingRepository.getUserModeProfile(activeUserId, "schulte", modeId),
+        preferenceRepository.getOrCreate(activeUserId)
       ]);
 
       if (cancelled) {
@@ -56,7 +63,11 @@ export function SchulteSetupPage() {
         : storedSetup;
 
       setProfile(modeProfile);
-      setSetup(hydrated);
+      setSetup({
+        ...hydrated,
+        visualThemeId: preference.schulteThemeId,
+        customTheme: preference.schulteCustomTheme
+      });
       setMessage(null);
     })();
 
@@ -72,7 +83,7 @@ export function SchulteSetupPage() {
 
   const effectiveLevel = useMemo(() => {
     if (!profile) {
-      return 3;
+      return 1;
     }
     if (!profile.autoAdjust && profile.manualLevel != null) {
       return profile.manualLevel;
@@ -80,12 +91,21 @@ export function SchulteSetupPage() {
     return profile.level;
   }, [profile]);
 
+  const previewTheme = useMemo(
+    () => resolveSchulteTheme(setup.visualThemeId, setup.customTheme),
+    [setup.customTheme, setup.visualThemeId]
+  );
+
   function applyPreset(presetId: TrainingPresetId) {
     const preset = getPresetSetup(presetId);
     const next = profile?.autoAdjust
       ? withLevelDefaults(preset, effectiveLevel, modeId)
       : preset;
-    setSetup(next);
+    setSetup((current) => ({
+      ...next,
+      visualThemeId: current.visualThemeId,
+      customTheme: current.customTheme
+    }));
   }
 
   async function handleStart() {
@@ -101,7 +121,14 @@ export function SchulteSetupPage() {
           : profile.manualLevel
     };
 
-    await trainingRepository.saveUserModeProfile(profileToSave);
+    await Promise.all([
+      trainingRepository.saveUserModeProfile(profileToSave),
+      preferenceRepository.saveSchulteTheme(
+        activeUserId,
+        setup.visualThemeId,
+        setup.customTheme
+      )
+    ]);
     saveTrainingSetup(modeId, setup);
 
     navigate(`/training/schulte/${modeId}`, {
@@ -120,6 +147,16 @@ export function SchulteSetupPage() {
     setSetup((current) => ({ ...current, ...next }));
   }
 
+  function updateCustomTheme(next: Partial<SchulteThemeConfig>) {
+    setSetup((current) => ({
+      ...current,
+      customTheme: {
+        ...(current.customTheme ?? {}),
+        ...next
+      }
+    }));
+  }
+
   return (
     <section className="panel" data-testid="schulte-setup-page">
       <h2>Таблица Шульте</h2>
@@ -132,6 +169,7 @@ export function SchulteSetupPage() {
             type="button"
             className={mode.id === modeId ? "btn-secondary is-active" : "btn-secondary"}
             onClick={() => setModeId(mode.id)}
+            data-testid={`mode-${mode.id}`}
           >
             {mode.title}
           </button>
@@ -169,11 +207,43 @@ export function SchulteSetupPage() {
         </div>
       </section>
 
+      <section className="setup-block">
+        <h3>Тема оформления</h3>
+        <div className="segmented-row">
+          {SCHULTE_THEME_OPTIONS.map((theme) => (
+            <button
+              key={theme.id}
+              type="button"
+              className={
+                setup.visualThemeId === theme.id ? "btn-secondary is-active" : "btn-secondary"
+              }
+              onClick={() => updateSetup({ visualThemeId: theme.id })}
+              data-testid={`theme-${theme.id}`}
+            >
+              {theme.label}
+            </button>
+          ))}
+        </div>
+
+        <div
+          className="theme-preview"
+          style={{
+            background: previewTheme.boardBg,
+            borderColor: previewTheme.highlightColor
+          }}
+        >
+          <span style={{ color: previewTheme.numberColor }}>1</span>
+          <span style={{ color: previewTheme.numberColor }}>2</span>
+          <span style={{ color: previewTheme.numberColor }}>3</span>
+        </div>
+      </section>
+
       <div className="action-row">
         <button
           type="button"
           className="btn-ghost"
           onClick={() => setAdvancedOpen((current) => !current)}
+          data-testid="toggle-advanced-btn"
         >
           {advancedOpen ? "Скрыть расширенные" : "Расширенные параметры"}
         </button>
@@ -188,9 +258,10 @@ export function SchulteSetupPage() {
               id="grid-size"
               value={setup.gridSize}
               onChange={(event) =>
-                updateSetup({ gridSize: Number(event.target.value) as 4 | 5 | 6 })
+                updateSetup({ gridSize: Number(event.target.value) as 3 | 4 | 5 | 6 })
               }
             >
+              <option value={3}>3x3</option>
               <option value={4}>4x4</option>
               <option value={5}>5x5</option>
               <option value={6}>6x6</option>
@@ -250,8 +321,67 @@ export function SchulteSetupPage() {
                 checked={setup.hintsEnabled}
                 onChange={(event) => updateSetup({ hintsEnabled: event.target.checked })}
               />
-              Показать подсказки
+              Показывать подсказки
             </label>
+          </div>
+
+          <h3>Цвета темы (advanced)</h3>
+          <div className="settings-form">
+            <label htmlFor="theme-board-bg">Фон поля</label>
+            <input
+              id="theme-board-bg"
+              type="color"
+              value={previewTheme.boardBg}
+              onChange={(event) => updateCustomTheme({ boardBg: event.target.value })}
+            />
+
+            <label htmlFor="theme-cell-bg">Фон клетки</label>
+            <input
+              id="theme-cell-bg"
+              type="color"
+              value={previewTheme.cellBg}
+              onChange={(event) => updateCustomTheme({ cellBg: event.target.value })}
+            />
+
+            <label htmlFor="theme-number-color">Цвет цифр</label>
+            <input
+              id="theme-number-color"
+              type="color"
+              value={previewTheme.numberColor}
+              onChange={(event) => updateCustomTheme({ numberColor: event.target.value })}
+            />
+
+            <label htmlFor="theme-highlight-color">Цвет подсветки</label>
+            <input
+              id="theme-highlight-color"
+              type="color"
+              value={previewTheme.highlightColor}
+              onChange={(event) => updateCustomTheme({ highlightColor: event.target.value })}
+            />
+
+            <label htmlFor="theme-success-color">Цвет верного клика</label>
+            <input
+              id="theme-success-color"
+              type="color"
+              value={previewTheme.successColor}
+              onChange={(event) => updateCustomTheme({ successColor: event.target.value })}
+            />
+
+            <label htmlFor="theme-error-color">Цвет ошибки</label>
+            <input
+              id="theme-error-color"
+              type="color"
+              value={previewTheme.errorColor}
+              onChange={(event) => updateCustomTheme({ errorColor: event.target.value })}
+            />
+
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => updateSetup({ customTheme: null })}
+            >
+              Сбросить custom-цвета
+            </button>
           </div>
         </section>
       ) : null}
@@ -312,6 +442,7 @@ export function SchulteSetupPage() {
         <h3>Перед стартом</h3>
         <p>Режим: {selectedMode.title}</p>
         <p>Сетка: {setup.gridSize}x{setup.gridSize}</p>
+        <p>Тема: {SCHULTE_THEME_OPTIONS.find((theme) => theme.id === setup.visualThemeId)?.label}</p>
         {modeId === "timed_plus" ? <p>Время: {setup.timeLimitSec} сек</p> : null}
         <p>Штраф ошибки: {setup.errorPenalty}</p>
         <p>Источник сложности: {profile?.autoAdjust ? "Авто" : "Ручной"}</p>
@@ -323,12 +454,17 @@ export function SchulteSetupPage() {
           className="btn-ghost"
           onClick={() => {
             applyPreset("standard");
-            setMessage("Параметры сброшены к пресету «Стандарт».");
+            setMessage('Параметры сброшены к пресету "Стандарт".');
           }}
         >
           Сбросить к пресету
         </button>
-        <button type="button" className="btn-primary" onClick={() => void handleStart()}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => void handleStart()}
+          data-testid="setup-start-btn"
+        >
           Начать тренировку
         </button>
       </div>
@@ -337,4 +473,3 @@ export function SchulteSetupPage() {
     </section>
   );
 }
-

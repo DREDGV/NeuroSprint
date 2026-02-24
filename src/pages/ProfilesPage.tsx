@@ -42,7 +42,8 @@ export function ProfilesPage() {
       setActiveUserId(created.id);
       setName("");
       await loadUsers();
-    } catch {
+    } catch (caught) {
+      console.error("profile create failed", caught);
       setError("Не удалось создать профиль.");
     } finally {
       setLoading(false);
@@ -102,14 +103,20 @@ export function ProfilesPage() {
         </button>
       </form>
 
-      {error ? <p className="error-text">{error}</p> : null}
+      {error ? (
+        <p className="error-text" data-testid="profiles-error">
+          {error}
+        </p>
+      ) : null}
 
       {activeUser ? (
-        <p className="status-line">
+        <p className="status-line" data-testid="active-profile-status">
           Активный профиль: <strong>{activeUser.name}</strong>
         </p>
       ) : (
-        <p className="status-line">Активный профиль не выбран.</p>
+        <p className="status-line" data-testid="active-profile-status">
+          Активный профиль не выбран.
+        </p>
       )}
 
       <ul className="profiles-list">

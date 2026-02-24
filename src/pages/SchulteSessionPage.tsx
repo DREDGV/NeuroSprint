@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useActiveUser } from "../app/ActiveUserContext";
+import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
+import { playAudioCue } from "../shared/lib/audio/audioCues";
+import {
+  DEFAULT_AUDIO_SETTINGS,
+  getAudioSettings,
+  mergeAudioSettings
+} from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
 import { generateSchulteGrid } from "../shared/lib/random/grid";
@@ -13,14 +20,17 @@ import {
 import {
   SCHULTE_MODES,
   getPresetSetup,
-  gridSizeToNumbersCount
+  gridSizeToNumbersCount,
+  withLevelDefaults
 } from "../shared/lib/training/presets";
 import { getTrainingSetup } from "../shared/lib/training/setupStorage";
+import { resolveSchulteTheme } from "../shared/lib/training/themes";
 import { SchulteGrid } from "../shared/ui/SchulteGrid";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   AdaptiveDecision,
   AdaptiveSource,
+  AudioSettings,
   Session,
   TrainingModeId,
   TrainingSetup
@@ -72,9 +82,12 @@ export function SchulteSessionPage() {
   const selectedMode = SCHULTE_MODES.find((entry) => entry.id === modeId) ?? SCHULTE_MODES[0];
 
   const [setup, setSetup] = useState<TrainingSetup>(() => state?.setup ?? getTrainingSetup(modeId));
-  const [level, setLevel] = useState<number>(() => state?.level ?? 3);
+  const [level, setLevel] = useState<number>(() => state?.level ?? 1);
   const [adaptiveSource, setAdaptiveSource] = useState<AdaptiveSource>(
     () => state?.adaptiveSource ?? "auto"
+  );
+  const [audioSettings, setAudioSettings] = useState<AudioSettings>(() =>
+    getAudioSettings()
   );
   const [loading, setLoading] = useState<boolean>(!state);
 
@@ -99,6 +112,28 @@ export function SchulteSessionPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [adaptiveDecision, setAdaptiveDecision] = useState<AdaptiveDecision | null>(null);
+  const [flash, setFlash] = useState<{ index: number; type: "correct" | "error" } | null>(null);
+
+  const flashTimerRef = useRef<number | null>(null);
+  const finishSoundPlayedRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current != null) {
+        window.clearTimeout(flashTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (finished && !finishSoundPlayedRef.current) {
+      playAudioCue("finish", audioSettings);
+      finishSoundPlayedRef.current = true;
+    }
+    if (!finished) {
+      finishSoundPlayedRef.current = false;
+    }
+  }, [audioSettings, finished]);
 
   useEffect(() => {
     if (isRunning || finished) {
@@ -111,25 +146,36 @@ export function SchulteSessionPage() {
   }, [finished, isRunning, modeId, numbersCount, setup.gridSize, setup.timeLimitSec]);
 
   useEffect(() => {
-    if (!activeUserId || state) {
+    if (!activeUserId) {
       setLoading(false);
       return;
     }
 
     let cancelled = false;
     void (async () => {
-      const profile = await trainingRepository.getUserModeProfile(
-        activeUserId,
-        "schulte",
-        modeId
-      );
+      const [profile, preference] = await Promise.all([
+        trainingRepository.getUserModeProfile(activeUserId, "schulte", modeId),
+        preferenceRepository.getOrCreate(activeUserId)
+      ]);
+
       if (cancelled) {
         return;
       }
 
-      setSetup(getTrainingSetup(modeId) ?? getPresetSetup("standard"));
-      setLevel(profile.autoAdjust ? profile.level : profile.manualLevel ?? profile.level);
-      setAdaptiveSource(profile.autoAdjust ? "auto" : "manual");
+      if (!state) {
+        const storedSetup = getTrainingSetup(modeId) ?? getPresetSetup("standard");
+        const effectiveLevel = profile.autoAdjust
+          ? profile.level
+          : profile.manualLevel ?? profile.level;
+        const hydratedSetup = profile.autoAdjust
+          ? withLevelDefaults(storedSetup, effectiveLevel, modeId)
+          : storedSetup;
+        setSetup(hydratedSetup);
+        setLevel(effectiveLevel);
+        setAdaptiveSource(profile.autoAdjust ? "auto" : "manual");
+      }
+
+      setAudioSettings(mergeAudioSettings(getAudioSettings(), preference.audioSettings));
       setLoading(false);
     })();
 
@@ -197,6 +243,8 @@ export function SchulteSessionPage() {
     }
 
     const timestamp = new Date();
+    const snapshotAudio = mergeAudioSettings(DEFAULT_AUDIO_SETTINGS, audioSettings);
+
     const session: Session = {
       id: createId(),
       userId: activeUserId,
@@ -216,6 +264,8 @@ export function SchulteSessionPage() {
       errors,
       correctCount: modeId === "timed_plus" ? correctCount : undefined,
       effectiveCorrect: modeId === "timed_plus" ? result.effectiveCorrect : undefined,
+      visualThemeId: setup.visualThemeId,
+      audioEnabledSnapshot: snapshotAudio,
       difficulty: {
         gridSize: setup.gridSize,
         numbersCount,
@@ -245,6 +295,9 @@ export function SchulteSessionPage() {
         if (!cancelled) {
           setAdaptiveDecision(decision);
           setLevel(decision.nextLevel);
+          if (decision.source === "auto") {
+            setSetup((current) => withLevelDefaults(current, decision.nextLevel, modeId));
+          }
         }
       })
       .catch(() => {
@@ -259,6 +312,7 @@ export function SchulteSessionPage() {
   }, [
     activeUserId,
     adaptiveSource,
+    audioSettings,
     correctCount,
     errors,
     finished,
@@ -272,7 +326,8 @@ export function SchulteSessionPage() {
     setup.hintsEnabled,
     setup.presetId,
     setup.spawnStrategy,
-    setup.timeLimitSec
+    setup.timeLimitSec,
+    setup.visualThemeId
   ]);
 
   const elapsedMs = useMemo(() => {
@@ -284,6 +339,19 @@ export function SchulteSessionPage() {
     }
     return Math.max(0, Date.now() - startedAtMs);
   }, [finished, result, startedAtMs, tick]);
+
+  const theme = useMemo(
+    () => resolveSchulteTheme(setup.visualThemeId, setup.customTheme),
+    [setup.customTheme, setup.visualThemeId]
+  );
+
+  function setFlashState(index: number, type: "correct" | "error") {
+    setFlash({ index, type });
+    if (flashTimerRef.current != null) {
+      window.clearTimeout(flashTimerRef.current);
+    }
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), 130);
+  }
 
   function resetGame() {
     const freshGrid = generateSchulteGrid(setup.gridSize);
@@ -301,12 +369,14 @@ export function SchulteSessionPage() {
     setSaved(false);
     setSaveError(null);
     setAdaptiveDecision(null);
+    setFlash(null);
   }
 
   function startGame() {
     if (isRunning || finished) {
       return;
     }
+    playAudioCue("start", audioSettings);
     setStartedAtMs(Date.now());
     setIsRunning(true);
   }
@@ -337,10 +407,17 @@ export function SchulteSessionPage() {
       return;
     }
 
+    playAudioCue("click", audioSettings);
+
     if (value !== expected) {
       setErrors((current) => current + 1);
+      setFlashState(index, "error");
+      playAudioCue("error", audioSettings);
       return;
     }
+
+    setFlashState(index, "correct");
+    playAudioCue("correct", audioSettings);
 
     if (modeId === "timed_plus") {
       setCorrectCount((current) => current + 1);
@@ -422,6 +499,10 @@ export function SchulteSessionPage() {
 
       <SchulteGrid
         values={grid}
+        gridSize={setup.gridSize}
+        theme={theme}
+        themeId={setup.visualThemeId}
+        flash={flash}
         onCellClick={onCellClick}
         disabled={!isRunning || finished}
         highlightValue={setup.hintsEnabled ? expected : null}

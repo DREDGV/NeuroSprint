@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLevelDistribution,
-  calculatePercentile
+  calculatePercentile,
+  computeMembershipMutation
 } from "../../src/entities/group/groupRepository";
 
 describe("group percentile", () => {
@@ -29,5 +30,18 @@ describe("group percentile", () => {
       { level: 2, count: 2 },
       { level: 10, count: 2 }
     ]);
+  });
+
+  it("keeps only one active class membership per user", () => {
+    const mutation = computeMembershipMutation(
+      [
+        { id: "m1", groupId: "g1", userId: "u1", joinedAt: "2026-02-24" },
+        { id: "m2", groupId: "g2", userId: "u1", joinedAt: "2026-02-24" }
+      ],
+      "g2"
+    );
+
+    expect(mutation.alreadyInTarget?.id).toBe("m2");
+    expect(mutation.toRemoveIds).toEqual(["m1"]);
   });
 });

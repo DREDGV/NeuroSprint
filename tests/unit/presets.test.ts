@@ -8,14 +8,14 @@ import {
 describe("training presets", () => {
   it("returns configured preset values", () => {
     const easy = getPresetSetup("easy");
-    expect(easy.gridSize).toBe(4);
+    expect(easy.gridSize).toBe(3);
     expect(easy.errorPenalty).toBe(0.25);
     expect(easy.hintsEnabled).toBe(true);
   });
 
   it("maps level ranges to defaults", () => {
-    expect(mapLevelToDefaults(1, "classic_plus").gridSize).toBe(4);
-    expect(mapLevelToDefaults(4, "classic_plus").gridSize).toBe(5);
+    expect(mapLevelToDefaults(1, "classic_plus").gridSize).toBe(3);
+    expect(mapLevelToDefaults(4, "classic_plus").gridSize).toBe(4);
     expect(mapLevelToDefaults(9, "classic_plus").gridSize).toBe(6);
   });
 
@@ -27,4 +27,3 @@ describe("training presets", () => {
     expect(updated.timeLimitSec).toBe(45);
   });
 });
-

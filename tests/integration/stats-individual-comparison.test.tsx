@@ -1,12 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+﻿import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
 import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
-import type {
-  GroupMetric,
-  TrainingModeId
-} from "../../src/shared/types/domain";
+import type { GroupMetric, TrainingModeId } from "../../src/shared/types/domain";
 
 const mocks = vi.hoisted(() => {
   const sessionRepository = {
@@ -115,7 +112,7 @@ describe("StatsIndividual comparison", () => {
 
     expect(await screen.findByTestId("individual-comparison-block")).toBeInTheDocument();
     expect(screen.getByText("Все пользователи")).toBeInTheDocument();
-    expect(screen.getAllByText("Group A").length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Group A")).length).toBeGreaterThan(0);
 
     expect(await screen.findByText("60.00")).toBeInTheDocument();
     expect(await screen.findByText("58.00")).toBeInTheDocument();

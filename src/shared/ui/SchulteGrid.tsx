@@ -1,34 +1,73 @@
+import type { CSSProperties } from "react";
+import type { SchulteThemeConfig } from "../types/domain";
+
 interface SchulteGridProps {
   values: number[];
   onCellClick: (value: number, index: number) => void;
   disabled?: boolean;
   highlightValue?: number | null;
+  theme?: SchulteThemeConfig;
+  themeId?: string;
+  gridSize?: number;
+  flash?: { index: number; type: "correct" | "error" } | null;
 }
 
 export function SchulteGrid({
   values,
   onCellClick,
   disabled = false,
-  highlightValue = null
+  highlightValue = null,
+  theme,
+  themeId,
+  gridSize,
+  flash = null
 }: SchulteGridProps) {
+  const resolvedGridSize =
+    gridSize && Number.isFinite(gridSize)
+      ? gridSize
+      : Math.max(1, Math.round(Math.sqrt(values.length)));
+
+  const style = {
+    "--grid-size": String(resolvedGridSize),
+    "--schulte-board-bg": theme?.boardBg,
+    "--schulte-cell-bg": theme?.cellBg,
+    "--schulte-number-color": theme?.numberColor,
+    "--schulte-highlight-color": theme?.highlightColor,
+    "--schulte-success-color": theme?.successColor,
+    "--schulte-error-color": theme?.errorColor
+  } as CSSProperties;
+
   return (
-    <div className="schulte-grid" role="grid" aria-label="Таблица Шульте">
-      {values.map((value, index) => (
-        <button
-          key={`${index}-${value}`}
-          type="button"
-          className={
-            highlightValue !== null && value === highlightValue
-              ? "grid-cell highlighted"
-              : "grid-cell"
-          }
-          disabled={disabled}
-          onClick={() => onCellClick(value, index)}
-          data-testid={`cell-${index}`}
-        >
-          {value}
-        </button>
-      ))}
+    <div
+      className="schulte-grid"
+      role="grid"
+      aria-label="Таблица Шульте"
+      style={style}
+      data-testid="schulte-grid"
+      data-theme-id={themeId}
+    >
+      {values.map((value, index) => {
+        const classNames = ["grid-cell"];
+        if (highlightValue !== null && value === highlightValue) {
+          classNames.push("highlighted");
+        }
+        if (flash && flash.index === index) {
+          classNames.push(flash.type === "correct" ? "flash-correct" : "flash-error");
+        }
+
+        return (
+          <button
+            key={`${index}-${value}`}
+            type="button"
+            className={classNames.join(" ")}
+            disabled={disabled}
+            onClick={() => onCellClick(value, index)}
+            data-testid={`cell-${index}`}
+          >
+            {value}
+          </button>
+        );
+      })}
     </div>
   );
 }

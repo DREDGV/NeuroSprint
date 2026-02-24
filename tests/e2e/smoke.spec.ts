@@ -1,17 +1,19 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 
 test.describe("NeuroSprint smoke", () => {
   test("first run: create profile -> classic -> stats", async ({ page }) => {
     await page.goto("/profiles");
     await page.getByTestId("profile-name-input").fill("TestUser1");
     await page.getByTestId("create-profile-btn").click();
-    await expect(page.getByText("Активный профиль:")).toBeVisible();
+    await expect(page.getByTestId("active-profile-status")).toContainText("TestUser1");
+    await expect(page.getByTestId("profiles-error")).toHaveCount(0);
 
     await page.goto("/training/schulte");
-    await page.getByRole("button", { name: "Classic+" }).click();
-    await page.getByRole("button", { name: "Начать тренировку" }).click();
+    await page.getByTestId("mode-classic_plus").click();
+    await page.getByTestId("setup-start-btn").click();
+
     await page.getByTestId("schulte-start").click();
-    for (let i = 1; i <= 25; i += 1) {
+    for (let i = 1; i <= 9; i += 1) {
       await page.getByRole("button", { name: String(i), exact: true }).click();
     }
     await expect(page.getByTestId("schulte-result")).toBeVisible();
@@ -24,15 +26,16 @@ test.describe("NeuroSprint smoke", () => {
     await page.goto("/profiles");
     await page.getByTestId("profile-name-input").fill("TestUser2");
     await page.getByTestId("create-profile-btn").click();
-    await expect(page.getByText("Активный профиль:")).toBeVisible();
+    await expect(page.getByTestId("active-profile-status")).toContainText("TestUser2");
+    await expect(page.getByTestId("profiles-error")).toHaveCount(0);
 
     await page.goto("/training/schulte");
-    await page.getByRole("button", { name: "Timed+" }).click();
-    await page.getByRole("button", { name: "Расширенные параметры" }).click();
+    await page.getByTestId("mode-timed_plus").click();
+    await page.getByTestId("toggle-advanced-btn").click();
     await page.selectOption("#time-limit", "30");
-    await page.getByRole("button", { name: "Начать тренировку" }).click();
+    await page.getByTestId("setup-start-btn").click();
+
     await page.getByTestId("schulte-start").click();
-    await page.waitForSelector('[data-testid="schulte-result"]', { timeout: 45_000 });
-    await expect(page.getByTestId("schulte-result")).toBeVisible();
+    await expect(page.getByTestId("schulte-result")).toBeVisible({ timeout: 45_000 });
   });
 });

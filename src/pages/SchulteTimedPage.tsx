@@ -53,6 +53,15 @@ function createTimedSession(
     errors,
     correctCount,
     effectiveCorrect: metrics.effectiveCorrect,
+    visualThemeId: "classic_bw",
+    audioEnabledSnapshot: {
+      muted: false,
+      volume: 0.35,
+      startEnd: true,
+      click: false,
+      correct: false,
+      error: false
+    },
     difficulty: {
       gridSize: 5,
       numbersCount: 25,

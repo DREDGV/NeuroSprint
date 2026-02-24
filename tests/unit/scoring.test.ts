@@ -36,5 +36,17 @@ describe("scoring", () => {
     expect(metrics.accuracy).toBeCloseTo(40 / 44, 6);
     expect(metrics.score).toBeGreaterThan(0);
   });
-});
 
+  it("clamps timed effectiveCorrect to zero for heavy error cases", () => {
+    const metrics = calcTimedMetrics({
+      correctCount: 5,
+      errors: 50,
+      timeLimitSec: 60,
+      errorPenalty: 0.5
+    });
+
+    expect(metrics.effectiveCorrect).toBe(0);
+    expect(metrics.speed).toBe(0);
+    expect(metrics.score).toBe(0);
+  });
+});

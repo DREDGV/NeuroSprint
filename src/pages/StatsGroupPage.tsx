@@ -249,6 +249,9 @@ export function StatsGroupPage() {
         <Link className="btn-secondary is-active" to="/stats/group">
           Группа
         </Link>
+        <Link className="btn-secondary" to="/classes">
+          Классы
+        </Link>
       </div>
 
       <form className="inline-form" onSubmit={handleCreateGroup}>

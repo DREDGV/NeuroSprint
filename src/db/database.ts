@@ -3,6 +3,7 @@ import type {
   ClassGroup,
   GroupMember,
   Session,
+  UserPreference,
   User,
   UserModeProfile
 } from "../shared/types/domain";
@@ -13,6 +14,7 @@ export class NeuroSprintDatabase extends Dexie {
   userModeProfiles!: Table<UserModeProfile, string>;
   classGroups!: Table<ClassGroup, string>;
   groupMembers!: Table<GroupMember, string>;
+  userPreferences!: Table<UserPreference, string>;
 
   constructor() {
     super("NeuroSprintDB");
@@ -73,6 +75,49 @@ export class NeuroSprintDatabase extends Dexie {
         "id, userId, moduleId, modeId, updatedAt, [userId+moduleId+modeId]",
       classGroups: "id, name, createdAt",
       groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]"
+    });
+
+    this.version(5)
+      .stores({
+        users: "id, name, createdAt",
+        sessions:
+          "id, userId, taskId, mode, timestamp, localDate, score, moduleId, modeId, level, [userId+localDate], [userId+mode+localDate], [userId+moduleId+modeId], [modeId+localDate], [userId+moduleId+modeId+localDate]",
+        userModeProfiles:
+          "id, userId, moduleId, modeId, updatedAt, [userId+moduleId+modeId]",
+        classGroups: "id, name, createdAt",
+        groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]",
+        userPreferences: "id, userId, updatedAt"
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table("sessions")
+          .toCollection()
+          .modify((session: Partial<Session>) => {
+            if (!session.visualThemeId) {
+              session.visualThemeId = "classic_bw";
+            }
+            if (!session.audioEnabledSnapshot) {
+              session.audioEnabledSnapshot = {
+                muted: false,
+                volume: 0.35,
+                startEnd: true,
+                click: false,
+                correct: false,
+                error: false
+              };
+            }
+          });
+      });
+
+    this.version(6).stores({
+      users: "id, name, createdAt",
+      sessions:
+        "id, userId, taskId, mode, timestamp, localDate, score, moduleId, modeId, level, [userId+localDate], [userId+mode+localDate], [userId+moduleId+modeId], [modeId+localDate], [userId+moduleId+modeId+localDate], [userId+moduleId+modeId+timestamp]",
+      userModeProfiles:
+        "id, userId, moduleId, modeId, updatedAt, [userId+moduleId+modeId]",
+      classGroups: "id, name, createdAt",
+      groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]",
+      userPreferences: "id, userId, updatedAt"
     });
   }
 }

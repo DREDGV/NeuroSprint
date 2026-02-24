@@ -1,11 +1,20 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 
 test.describe("NeuroSprint comparisons", () => {
   test("fixture generation enables individual and group comparison blocks", async ({ page }) => {
     await page.goto("/settings");
     page.on("dialog", (dialog) => dialog.accept());
+
+    const devToggle = page.getByTestId("dev-mode-toggle");
+    if (!(await devToggle.isChecked())) {
+      await devToggle.click();
+    }
+    await page.getByTestId("save-settings-btn").click();
+
     await page.getByTestId("generate-demo-fixture-btn").click();
-    await expect(page.getByText(/Демо-данные созданы:/)).toBeVisible({ timeout: 45_000 });
+    const fixtureStatus = page.getByTestId("fixture-status-message");
+    await expect(fixtureStatus).toBeVisible({ timeout: 45_000 });
+    await expect(fixtureStatus).toContainText("Демо-данные созданы");
 
     await page.goto("/stats/individual");
     await expect(page.getByTestId("stats-individual-page")).toBeVisible();

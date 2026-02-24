@@ -1,9 +1,10 @@
-import { NavLink } from "react-router-dom";
+﻿import { NavLink } from "react-router-dom";
 
 const navItems = [
   { to: "/", label: "Главная" },
   { to: "/training", label: "Тренировки" },
   { to: "/stats", label: "Статистика" },
+  { to: "/classes", label: "Классы" },
   { to: "/profiles", label: "Профили" },
   { to: "/settings", label: "Настройки" }
 ];

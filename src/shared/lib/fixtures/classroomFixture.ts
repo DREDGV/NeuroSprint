@@ -75,9 +75,12 @@ function isDemoName(name: string): boolean {
 
 function levelToGridSize(level: number): GridSize {
   if (level <= 2) {
+    return 3;
+  }
+  if (level <= 4) {
     return 4;
   }
-  if (level <= 6) {
+  if (level <= 7) {
     return 5;
   }
   return 6;
@@ -143,7 +146,7 @@ function getClassicDurationMs(
   rand: () => number
 ): number {
   const base =
-    gridSize === 4 ? 33_000 : gridSize === 5 ? 46_000 : 68_000;
+    gridSize === 3 ? 26_000 : gridSize === 4 ? 33_000 : gridSize === 5 ? 46_000 : 68_000;
   const levelFactor = (11 - level) / 10;
   const modeFactor = modeId === "reverse" ? 1.12 : 1;
   const jitter = randRange(rand, -6_000, 7_000);
@@ -314,6 +317,15 @@ export async function generateDemoClassroomFixture(
               errors,
               correctCount,
               effectiveCorrect: timed.effectiveCorrect,
+              visualThemeId: "classic_bw",
+              audioEnabledSnapshot: {
+                muted: false,
+                volume: 0.35,
+                startEnd: true,
+                click: false,
+                correct: false,
+                error: false
+              },
               difficulty: {
                 gridSize,
                 numbersCount,
@@ -352,6 +364,15 @@ export async function generateDemoClassroomFixture(
             accuracy: classic.accuracy,
             speed: classic.speed,
             errors,
+            visualThemeId: "classic_bw",
+            audioEnabledSnapshot: {
+              muted: false,
+              volume: 0.35,
+              startEnd: true,
+              click: false,
+              correct: false,
+              error: false
+            },
             difficulty: {
               gridSize,
               numbersCount,

@@ -211,6 +211,15 @@ body {
   transform: translateY(-1px);
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #f2a93b;
+  outline-offset: 2px;
+}
+
 .btn-primary:disabled {
   opacity: 0.45;
   cursor: default;
@@ -374,16 +383,20 @@ body {
 
 .schulte-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(48px, 1fr));
+  grid-template-columns: repeat(var(--grid-size, 5), minmax(48px, 1fr));
   gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--schulte-board-bg, #f8fcfa);
+  border: 1px solid #cfe4dc;
 }
 
 .grid-cell {
   min-height: 62px;
   border-radius: 12px;
   border: 2px solid #c8dfd6;
-  background: #fff;
-  color: var(--text-primary);
+  background: var(--schulte-cell-bg, #fff);
+  color: var(--schulte-number-color, var(--text-primary));
   font-size: clamp(1.1rem, 2vw, 1.5rem);
   font-weight: 800;
   cursor: pointer;
@@ -396,8 +409,18 @@ body {
 }
 
 .grid-cell.highlighted {
-  border-color: #f2a93b;
-  box-shadow: 0 0 0 3px rgba(242, 169, 59, 0.25);
+  border-color: var(--schulte-highlight-color, #f2a93b);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--schulte-highlight-color, #f2a93b) 30%, transparent);
+}
+
+.grid-cell.flash-correct {
+  border-color: var(--schulte-success-color, #1e7f71);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--schulte-success-color, #1e7f71) 28%, transparent);
+}
+
+.grid-cell.flash-error {
+  border-color: var(--schulte-error-color, #b74343);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--schulte-error-color, #b74343) 28%, transparent);
 }
 
 .grid-cell:disabled {
@@ -494,6 +517,28 @@ body {
 
 .setup-block h3 {
   margin-top: 0;
+}
+
+.theme-preview {
+  margin-top: 10px;
+  border: 2px solid #cfe4dc;
+  border-radius: 12px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.bulk-textarea {
+  border: 1px solid #b8d4cb;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 1rem;
+  background: #fff;
+  resize: vertical;
 }
 
 .session-brief {

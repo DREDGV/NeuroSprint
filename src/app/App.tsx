@@ -17,6 +17,11 @@ const TrainingHubPage = lazy(() =>
     default: module.TrainingHubPage
   }))
 );
+const ClassesPage = lazy(() =>
+  import("../pages/ClassesPage").then((module) => ({
+    default: module.ClassesPage
+  }))
+);
 const SchulteSetupPage = lazy(() =>
   import("../pages/SchulteSetupPage").then((module) => ({
     default: module.SchulteSetupPage
@@ -57,6 +62,22 @@ export function App() {
                 element={
                   <RequireActiveUser>
                     <TrainingHubPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/classes"
+                element={
+                  <RequireActiveUser>
+                    <ClassesPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/classes/:classId"
+                element={
+                  <RequireActiveUser>
+                    <ClassesPage />
                   </RequireActiveUser>
                 }
               />

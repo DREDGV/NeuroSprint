@@ -1,3 +1,4 @@
+import Dexie from "dexie";
 import { db } from "../../db/database";
 import { createId } from "../../shared/lib/id";
 import { computeAdaptiveDecision } from "../../shared/lib/training/adaptive";
@@ -25,7 +26,7 @@ function createDefaultProfile(
     userId,
     moduleId,
     modeId,
-    level: 3,
+    level: 1,
     autoAdjust: true,
     manualLevel: null,
     lastDecisionReason: null,
@@ -78,13 +79,15 @@ export const trainingRepository = {
     modeId: TrainingModeId,
     limit: number
   ): Promise<Session[]> {
-    const sessions = await db.sessions
-      .where("userId")
-      .equals(userId)
-      .and((session) => session.moduleId === moduleId && session.modeId === modeId)
+    return db.sessions
+      .where("[userId+moduleId+modeId+timestamp]")
+      .between(
+        [userId, moduleId, modeId, Dexie.minKey],
+        [userId, moduleId, modeId, Dexie.maxKey]
+      )
+      .reverse()
+      .limit(Math.max(1, Math.round(limit)))
       .toArray();
-
-    return sortByTimestampDesc(sessions).slice(0, limit);
   },
 
   async evaluateAdaptiveLevel(

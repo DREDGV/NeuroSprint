@@ -1,14 +1,31 @@
 ﻿import { FormEvent, useState } from "react";
+import { db } from "../db/database";
 import { useActiveUser } from "../app/ActiveUserContext";
+import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { groupRepository } from "../entities/group/groupRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
+import {
+  DEFAULT_AUDIO_SETTINGS,
+  getAudioSettings,
+  saveAudioSettings
+} from "../shared/lib/audio/audioSettings";
+import { downloadTextFile, toCsv } from "../shared/lib/export/csv";
 import { generateDemoClassroomFixture } from "../shared/lib/fixtures/classroomFixture";
 import {
   DEFAULT_SETTINGS,
   getSettings,
   saveSettings
 } from "../shared/lib/settings/settings";
-import type { AppSettings, GroupMetric, TrainingModeId } from "../shared/types/domain";
+import {
+  getDevModeEnabled,
+  setDevModeEnabled
+} from "../shared/lib/settings/devMode";
+import type {
+  AppSettings,
+  AudioSettings,
+  GroupMetric,
+  TrainingModeId
+} from "../shared/types/domain";
 
 type TimeLimit = 30 | 45 | 60 | 90;
 type BenchmarkPeriod = 30 | 90 | "all";
@@ -24,8 +41,10 @@ function benchmarkThresholdMs(period: BenchmarkPeriod): number {
 }
 
 export function SettingsPage() {
-  const { setActiveUserId } = useActiveUser();
+  const { activeUserId, setActiveUserId } = useActiveUser();
   const initial = getSettings();
+  const initialAudio = getAudioSettings();
+
   const [timedDefaultLimitSec, setTimedDefaultLimitSec] = useState<TimeLimit>(
     initial.timedDefaultLimitSec
   );
@@ -35,6 +54,9 @@ export function SettingsPage() {
   const [dailyGoalSessions, setDailyGoalSessions] = useState<number>(
     initial.dailyGoalSessions
   );
+
+  const [audioSettings, setAudioSettingsState] = useState<AudioSettings>(initialAudio);
+  const [devModeEnabled, setDevModeState] = useState(getDevModeEnabled());
   const [message, setMessage] = useState<string | null>(null);
 
   const [fixtureBusy, setFixtureBusy] = useState(false);
@@ -45,6 +67,8 @@ export function SettingsPage() {
 
   const [benchmarkBusy, setBenchmarkBusy] = useState(false);
   const [benchmarkReport, setBenchmarkReport] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -59,7 +83,20 @@ export function SettingsPage() {
           ? Math.round(dailyGoalSessions)
           : DEFAULT_SETTINGS.dailyGoalSessions
     };
+
+    const nextAudio: AudioSettings = {
+      ...audioSettings,
+      volume: Math.max(0, Math.min(1, audioSettings.volume))
+    };
+
     saveSettings(nextSettings);
+    saveAudioSettings(nextAudio);
+    setDevModeEnabled(devModeEnabled);
+
+    if (activeUserId) {
+      void preferenceRepository.saveAudioSettings(activeUserId, nextAudio);
+    }
+
     setMessage("Настройки сохранены.");
   }
 
@@ -96,7 +133,8 @@ export function SettingsPage() {
       setFixtureMessage(
         `Демо-данные созданы: ${summary.groupsCreated} групп, ${summary.usersCreated} учеников, ${summary.sessionsCreated} сессий.`
       );
-    } catch {
+    } catch (caught) {
+      console.error("demo fixture failed", caught);
       setFixtureMessage("Не удалось сгенерировать демо-данные.");
     } finally {
       setFixtureBusy(false);
@@ -157,10 +195,97 @@ export function SettingsPage() {
           : `Итог: обнаружено ${warnings} период(ов) выше порога.`
       );
       setBenchmarkReport(lines.join("\n"));
-    } catch {
+    } catch (caught) {
+      console.error("benchmark failed", caught);
       setBenchmarkReport("Не удалось выполнить замер агрегаций.");
     } finally {
       setBenchmarkBusy(false);
+    }
+  }
+
+  async function handleExportCsv() {
+    setExportBusy(true);
+    setExportMessage(null);
+    try {
+      const [users, sessions, groups, members] = await Promise.all([
+        db.users.toArray(),
+        db.sessions.toArray(),
+        db.classGroups.toArray(),
+        db.groupMembers.toArray()
+      ]);
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      const usersCsv = toCsv(
+        ["id", "name", "createdAt"],
+        users.map((entry) => [entry.id, entry.name, entry.createdAt])
+      );
+      const sessionsCsv = toCsv(
+        [
+          "id",
+          "userId",
+          "moduleId",
+          "modeId",
+          "mode",
+          "level",
+          "timestamp",
+          "localDate",
+          "durationMs",
+          "score",
+          "accuracy",
+          "speed",
+          "errors",
+          "correctCount",
+          "effectiveCorrect"
+        ],
+        sessions.map((entry) => [
+          entry.id,
+          entry.userId,
+          entry.moduleId,
+          entry.modeId,
+          entry.mode,
+          entry.level,
+          entry.timestamp,
+          entry.localDate,
+          entry.durationMs,
+          entry.score,
+          entry.accuracy,
+          entry.speed,
+          entry.errors,
+          entry.correctCount ?? "",
+          entry.effectiveCorrect ?? ""
+        ])
+      );
+      const groupsCsv = toCsv(
+        ["id", "name", "createdAt"],
+        groups.map((entry) => [entry.id, entry.name, entry.createdAt])
+      );
+      const membersCsv = toCsv(
+        ["id", "groupId", "userId", "joinedAt"],
+        members.map((entry) => [entry.id, entry.groupId, entry.userId, entry.joinedAt])
+      );
+
+      downloadTextFile(`neurosprint_users_${stamp}.csv`, usersCsv, "text/csv;charset=utf-8");
+      downloadTextFile(
+        `neurosprint_sessions_${stamp}.csv`,
+        sessionsCsv,
+        "text/csv;charset=utf-8"
+      );
+      downloadTextFile(
+        `neurosprint_class_groups_${stamp}.csv`,
+        groupsCsv,
+        "text/csv;charset=utf-8"
+      );
+      downloadTextFile(
+        `neurosprint_group_members_${stamp}.csv`,
+        membersCsv,
+        "text/csv;charset=utf-8"
+      );
+      setExportMessage("CSV экспортирован. Проверьте папку «Загрузки».");
+    } catch (caught) {
+      console.error("csv export failed", caught);
+      setExportMessage("Не удалось экспортировать CSV.");
+    } finally {
+      setExportBusy(false);
     }
   }
 
@@ -204,83 +329,217 @@ export function SettingsPage() {
           onChange={(event) => setDailyGoalSessions(Number(event.target.value))}
         />
 
-        <button type="submit" className="btn-primary">
+        <h3>Звук</h3>
+        <label htmlFor="audio-muted">
+          <input
+            id="audio-muted"
+            type="checkbox"
+            checked={audioSettings.muted}
+            onChange={(event) =>
+              setAudioSettingsState((current) => ({ ...current, muted: event.target.checked }))
+            }
+          />
+          Без звука (mute)
+        </label>
+
+        <label htmlFor="audio-volume">Громкость</label>
+        <input
+          id="audio-volume"
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={audioSettings.volume}
+          onChange={(event) =>
+            setAudioSettingsState((current) => ({
+              ...current,
+              volume: Number(event.target.value)
+            }))
+          }
+        />
+
+        <label htmlFor="audio-start-end">
+          <input
+            id="audio-start-end"
+            type="checkbox"
+            checked={audioSettings.startEnd}
+            onChange={(event) =>
+              setAudioSettingsState((current) => ({
+                ...current,
+                startEnd: event.target.checked
+              }))
+            }
+          />
+          Сигналы старт/финиш
+        </label>
+
+        <label htmlFor="audio-click">
+          <input
+            id="audio-click"
+            type="checkbox"
+            checked={audioSettings.click}
+            onChange={(event) =>
+              setAudioSettingsState((current) => ({ ...current, click: event.target.checked }))
+            }
+          />
+          Звук клика
+        </label>
+
+        <label htmlFor="audio-correct">
+          <input
+            id="audio-correct"
+            type="checkbox"
+            checked={audioSettings.correct}
+            onChange={(event) =>
+              setAudioSettingsState((current) => ({ ...current, correct: event.target.checked }))
+            }
+          />
+          Звук верного ответа
+        </label>
+
+        <label htmlFor="audio-error">
+          <input
+            id="audio-error"
+            type="checkbox"
+            checked={audioSettings.error}
+            onChange={(event) =>
+              setAudioSettingsState((current) => ({ ...current, error: event.target.checked }))
+            }
+          />
+          Звук ошибки
+        </label>
+
+        <h3>Режим разработчика</h3>
+        <label htmlFor="dev-mode-toggle">
+          <input
+            id="dev-mode-toggle"
+            type="checkbox"
+            checked={devModeEnabled}
+            onChange={(event) => setDevModeState(event.target.checked)}
+            data-testid="dev-mode-toggle"
+          />
+          Показать инструменты demo/benchmark
+        </label>
+
+        <button type="submit" className="btn-primary" data-testid="save-settings-btn">
           Сохранить
+        </button>
+
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => setAudioSettingsState(DEFAULT_AUDIO_SETTINGS)}
+        >
+          Сбросить звук к default
         </button>
       </form>
 
       {message ? <p className="status-line">{message}</p> : null}
 
-      <section className="setup-block" data-testid="settings-fixture-block">
-        <h3>Тестовые данные для класса</h3>
-        <p>
-          Генерирует демо-набор для проверки групповой аналитики. Можно настроить
-          размер класса и период.
+      <section className="setup-block">
+        <h3>Экспорт данных</h3>
+        <p className="status-line">
+          Экспортирует users/sessions/classes в CSV файлы на устройство.
         </p>
-        <div className="fixture-grid">
-          <label htmlFor="fixture-groups">Групп</label>
-          <input
-            id="fixture-groups"
-            type="number"
-            min={1}
-            max={8}
-            value={fixtureGroupsCount}
-            onChange={(event) => setFixtureGroupsCount(Number(event.target.value))}
-            data-testid="fixture-groups-input"
-          />
-
-          <label htmlFor="fixture-students">Учеников в группе</label>
-          <input
-            id="fixture-students"
-            type="number"
-            min={1}
-            max={40}
-            value={fixtureStudentsPerGroup}
-            onChange={(event) => setFixtureStudentsPerGroup(Number(event.target.value))}
-            data-testid="fixture-students-input"
-          />
-
-          <label htmlFor="fixture-days">Дней истории</label>
-          <input
-            id="fixture-days"
-            type="number"
-            min={3}
-            max={45}
-            value={fixtureDays}
-            onChange={(event) => setFixtureDays(Number(event.target.value))}
-            data-testid="fixture-days-input"
-          />
-        </div>
         <div className="action-row">
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => void handleGenerateDemoFixture()}
-            disabled={fixtureBusy}
-            data-testid="generate-demo-fixture-btn"
+            onClick={() => void handleExportCsv()}
+            disabled={exportBusy}
+            data-testid="export-csv-btn"
           >
-            {fixtureBusy ? "Генерация..." : "Сгенерировать демо-класс (30+)"}
+            {exportBusy ? "Экспорт..." : "Экспорт CSV"}
           </button>
         </div>
-        {fixtureMessage ? <p className="status-line">{fixtureMessage}</p> : null}
-
-        <div className="action-row">
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={() => void handleRunBenchmark()}
-            disabled={benchmarkBusy}
-            data-testid="run-benchmark-btn"
-          >
-            {benchmarkBusy ? "Измерение..." : "Измерить агрегации (30/90/all)"}
-          </button>
-        </div>
-        {benchmarkReport ? (
-          <pre className="benchmark-report" data-testid="benchmark-report">
-            {benchmarkReport}
-          </pre>
+        {exportMessage ? (
+          <p className="status-line" data-testid="export-message">
+            {exportMessage}
+          </p>
         ) : null}
       </section>
+
+      {devModeEnabled ? (
+        <section className="setup-block" data-testid="settings-fixture-block">
+          <h3>Тестовые данные для класса</h3>
+          <p>
+            Генерирует демо-набор для проверки групповой аналитики. Можно настроить
+            размер класса и период.
+          </p>
+          <div className="fixture-grid">
+            <label htmlFor="fixture-groups">Групп</label>
+            <input
+              id="fixture-groups"
+              type="number"
+              min={1}
+              max={8}
+              value={fixtureGroupsCount}
+              onChange={(event) => setFixtureGroupsCount(Number(event.target.value))}
+              data-testid="fixture-groups-input"
+            />
+
+            <label htmlFor="fixture-students">Учеников в группе</label>
+            <input
+              id="fixture-students"
+              type="number"
+              min={1}
+              max={40}
+              value={fixtureStudentsPerGroup}
+              onChange={(event) => setFixtureStudentsPerGroup(Number(event.target.value))}
+              data-testid="fixture-students-input"
+            />
+
+            <label htmlFor="fixture-days">Дней истории</label>
+            <input
+              id="fixture-days"
+              type="number"
+              min={3}
+              max={45}
+              value={fixtureDays}
+              onChange={(event) => setFixtureDays(Number(event.target.value))}
+              data-testid="fixture-days-input"
+            />
+          </div>
+          <div className="action-row">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => void handleGenerateDemoFixture()}
+              disabled={fixtureBusy}
+              data-testid="generate-demo-fixture-btn"
+            >
+              {fixtureBusy ? "Генерация..." : "Сгенерировать демо-класс (30+)"}
+            </button>
+          </div>
+          {fixtureMessage ? (
+            <p className="status-line" data-testid="fixture-status-message">
+              {fixtureMessage}
+            </p>
+          ) : null}
+
+          <div className="action-row">
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => void handleRunBenchmark()}
+              disabled={benchmarkBusy}
+              data-testid="run-benchmark-btn"
+            >
+              {benchmarkBusy ? "Измерение..." : "Измерить агрегации (30/90/all)"}
+            </button>
+          </div>
+          {benchmarkReport ? (
+            <pre className="benchmark-report" data-testid="benchmark-report">
+              {benchmarkReport}
+            </pre>
+          ) : null}
+        </section>
+      ) : (
+        <p className="status-line" data-testid="dev-tools-hidden-note">
+          Инструменты demo/benchmark скрыты. Включите режим разработчика, если они нужны.
+        </p>
+      )}
     </section>
   );
 }
+

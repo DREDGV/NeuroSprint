@@ -1,5 +1,6 @@
 import type {
   GridSize,
+  SchulteThemeId,
   TimeLimitSec,
   TrainingMode,
   TrainingModeId,
@@ -53,11 +54,13 @@ export const SCHULTE_MODES: TrainingMode[] = [
 const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
   easy: {
     presetId: "easy",
-    gridSize: 4,
+    gridSize: 3,
     timeLimitSec: 60,
     errorPenalty: 0.25,
     hintsEnabled: true,
     spawnStrategy: "same_cell",
+    visualThemeId: "classic_bw",
+    customTheme: null,
     autoAdjust: true,
     manualLevel: null
   },
@@ -68,6 +71,8 @@ const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
     errorPenalty: 0.5,
     hintsEnabled: false,
     spawnStrategy: "same_cell",
+    visualThemeId: "classic_bw",
+    customTheme: null,
     autoAdjust: true,
     manualLevel: null
   },
@@ -78,6 +83,8 @@ const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
     errorPenalty: 0.75,
     hintsEnabled: false,
     spawnStrategy: "random_cell",
+    visualThemeId: "classic_bw",
+    customTheme: null,
     autoAdjust: true,
     manualLevel: null
   },
@@ -88,6 +95,8 @@ const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
     errorPenalty: 0.5,
     hintsEnabled: false,
     spawnStrategy: "same_cell",
+    visualThemeId: "classic_bw",
+    customTheme: null,
     autoAdjust: true,
     manualLevel: null
   }
@@ -105,13 +114,21 @@ export function mapLevelToDefaults(
 
   if (clampedLevel <= 2) {
     return {
-      gridSize: 4,
+      gridSize: 3,
       errorPenalty: 0.25,
+      timeLimitSec: 90
+    };
+  }
+
+  if (clampedLevel <= 4) {
+    return {
+      gridSize: 4,
+      errorPenalty: 0.35,
       timeLimitSec: 60
     };
   }
 
-  if (clampedLevel <= 6) {
+  if (clampedLevel <= 7) {
     return {
       gridSize: 5,
       errorPenalty: 0.5,
@@ -144,10 +161,21 @@ export function gridSizeToNumbersCount(gridSize: GridSize): number {
   return gridSize * gridSize;
 }
 
+export function normalizeThemeId(value: string | undefined): SchulteThemeId {
+  if (
+    value === "classic_bw" ||
+    value === "contrast" ||
+    value === "soft" ||
+    value === "rainbow"
+  ) {
+    return value;
+  }
+  return "classic_bw";
+}
+
 export function normalizeTimeLimit(value: number): TimeLimitSec {
   if (value === 30 || value === 45 || value === 60 || value === 90) {
     return value;
   }
   return 60;
 }
-
