@@ -230,6 +230,14 @@ export async function generateDemoClassroomFixture(
   const groupMembers: GroupMember[] = [];
   const profiles: UserModeProfile[] = [];
   const sessions: Session[] = [];
+  const demoTeacherId = createId();
+
+  users.push({
+    id: demoTeacherId,
+    name: "[DEMO] Учитель",
+    role: "teacher",
+    createdAt: now.toISOString()
+  });
 
   let studentCounter = 0;
 
@@ -245,6 +253,7 @@ export async function generateDemoClassroomFixture(
       const user: User = {
         id: createId(),
         name: demoUserName(studentCounter),
+        role: "student",
         createdAt: now.toISOString()
       };
       users.push(user);
@@ -404,6 +413,6 @@ export async function generateDemoClassroomFixture(
     groupsCreated: groups.length,
     sessionsCreated: sessions.length,
     profilesCreated: profiles.length,
-    activeUserId: users[0]?.id ?? null
+    activeUserId: demoTeacherId
   };
 }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -136,6 +136,50 @@ describe("StatsGroup comparison", () => {
         "classic_plus",
         30,
         "score"
+      );
+    });
+  });
+
+  it("supports sprint math module and mode filters in comparison flow", async () => {
+    render(
+      <MemoryRouter>
+        <StatsGroupPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("group-comparison-block")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("stats-group-module-select"), {
+      target: { value: "sprint_math" }
+    });
+
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId("stats-group-mode-select") as HTMLSelectElement).value
+      ).toBe("sprint_add_sub");
+    });
+
+    fireEvent.change(screen.getByTestId("stats-group-mode-select"), {
+      target: { value: "sprint_mixed" }
+    });
+
+    await waitFor(() => {
+      expect(mocks.groupRepository.aggregateGroupStats).toHaveBeenCalledWith(
+        "g1",
+        "sprint_mixed",
+        30,
+        "score"
+      );
+      expect(mocks.groupRepository.aggregateGroupStats).toHaveBeenCalledWith(
+        "g2",
+        "sprint_mixed",
+        30,
+        "score"
+      );
+      expect(mocks.sessionRepository.getModeMetricSnapshot).toHaveBeenCalledWith(
+        "sprint_mixed",
+        "score",
+        30
       );
     });
   });

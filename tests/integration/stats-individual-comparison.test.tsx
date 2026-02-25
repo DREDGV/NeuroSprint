@@ -2,7 +2,7 @@
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
-import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
+import { ACTIVE_USER_KEY, APP_ROLE_KEY } from "../../src/shared/constants/storage";
 import type { GroupMetric, TrainingModeId } from "../../src/shared/types/domain";
 
 const mocks = vi.hoisted(() => {
@@ -130,6 +130,28 @@ describe("StatsIndividual comparison", () => {
         30,
         "score"
       );
+    });
+  });
+
+  it("hides comparison block for student role", async () => {
+    localStorage.setItem(ACTIVE_USER_KEY, "u1");
+    localStorage.setItem(APP_ROLE_KEY, "student");
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsIndividualPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("stats-individual-page")).toBeInTheDocument();
+    expect(screen.getByTestId("individual-comparison-restricted-note")).toBeInTheDocument();
+    expect(screen.queryByTestId("individual-comparison-block")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(mocks.sessionRepository.getModeMetricSnapshot).not.toHaveBeenCalled();
+      expect(mocks.groupRepository.aggregateGroupStats).not.toHaveBeenCalled();
     });
   });
 });

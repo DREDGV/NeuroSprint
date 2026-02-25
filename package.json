@@ -1,13 +1,14 @@
 {
   "name": "neurosprint",
   "private": true,
-  "version": "0.5.0-dev.0",
+  "version": "0.5.0-dev.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
+    "check:encoding": "node scripts/check-encoding.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"

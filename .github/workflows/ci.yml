@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check text encoding
+        run: npm run check:encoding
+
       - name: Run unit/integration tests
         run: npm test
 

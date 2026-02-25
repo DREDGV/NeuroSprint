@@ -56,13 +56,13 @@ export const SPRINT_MATH_MODES: TrainingMode[] = [
     id: "sprint_add_sub",
     moduleId: "sprint_math",
     title: "Sprint Add/Sub",
-    description: "Р‘С‹СЃС‚СЂС‹Р№ СЂРµР¶РёРј РЅР° СЃР»РѕР¶РµРЅРёРµ Рё РІС‹С‡РёС‚Р°РЅРёРµ."
+    description: "Быстрый режим на сложение и вычитание."
   },
   {
     id: "sprint_mixed",
     moduleId: "sprint_math",
     title: "Sprint Mixed",
-    description: "РЎРјРµС€Р°РЅРЅС‹Рµ РѕРїРµСЂР°С†РёРё: +, -, * и /."
+    description: "Смешанные операции: +, -, * и /."
   }
 ];
 

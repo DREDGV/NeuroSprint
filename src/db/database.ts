@@ -3,6 +3,7 @@ import type {
   ClassGroup,
   GroupMember,
   Session,
+  AppRole,
   UserPreference,
   User,
   UserModeProfile
@@ -119,6 +120,29 @@ export class NeuroSprintDatabase extends Dexie {
       groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]",
       userPreferences: "id, userId, updatedAt"
     });
+
+    this.version(7)
+      .stores({
+        users: "id, name, role, createdAt",
+        sessions:
+          "id, userId, taskId, mode, timestamp, localDate, score, moduleId, modeId, level, [userId+localDate], [userId+mode+localDate], [userId+moduleId+modeId], [modeId+localDate], [userId+moduleId+modeId+localDate], [userId+moduleId+modeId+timestamp]",
+        userModeProfiles:
+          "id, userId, moduleId, modeId, updatedAt, [userId+moduleId+modeId]",
+        classGroups: "id, name, createdAt",
+        groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]",
+        userPreferences: "id, userId, updatedAt"
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table("users")
+          .toCollection()
+          .modify((user: Partial<User>) => {
+            const role = user.role;
+            if (role !== "teacher" && role !== "student" && role !== "home") {
+              user.role = "student" as AppRole;
+            }
+          });
+      });
   }
 }
 

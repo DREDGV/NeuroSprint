@@ -4,6 +4,7 @@ test.describe("NeuroSprint classes and themes", () => {
   test("teacher creates class and adds students", async ({ page }) => {
     await page.goto("/profiles");
     await page.getByTestId("profile-name-input").fill("Teacher");
+    await page.getByTestId("profile-role-select").selectOption("teacher");
     await page.getByTestId("create-profile-btn").click();
     await expect(page.getByTestId("active-profile-status")).toContainText("Teacher");
     await expect(page.getByTestId("profiles-error")).toHaveCount(0);

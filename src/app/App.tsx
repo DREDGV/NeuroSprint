@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ActiveUserProvider } from "./ActiveUserContext";
 import { RequireActiveUser } from "./RequireActiveUser";
+import { RequirePermission } from "./RequirePermission";
 import { AppShell } from "../widgets/AppShell";
 
 const HomePage = lazy(() =>
@@ -15,6 +16,11 @@ const ProfilesPage = lazy(() =>
 const TrainingHubPage = lazy(() =>
   import("../pages/TrainingHubPage").then((module) => ({
     default: module.TrainingHubPage
+  }))
+);
+const PreSessionPage = lazy(() =>
+  import("../pages/PreSessionPage").then((module) => ({
+    default: module.PreSessionPage
   }))
 );
 const ClassesPage = lazy(() =>
@@ -84,10 +90,20 @@ export function App() {
                 }
               />
               <Route
+                path="/training/pre-session"
+                element={
+                  <RequireActiveUser>
+                    <PreSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
                 path="/classes"
                 element={
                   <RequireActiveUser>
-                    <ClassesPage />
+                    <RequirePermission permission="classes:view" sectionTitle="Классы">
+                      <ClassesPage />
+                    </RequirePermission>
                   </RequireActiveUser>
                 }
               />
@@ -95,7 +111,9 @@ export function App() {
                 path="/classes/:classId"
                 element={
                   <RequireActiveUser>
-                    <ClassesPage />
+                    <RequirePermission permission="classes:view" sectionTitle="Классы">
+                      <ClassesPage />
+                    </RequirePermission>
                   </RequireActiveUser>
                 }
               />
@@ -159,7 +177,12 @@ export function App() {
                 path="/stats/group"
                 element={
                   <RequireActiveUser>
-                    <StatsGroupPage />
+                    <RequirePermission
+                      permission="stats:group:view"
+                      sectionTitle="Групповая статистика"
+                    >
+                      <StatsGroupPage />
+                    </RequirePermission>
                   </RequireActiveUser>
                 }
               />

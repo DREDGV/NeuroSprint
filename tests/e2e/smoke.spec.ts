@@ -8,8 +8,11 @@ test.describe("NeuroSprint smoke", () => {
     await expect(page.getByTestId("active-profile-status")).toContainText("TestUser1");
     await expect(page.getByTestId("profiles-error")).toHaveCount(0);
 
-    await page.goto("/training/schulte");
-    await page.getByTestId("mode-classic_plus").click();
+    await page.goto("/");
+    await page.getByRole("link", { name: "Начать Classic" }).click();
+    await expect(page.getByTestId("pre-session-page")).toBeVisible();
+    await page.getByTestId("pre-session-start-btn").click();
+    await expect(page.getByTestId("schulte-setup-page")).toBeVisible();
     await page.getByTestId("setup-start-btn").click();
 
     await page.getByTestId("schulte-start").click();

@@ -1,10 +1,16 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAppRole } from "../app/useAppRole";
 import { groupRepository } from "../entities/group/groupRepository";
+import { normalizeUserRole } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
+import { canManageClasses } from "../shared/lib/auth/permissions";
+import { appRoleLabel } from "../shared/lib/settings/appRole";
 import type { ClassGroup, User } from "../shared/types/domain";
 
 export function ClassesPage() {
+  const appRole = useAppRole();
+  const canManageClassesAccess = canManageClasses(appRole);
   const navigate = useNavigate();
   const { classId } = useParams<{ classId?: string }>();
 
@@ -43,9 +49,16 @@ export function ClassesPage() {
   }
 
   useEffect(() => {
+    if (!canManageClassesAccess) {
+      setGroups([]);
+      setStudents([]);
+      setAllUsers([]);
+      setSelectedClassId("");
+      return;
+    }
     void refreshBase(classId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classId]);
+  }, [canManageClassesAccess, classId]);
 
   const selectedClass = useMemo(
     () => groups.find((group) => group.id === selectedClassId) ?? null,
@@ -54,7 +67,9 @@ export function ClassesPage() {
 
   const usersAvailableToAssign = useMemo(() => {
     const memberSet = new Set(students.map((student) => student.id));
-    return allUsers.filter((user) => !memberSet.has(user.id));
+    return allUsers.filter(
+      (user) => normalizeUserRole(user.role) === "student" && !memberSet.has(user.id)
+    );
   }, [allUsers, students]);
 
   async function handleCreateClass(event: FormEvent): Promise<void> {
@@ -174,6 +189,23 @@ export function ClassesPage() {
     await refreshBase(selectedClassId);
   }
 
+  if (!canManageClassesAccess) {
+    return (
+      <section className="panel" data-testid="classes-page">
+        <h2>Классы</h2>
+        <p className="status-line">Раздел доступен только для роли «Учитель».</p>
+        <div className="action-row">
+          <Link className="btn-secondary" to="/settings">
+            Выбрать роль
+          </Link>
+          <Link className="btn-ghost" to="/training">
+            К тренировкам
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="panel" data-testid="classes-page">
       <h2>Классы</h2>
@@ -253,7 +285,7 @@ export function ClassesPage() {
               <option value="">Выберите ученика</option>
               {usersAvailableToAssign.map((user) => (
                 <option key={user.id} value={user.id}>
-                  {user.name}
+                  {user.name} ({appRoleLabel(normalizeUserRole(user.role))})
                 </option>
               ))}
             </select>
@@ -291,7 +323,12 @@ export function ClassesPage() {
           <ul className="profiles-list scrollable" data-testid="class-students-list">
             {students.map((student) => (
               <li key={student.id} className="profile-item">
-                <p className="profile-name">{student.name}</p>
+                <div>
+                  <p className="profile-name">{student.name}</p>
+                  <span className="role-pill">
+                    {appRoleLabel(normalizeUserRole(student.role))}
+                  </span>
+                </div>
                 <button
                   type="button"
                   className="btn-danger"

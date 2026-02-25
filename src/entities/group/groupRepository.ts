@@ -1,5 +1,6 @@
 import Dexie from "dexie";
 import { db } from "../../db/database";
+import { normalizeUserRole } from "../user/userRole";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import { createId } from "../../shared/lib/id";
 import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
@@ -220,6 +221,7 @@ export const groupRepository = {
     const user: User = {
       id: createId(),
       name: name.trim(),
+      role: "student",
       createdAt: new Date().toISOString()
     };
 
@@ -257,7 +259,12 @@ export const groupRepository = {
       return [];
     }
     const users = await db.users.bulkGet(members.map((entry) => entry.userId));
-    return users.filter((entry): entry is User => Boolean(entry));
+    return users
+      .filter((entry): entry is User => Boolean(entry))
+      .map((entry) => ({
+        ...entry,
+        role: normalizeUserRole(entry.role)
+      }));
   },
 
   async aggregateGroupStats(

@@ -1,18 +1,44 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { buildSprintMathTask, normalizeSprintMathSetup } from "../features/sprint-math/contract";
-import { getSprintMathSetup, resetSprintMathSetup, saveSprintMathSetup } from "../features/sprint-math/setupStorage";
-import type { SprintMathModeId, SprintMathSessionSec, SprintMathSetup, SprintMathTierId } from "../features/sprint-math/contract";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  buildSprintMathTask,
+  normalizeSprintMathSetup
+} from "../features/sprint-math/contract";
+import {
+  getSprintMathSetup,
+  resetSprintMathSetup,
+  saveSprintMathSetup
+} from "../features/sprint-math/setupStorage";
+import type {
+  SprintMathModeId,
+  SprintMathSessionSec,
+  SprintMathSetup,
+  SprintMathTierId
+} from "../features/sprint-math/contract";
 
 interface SessionNavState {
   setup: SprintMathSetup;
 }
 
+function isSprintMathModeId(value: string | null): value is SprintMathModeId {
+  return value === "sprint_add_sub" || value === "sprint_mixed";
+}
+
 export function SprintMathSetupPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [setup, setSetup] = useState<SprintMathSetup>(() => getSprintMathSetup());
 
   const previewTask = useMemo(() => buildSprintMathTask(setup), [setup]);
+
+  useEffect(() => {
+    const requestedMode = searchParams.get("mode");
+    if (!isSprintMathModeId(requestedMode)) {
+      return;
+    }
+
+    setSetup((current) => normalizeSprintMathSetup({ ...current, modeId: requestedMode }));
+  }, [searchParams]);
 
   function update(next: Partial<SprintMathSetup>) {
     setSetup((current) => normalizeSprintMathSetup({ ...current, ...next }));
@@ -34,8 +60,8 @@ export function SprintMathSetupPage() {
     <section className="panel" data-testid="sprint-math-setup-page">
       <h2>Sprint Math</h2>
       <p>
-        Настройте сессию скоростного счета. Режим доступен по техническому маршруту и
-        пока не выведен в основную навигацию.
+        Тренировка устного счета на скорость. Выберите параметры, проверьте пример и
+        нажмите «Начать».
       </p>
 
       <section className="setup-block">
@@ -47,7 +73,7 @@ export function SprintMathSetupPage() {
             value={setup.modeId}
             onChange={(event) => update({ modeId: event.target.value as SprintMathModeId })}
           >
-            <option value="add_sub">Сложение/вычитание</option>
+            <option value="add_sub">Сложение и вычитание</option>
             <option value="mixed">Смешанный</option>
           </select>
 
@@ -57,9 +83,9 @@ export function SprintMathSetupPage() {
             value={setup.tierId}
             onChange={(event) => update({ tierId: event.target.value as SprintMathTierId })}
           >
-            <option value="kids">Kids (7-10)</option>
-            <option value="standard">Standard</option>
-            <option value="pro">Pro</option>
+            <option value="kids">Дети (7-10)</option>
+            <option value="standard">Стандарт</option>
+            <option value="pro">Продвинутый</option>
           </select>
 
           <label htmlFor="sm-sec">Длительность</label>
@@ -114,15 +140,15 @@ export function SprintMathSetupPage() {
               checked={setup.autoEnter}
               onChange={(event) => update({ autoEnter: event.target.checked })}
             />
-            Авто-Enter
+            Авто-проверка (без Enter)
           </label>
         </div>
       </section>
 
       <section className="session-brief">
-        <h3>Превью задания</h3>
+        <h3>Пример задания</h3>
         <p>{previewTask.expression} = ?</p>
-        <p className="status-line">Ответ: {previewTask.answer}</p>
+        <p className="status-line">Правильный ответ: {previewTask.answer}</p>
       </section>
 
       <div className="action-row">

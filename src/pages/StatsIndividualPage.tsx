@@ -9,10 +9,17 @@ import {
   YAxis
 } from "recharts";
 import { useActiveUser } from "../app/ActiveUserContext";
+import { useAppRole } from "../app/useAppRole";
 import { groupRepository } from "../entities/group/groupRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
+import { normalizeUserRole } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
+import {
+  canViewComparisonStats,
+  canViewGroupStats
+} from "../shared/lib/auth/permissions";
+import { appRoleLabel } from "../shared/lib/settings/appRole";
 import { isSprintMathMode, isTimedMode, moduleIdByModeId } from "../shared/lib/training/modeMapping";
 import { TRAINING_MODES } from "../shared/lib/training/presets";
 import { StatCard } from "../shared/ui/StatCard";
@@ -59,8 +66,27 @@ function formatMetricValue(value: number | null | undefined, metric: GroupMetric
   return value.toFixed(2);
 }
 
+function averageOrNull(values: number[]): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function formatDelta(current: number | null, previous: number | null, suffix = ""): string {
+  if (current == null || previous == null) {
+    return "—";
+  }
+  const delta = current - previous;
+  const sign = delta >= 0 ? "+" : "";
+  return `${sign}${delta.toFixed(2)}${suffix}`;
+}
+
 export function StatsIndividualPage() {
   const { activeUserId } = useActiveUser();
+  const appRole = useAppRole();
+  const canViewGroupStatsAccess = canViewGroupStats(appRole);
+  const canViewComparisonAccess = canViewComparisonStats(appRole);
   const [modeId, setModeId] = useState<TrainingModeId>("classic_plus");
   const [dailyClassic, setDailyClassic] = useState<ClassicDailyPoint[]>([]);
   const [dailyTimed, setDailyTimed] = useState<TimedDailyPoint[]>([]);
@@ -112,8 +138,10 @@ export function StatsIndividualPage() {
               modeId,
               30
             ),
-            userRepository.list(),
-            groupRepository.listGroupsForUser(activeUserId)
+            canViewComparisonAccess ? userRepository.list() : Promise.resolve([]),
+            canViewComparisonAccess
+              ? groupRepository.listGroupsForUser(activeUserId)
+              : Promise.resolve([])
           ]);
 
         if (cancelled) {
@@ -159,24 +187,34 @@ export function StatsIndividualPage() {
           .sort((a, b) => a.date.localeCompare(b.date));
         setLevelTrend(trend);
 
-        setUsers(loadedUsers);
-        setGroups(loadedGroups);
+        setUsers(loadedUsers as User[]);
+        setGroups(loadedGroups as ClassGroup[]);
 
-        const firstOtherUser = loadedUsers.find((entry) => entry.id !== activeUserId);
-        if (!firstOtherUser) {
+        if (!canViewComparisonAccess) {
           setCompareUserId("");
-        } else if (
-          !compareUserId ||
-          compareUserId === activeUserId ||
-          !loadedUsers.some((entry) => entry.id === compareUserId)
-        ) {
-          setCompareUserId(firstOtherUser.id);
-        }
-
-        if (loadedGroups.length === 0) {
           setCompareGroupId("");
-        } else if (!compareGroupId || !loadedGroups.some((entry) => entry.id === compareGroupId)) {
-          setCompareGroupId(loadedGroups[0].id);
+        } else {
+          const usersSafe = loadedUsers as User[];
+          const groupsSafe = loadedGroups as ClassGroup[];
+          const firstOtherUser = usersSafe.find((entry) => entry.id !== activeUserId);
+          if (!firstOtherUser) {
+            setCompareUserId("");
+          } else if (
+            !compareUserId ||
+            compareUserId === activeUserId ||
+            !usersSafe.some((entry) => entry.id === compareUserId)
+          ) {
+            setCompareUserId(firstOtherUser.id);
+          }
+
+          if (groupsSafe.length === 0) {
+            setCompareGroupId("");
+          } else if (
+            !compareGroupId ||
+            !groupsSafe.some((entry) => entry.id === compareGroupId)
+          ) {
+            setCompareGroupId(groupsSafe[0].id);
+          }
         }
       } catch {
         if (!cancelled) {
@@ -192,10 +230,15 @@ export function StatsIndividualPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeUserId, compareGroupId, compareUserId, modeId]);
+  }, [activeUserId, canViewComparisonAccess, compareGroupId, compareUserId, modeId]);
 
   useEffect(() => {
-    if (!activeUserId) {
+    if (!activeUserId || !canViewComparisonAccess) {
+      setMyMetricValue(null);
+      setOtherUserValue(null);
+      setGroupValue(null);
+      setGlobalValue(null);
+      setComparisonLoading(false);
       return;
     }
 
@@ -241,7 +284,15 @@ export function StatsIndividualPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeUserId, compareGroupId, compareMetric, comparePeriod, compareUserId, modeId]);
+  }, [
+    activeUserId,
+    canViewComparisonAccess,
+    compareGroupId,
+    compareMetric,
+    comparePeriod,
+    compareUserId,
+    modeId
+  ]);
 
   const selectedMode = useMemo(
     () => TRAINING_MODES.find((entry) => entry.id === modeId) ?? TRAINING_MODES[0],
@@ -332,6 +383,45 @@ export function StatsIndividualPage() {
     };
   }, [modeId, recentSessions]);
 
+  const sprintTrend7d = useMemo(() => {
+    if (!isSprintMathMode(modeId) || recentSessions.length === 0) {
+      return null;
+    }
+
+    const now = new Date();
+    const startCurrent = new Date(now);
+    startCurrent.setDate(now.getDate() - 7);
+
+    const startPrevious = new Date(now);
+    startPrevious.setDate(now.getDate() - 14);
+
+    const current = recentSessions.filter((entry) => new Date(entry.timestamp) >= startCurrent);
+    const previous = recentSessions.filter((entry) => {
+      const date = new Date(entry.timestamp);
+      return date >= startPrevious && date < startCurrent;
+    });
+
+    const currentThroughput = averageOrNull(current.map((entry) => entry.speed));
+    const previousThroughput = averageOrNull(previous.map((entry) => entry.speed));
+
+    const currentAccuracy = averageOrNull(current.map((entry) => entry.accuracy * 100));
+    const previousAccuracy = averageOrNull(previous.map((entry) => entry.accuracy * 100));
+
+    const currentScore = averageOrNull(current.map((entry) => entry.score));
+    const previousScore = averageOrNull(previous.map((entry) => entry.score));
+
+    return {
+      sessionsCurrent: current.length,
+      sessionsPrevious: previous.length,
+      currentThroughput,
+      previousThroughput,
+      currentAccuracy,
+      previousAccuracy,
+      currentScore,
+      previousScore
+    };
+  }, [modeId, recentSessions]);
+
   return (
     <section className="panel" data-testid="stats-individual-page">
       <h2>Индивидуальная статистика</h2>
@@ -341,9 +431,11 @@ export function StatsIndividualPage() {
         <Link className="btn-secondary is-active" to="/stats/individual">
           Индивидуальная
         </Link>
-        <Link className="btn-secondary" to="/stats/group">
-          Группа
-        </Link>
+        {canViewGroupStatsAccess ? (
+          <Link className="btn-secondary" to="/stats/group">
+            Группа
+          </Link>
+        ) : null}
       </div>
 
       <div className="segmented-row">
@@ -390,82 +482,116 @@ export function StatsIndividualPage() {
         </section>
       ) : null}
 
-      <section className="setup-block" data-testid="individual-comparison-block">
-        <h3>Сравнение результатов</h3>
-        <div className="settings-form">
-          <label htmlFor="compare-metric">Метрика сравнения</label>
-          <select
-            id="compare-metric"
-            value={compareMetric}
-            onChange={(event) => setCompareMetric(event.target.value as GroupMetric)}
-          >
-            <option value="score">Score</option>
-            <option value="accuracy">Accuracy</option>
-            <option value="speed">Speed</option>
-          </select>
+      {sprintTrend7d ? (
+        <section className="setup-block" data-testid="sprint-individual-trend">
+          <h3>Sprint Math: 7 дней vs предыдущие 7 дней</h3>
+          <div className="stats-grid compact">
+            <StatCard
+              title="Текущий период (сессий)"
+              value={String(sprintTrend7d.sessionsCurrent)}
+            />
+            <StatCard
+              title="Предыдущий период (сессий)"
+              value={String(sprintTrend7d.sessionsPrevious)}
+            />
+            <StatCard
+              title="Δ темп"
+              value={formatDelta(sprintTrend7d.currentThroughput, sprintTrend7d.previousThroughput)}
+            />
+            <StatCard
+              title="Δ точность"
+              value={formatDelta(sprintTrend7d.currentAccuracy, sprintTrend7d.previousAccuracy, "%")}
+            />
+            <StatCard
+              title="Δ score"
+              value={formatDelta(sprintTrend7d.currentScore, sprintTrend7d.previousScore)}
+            />
+          </div>
+        </section>
+      ) : null}
 
-          <label htmlFor="compare-period">Период</label>
-          <select
-            id="compare-period"
-            value={String(comparePeriod)}
-            onChange={(event) =>
-              setComparePeriod(event.target.value === "all" ? "all" : Number(event.target.value))
-            }
-          >
-            <option value={7}>7 дней</option>
-            <option value={30}>30 дней</option>
-            <option value={90}>90 дней</option>
-            <option value="all">Все время</option>
-          </select>
+      {canViewComparisonAccess ? (
+        <section className="setup-block" data-testid="individual-comparison-block">
+          <h3>Сравнение результатов</h3>
+          <div className="settings-form">
+            <label htmlFor="compare-metric">Метрика сравнения</label>
+            <select
+              id="compare-metric"
+              value={compareMetric}
+              onChange={(event) => setCompareMetric(event.target.value as GroupMetric)}
+            >
+              <option value="score">Score</option>
+              <option value="accuracy">Accuracy</option>
+              <option value="speed">Speed</option>
+            </select>
 
-          <label htmlFor="compare-user">Пользователь</label>
-          <select
-            id="compare-user"
-            value={compareUserId}
-            onChange={(event) => setCompareUserId(event.target.value)}
-          >
-            <option value="">Выберите пользователя</option>
-            {compareUserOptions.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.name}
-              </option>
-            ))}
-          </select>
+            <label htmlFor="compare-period">Период</label>
+            <select
+              id="compare-period"
+              value={String(comparePeriod)}
+              onChange={(event) =>
+                setComparePeriod(event.target.value === "all" ? "all" : Number(event.target.value))
+              }
+            >
+              <option value={7}>7 дней</option>
+              <option value={30}>30 дней</option>
+              <option value={90}>90 дней</option>
+              <option value="all">Все время</option>
+            </select>
 
-          <label htmlFor="compare-group">Группа</label>
-          <select
-            id="compare-group"
-            value={compareGroupId}
-            onChange={(event) => setCompareGroupId(event.target.value)}
-          >
-            <option value="">Без группы</option>
-            {groups.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.name}
-              </option>
-            ))}
-          </select>
-        </div>
+            <label htmlFor="compare-user">Пользователь</label>
+            <select
+              id="compare-user"
+              value={compareUserId}
+              onChange={(event) => setCompareUserId(event.target.value)}
+            >
+              <option value="">Выберите пользователя</option>
+              {compareUserOptions.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name} ({appRoleLabel(normalizeUserRole(entry.role))})
+                </option>
+              ))}
+            </select>
 
-        <div className="comparison-grid">
-          <StatCard title="Я" value={formatMetricValue(myMetricValue, compareMetric)} />
-          <StatCard
-            title={compareUserName}
-            value={formatMetricValue(otherUserValue, compareMetric)}
-          />
-          <StatCard
-            title={compareGroupName}
-            value={formatMetricValue(groupValue, compareMetric)}
-          />
-          <StatCard
-            title="Все пользователи"
-            value={formatMetricValue(globalValue, compareMetric)}
-          />
-        </div>
-        <p className="comparison-note">
-          Сравнение по метрике: {metricTitle(compareMetric)} в режиме {selectedMode.title}.
+            <label htmlFor="compare-group">Группа</label>
+            <select
+              id="compare-group"
+              value={compareGroupId}
+              onChange={(event) => setCompareGroupId(event.target.value)}
+            >
+              <option value="">Без группы</option>
+              {groups.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="comparison-grid">
+            <StatCard title="Я" value={formatMetricValue(myMetricValue, compareMetric)} />
+            <StatCard
+              title={compareUserName}
+              value={formatMetricValue(otherUserValue, compareMetric)}
+            />
+            <StatCard
+              title={compareGroupName}
+              value={formatMetricValue(groupValue, compareMetric)}
+            />
+            <StatCard
+              title="Все пользователи"
+              value={formatMetricValue(globalValue, compareMetric)}
+            />
+          </div>
+          <p className="comparison-note">
+            Сравнение по метрике: {metricTitle(compareMetric)} в режиме {selectedMode.title}.
+          </p>
+        </section>
+      ) : (
+        <p className="status-line" data-testid="individual-comparison-restricted-note">
+          Сравнение с другими пользователями доступно для ролей «Учитель» и «Домашний».
         </p>
-      </section>
+      )}
 
       {recommendation ? (
         <p className="status-line">

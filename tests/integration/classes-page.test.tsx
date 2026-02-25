@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { APP_ROLE_KEY } from "../../src/shared/constants/storage";
 
 const mocks = vi.hoisted(() => {
   let groups = [{ id: "g1", name: "3А", createdAt: "2026-02-24T10:00:00.000Z" }];
@@ -69,6 +70,7 @@ import { ClassesPage } from "../../src/pages/ClassesPage";
 describe("ClassesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.removeItem(APP_ROLE_KEY);
   });
 
   it("creates class and adds student", async () => {
@@ -100,5 +102,22 @@ describe("ClassesPage", () => {
       expect(mocks.groupRepository.createStudent).toHaveBeenCalled();
       expect(screen.getByText("Лёва")).toBeInTheDocument();
     });
+  });
+
+  it("shows restricted state for non-teacher role", async () => {
+    localStorage.setItem(APP_ROLE_KEY, "student");
+
+    render(
+      <MemoryRouter initialEntries={["/classes"]}>
+        <Routes>
+          <Route path="/classes" element={<ClassesPage />} />
+          <Route path="/classes/:classId" element={<ClassesPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("classes-page")).toBeInTheDocument();
+    expect(screen.getByText(/учитель|teacher/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("class-name-input")).not.toBeInTheDocument();
   });
 });

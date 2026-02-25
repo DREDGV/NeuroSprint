@@ -1,5 +1,6 @@
 ﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAppRole } from "../app/useAppRole";
 import {
   Bar,
   BarChart,
@@ -13,8 +14,17 @@ import {
 } from "recharts";
 import { groupRepository } from "../entities/group/groupRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
+import {
+  canJoinClassAsStudent,
+  normalizeUserRole
+} from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
-import { SCHULTE_MODES } from "../shared/lib/training/presets";
+import { canViewGroupStats } from "../shared/lib/auth/permissions";
+import { appRoleLabel } from "../shared/lib/settings/appRole";
+import {
+  SCHULTE_MODES,
+  SPRINT_MATH_MODES
+} from "../shared/lib/training/presets";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   ClassGroup,
@@ -22,9 +32,15 @@ import type {
   GroupMetric,
   GroupStatsPoint,
   GroupStatsSummary,
+  TrainingModuleId,
   TrainingModeId,
   User
 } from "../shared/types/domain";
+
+const GROUP_MODULES: Array<{ id: TrainingModuleId; title: string }> = [
+  { id: "schulte", title: "Таблица Шульте" },
+  { id: "sprint_math", title: "Sprint Math" }
+];
 
 function metricTitle(metric: GroupMetric): string {
   if (metric === "accuracy") {
@@ -47,11 +63,14 @@ function formatMetric(value: number | null | undefined, metric: GroupMetric): st
 }
 
 export function StatsGroupPage() {
+  const appRole = useAppRole();
+  const canViewGroupStatsAccess = canViewGroupStats(appRole);
   const [groups, setGroups] = useState<ClassGroup[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [groupId, setGroupId] = useState<string>("");
   const [newGroupName, setNewGroupName] = useState("");
   const [memberToAdd, setMemberToAdd] = useState("");
+  const [moduleId, setModuleId] = useState<TrainingModuleId>("schulte");
   const [modeId, setModeId] = useState<TrainingModeId>("classic_plus");
   const [metric, setMetric] = useState<GroupMetric>("score");
   const [period, setPeriod] = useState<number | "all">(30);
@@ -66,6 +85,16 @@ export function StatsGroupPage() {
   const [percentile, setPercentile] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const availableModes = useMemo(
+    () => (moduleId === "sprint_math" ? SPRINT_MATH_MODES : SCHULTE_MODES),
+    [moduleId]
+  );
+
+  const selectedModeTitle = useMemo(
+    () => availableModes.find((entry) => entry.id === modeId)?.title ?? modeId,
+    [availableModes, modeId]
+  );
 
   async function loadBase(): Promise<void> {
     const [loadedGroups, loadedUsers] = await Promise.all([
@@ -84,9 +113,16 @@ export function StatsGroupPage() {
   }
 
   useEffect(() => {
+    if (!canViewGroupStatsAccess) {
+      setGroups([]);
+      setUsers([]);
+      setGroupId("");
+      setCompareGroupId("");
+      return;
+    }
     void loadBase();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canViewGroupStatsAccess]);
 
   async function reloadMembers(targetGroupId: string): Promise<User[]> {
     const membersRows = await groupRepository.listMembers(targetGroupId);
@@ -139,6 +175,14 @@ export function StatsGroupPage() {
       setCompareGroupId(fallback);
     }
   }, [compareGroupId, groupId, groups]);
+
+  useEffect(() => {
+    if (availableModes.some((entry) => entry.id === modeId)) {
+      return;
+    }
+    const fallbackMode = availableModes[0]?.id ?? "classic_plus";
+    setModeId(fallbackMode);
+  }, [availableModes, modeId]);
 
   useEffect(() => {
     if (!groupId) {
@@ -202,7 +246,9 @@ export function StatsGroupPage() {
 
   const usersOutsideGroup = useMemo(() => {
     const memberSet = new Set(members.map((entry) => entry.id));
-    return users.filter((entry) => !memberSet.has(entry.id));
+    return users.filter(
+      (entry) => canJoinClassAsStudent(normalizeUserRole(entry.role)) && !memberSet.has(entry.id)
+    );
   }, [members, users]);
 
   async function handleCreateGroup(event: FormEvent): Promise<void> {
@@ -233,6 +279,25 @@ export function StatsGroupPage() {
   }
 
   const hasGroup = Boolean(groupId);
+
+  if (!canViewGroupStatsAccess) {
+    return (
+      <section className="panel" data-testid="stats-group-page">
+        <h2>Групповая статистика</h2>
+        <p className="status-line">
+          Раздел доступен только для роли «Учитель».
+        </p>
+        <div className="action-row">
+          <Link className="btn-secondary" to="/settings">
+            Выбрать роль
+          </Link>
+          <Link className="btn-ghost" to="/stats">
+            Перейти к простой статистике
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="panel" data-testid="stats-group-page">
@@ -268,6 +333,20 @@ export function StatsGroupPage() {
       </form>
 
       <div className="settings-form">
+        <label htmlFor="module-select">Модуль</label>
+        <select
+          id="module-select"
+          data-testid="stats-group-module-select"
+          value={moduleId}
+          onChange={(event) => setModuleId(event.target.value as TrainingModuleId)}
+        >
+          {GROUP_MODULES.map((module) => (
+            <option key={module.id} value={module.id}>
+              {module.title}
+            </option>
+          ))}
+        </select>
+
         <label htmlFor="group-select">Группа</label>
         <select
           id="group-select"
@@ -285,10 +364,11 @@ export function StatsGroupPage() {
         <label htmlFor="mode-select">Режим</label>
         <select
           id="mode-select"
+          data-testid="stats-group-mode-select"
           value={modeId}
           onChange={(event) => setModeId(event.target.value as TrainingModeId)}
         >
-          {SCHULTE_MODES.map((mode) => (
+          {availableModes.map((mode) => (
             <option key={mode.id} value={mode.id}>
               {mode.title}
             </option>
@@ -337,7 +417,7 @@ export function StatsGroupPage() {
               <option value="">Добавить ученика</option>
               {usersOutsideGroup.map((user) => (
                 <option key={user.id} value={user.id}>
-                  {user.name}
+                  {user.name} ({appRoleLabel(normalizeUserRole(user.role))})
                 </option>
               ))}
             </select>
@@ -351,6 +431,9 @@ export function StatsGroupPage() {
               <li key={member.id} className="profile-item">
                 <div>
                   <p className="profile-name">{member.name}</p>
+                  <span className="role-pill">
+                    {appRoleLabel(normalizeUserRole(member.role))}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -404,7 +487,7 @@ export function StatsGroupPage() {
           />
         </div>
         <p className="comparison-note">
-          Метрика сравнения: {metricTitle(metric)} за выбранный период.
+          Метрика сравнения: {metricTitle(metric)} за выбранный период в режиме {selectedModeTitle}.
         </p>
       </section>
 
@@ -418,7 +501,7 @@ export function StatsGroupPage() {
             <option value="">Выберите ученика</option>
             {members.map((member) => (
               <option key={member.id} value={member.id}>
-                {member.name}
+                {member.name} ({appRoleLabel(normalizeUserRole(member.role))})
               </option>
             ))}
           </select>
@@ -490,3 +573,5 @@ export function StatsGroupPage() {
     </section>
   );
 }
+
+

@@ -12,8 +12,12 @@ import { DEFAULT_AUDIO_SETTINGS } from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
 import { StatCard } from "../shared/ui/StatCard";
+import type {
+  SprintMathMetrics,
+  SprintMathSetup,
+  SprintMathTask
+} from "../features/sprint-math/contract";
 import type { Session } from "../shared/types/domain";
-import type { SprintMathMetrics, SprintMathSetup, SprintMathTask } from "../features/sprint-math/contract";
 
 interface SessionNavState {
   setup?: SprintMathSetup;
@@ -29,6 +33,10 @@ function parseAnswer(value: string): number | null {
     return null;
   }
   return parsed;
+}
+
+function formatSeconds(ms: number): string {
+  return `${(ms / 1000).toFixed(1)} сек`;
 }
 
 function mapTierToLevel(tierId: SprintMathSetup["tierId"]): number {
@@ -92,6 +100,23 @@ function createSprintMathSession(
       sprintAutoEnter: setup.autoEnter
     }
   };
+}
+
+function getModeLabel(modeId: SprintMathSetup["modeId"]): string {
+  if (modeId === "mixed") {
+    return "Смешанный (+, -, ×, ÷)";
+  }
+  return "Сложение и вычитание";
+}
+
+function getTierLabel(tierId: SprintMathSetup["tierId"]): string {
+  if (tierId === "kids") {
+    return "Дети (7-10)";
+  }
+  if (tierId === "standard") {
+    return "Стандарт";
+  }
+  return "Продвинутый";
 }
 
 export function SprintMathSessionPage() {
@@ -166,13 +191,7 @@ export function SprintMathSessionPage() {
     }
 
     let cancelled = false;
-    const session = createSprintMathSession(
-      activeUserId,
-      setup,
-      result,
-      correctCount,
-      errors
-    );
+    const session = createSprintMathSession(activeUserId, setup, result, correctCount, errors);
 
     void sessionRepository
       .save(session)
@@ -184,7 +203,7 @@ export function SprintMathSessionPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          setSaveError("Р В Р’В Р РЋРЎС™Р В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р РЋРІР‚СљР В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р Р‹Р В РЎвЂњР В Р Р‹Р В Р вЂ° Р В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР’В¦Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В Р вЂ° Sprint Math Р В Р Р‹Р В РЎвЂњР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РЎвЂњР В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚ВР В Р Р‹Р В РІР‚в„–.");
+          setSaveError("Не удалось сохранить результаты Sprint Math.");
         }
       });
 
@@ -273,31 +292,37 @@ export function SprintMathSessionPage() {
   return (
     <section className="panel" data-testid="sprint-math-session-page">
       <h2>Sprint Math</h2>
-      <p>Р В Р ВµРЎв‚¬Р В°Р в„–РЎвЂљР Вµ Р С—РЎР‚Р С‘Р СР ВµРЎР‚РЎвЂ№ Р Р…Р В° РЎРѓР С”Р С•РЎР‚Р С•РЎРѓРЎвЂљРЎРЉ. Р СџР ВµРЎР‚Р Р†РЎвЂ№Р в„– Р С”Р В»Р С‘Р С” Р С—Р С• Р С”Р Р…Р С•Р С—Р С”Р Вµ Р В·Р В°Р С—РЎС“РЎРѓР С”Р В°Р ВµРЎвЂљ РЎРѓР ВµРЎРѓРЎРѓР С‘РЎР‹.</p>
+      <p>
+        Решайте примеры как можно быстрее. Первый клик по кнопке «Проверить»
+        запускает сессию.
+      </p>
       <p className="active-user-inline" data-testid="session-active-user">
-        Р С’Р С”РЎвЂљР С‘Р Р†Р Р…РЎвЂ№Р в„– Р С—Р С•Р В»РЎРЉР В·Р С•Р Р†Р В°РЎвЂљР ВµР В»РЎРЉ: <strong>{activeUserName}</strong>
+        Активный пользователь: <strong>{activeUserName}</strong>
       </p>
 
       <div className="stats-grid">
-        <StatCard title="Р В Р’В Р РЋРІР‚С”Р В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р Р‹Р В РЎвЂњР В Р Р‹Р В Р вЂ°" value={`${(remainingMs / 1000).toFixed(1)} Р В Р Р‹Р В РЎвЂњ`} />
-        <StatCard title="Р В Р’В Р РЋРЎСџР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†РІР‚С™Р’В¬Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚Сћ" value={`${(elapsedMs / 1000).toFixed(1)} Р В Р Р‹Р В РЎвЂњ`} />
-        <StatCard title="Р В Р’В Р Р†Р вЂљРІвЂћСћР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚Сћ" value={String(correctCount)} />
-        <StatCard title="Р В Р’В Р РЋРІР‚С”Р В Р Р‹Р Р†РІР‚С™Р’В¬Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚В" value={String(errors)} />
-        <StatCard title="Р В Р’В Р В Р вЂ№Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ" value={`${currentStreak} / ${bestStreak}`} />
+        <StatCard title="Осталось времени" value={formatSeconds(remainingMs)} />
+        <StatCard title="Прошло времени" value={formatSeconds(elapsedMs)} />
+        <StatCard title="Верных ответов" value={String(correctCount)} />
+        <StatCard title="Ошибок" value={String(errors)} />
+        <StatCard title="Серия (текущая / лучшая)" value={`${currentStreak} / ${bestStreak}`} />
       </div>
 
       {!isRunning && !finished ? (
         <section className="session-brief">
-          <h3>Р В Р’В Р РЋРЎСџР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’ВµР В Р’В Р СћРІР‚В Р В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’В</h3>
-          <p>Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В¶Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋР’В: {setup.modeId === "mixed" ? "Р В Р’В Р В Р вЂ№Р В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†РІР‚С™Р’В¬Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р Р†РІР‚С›РІР‚вЂњ" : "Р В Р’В Р В Р вЂ№Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В¶Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ/Р В Р’В Р В РІР‚В Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ"}</p>
-          <p>Р В Р’В Р В РІвЂљВ¬Р В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р Р‹Р В Р вЂ°: {setup.tierId}</p>
-          <p>Р В Р’В Р Р†Р вЂљРЎСљР В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р вЂ°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚СћР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В Р вЂ°: {setup.sessionSec} Р В Р Р‹Р В РЎвЂњР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚Сњ</p>
-          <p>Р В Р’В Р В Р вЂ№Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РЎвЂњР В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ Р В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚СљР В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљРЎв„ў Р В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚Сћ Р В Р’В Р РЋРІР‚вЂќР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚СћР В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°.</p>
+          <h3>Параметры тренировки</h3>
+          <p>Режим: {getModeLabel(setup.modeId)}</p>
+          <p>Уровень: {getTierLabel(setup.tierId)}</p>
+          <p>Длительность: {setup.sessionSec} сек</p>
+          <p>
+            Если включена авто-проверка, правильный ответ засчитывается сразу после
+            ввода.
+          </p>
         </section>
       ) : null}
 
       <section className="setup-block">
-        <h3>Р В Р’В Р Р†Р вЂљРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ</h3>
+        <h3>Текущий пример</h3>
         <p style={{ fontSize: "2rem", fontWeight: 800, margin: "8px 0 14px" }}>
           {task.expression} = ?
         </p>
@@ -309,7 +334,7 @@ export function SprintMathSessionPage() {
             submitAnswer();
           }}
         >
-          <label htmlFor="sprint-math-answer">Р В Р’В Р Р†Р вЂљРІвЂћСћР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†РІР‚С™Р’В¬ Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљРЎв„ў</label>
+          <label htmlFor="sprint-math-answer">Введите ответ</label>
           <input
             id="sprint-math-answer"
             type="text"
@@ -327,7 +352,7 @@ export function SprintMathSessionPage() {
               }
               submitAnswer(nextValue);
             }}
-            placeholder="Р В Р’В Р Р†Р вЂљРІвЂћСћР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р’В Р СћРІР‚ВР В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљРЎв„ў"
+            placeholder="Введите ответ"
             autoComplete="off"
             disabled={finished}
           />
@@ -337,13 +362,13 @@ export function SprintMathSessionPage() {
             data-testid="sprint-math-submit-btn"
             disabled={finished}
           >
-            {isRunning ? "Р В Р’В Р РЋРІР‚С”Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В Р вЂ°" : "Р В Р’В Р В Р вЂ№Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРЎв„ў"}
+            {isRunning ? "Проверить" : "Старт"}
           </button>
         </form>
 
-        {feedback === "correct" ? <p className="status-line">Р В Р’В Р Р†Р вЂљРІвЂћСћР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚Сћ</p> : null}
+        {feedback === "correct" ? <p className="status-line">Верно</p> : null}
         {feedback === "error" ? (
-          <p className="error-text">Р В Р’В Р РЋРЎС™Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚Сћ. Р В Р’В Р РЋРЎСџР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р вЂ°Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљРЎв„ў: {task.answer}</p>
+          <p className="error-text">Ошибка. Правильный ответ: {task.answer}</p>
         ) : null}
       </section>
 
@@ -355,7 +380,7 @@ export function SprintMathSessionPage() {
           disabled={!isRunning || finished}
           data-testid="sprint-math-finish-btn"
         >
-          Р В Р’В Р Р†Р вЂљРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†РІР‚С™Р’В¬Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В Р вЂ° Р В Р Р‹Р В РЎвЂњР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РЎвЂњР В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚ВР В Р Р‹Р В РІР‚в„–
+          Завершить досрочно
         </button>
         <button
           type="button"
@@ -363,20 +388,24 @@ export function SprintMathSessionPage() {
           onClick={resetSession}
           data-testid="sprint-math-reset-btn"
         >
-          Р В Р’В Р РЋРЎС™Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р В Р РЏ Р В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚вЂќР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°
+          Начать заново
         </button>
       </div>
 
       {result ? (
         <section className="result-box" data-testid="sprint-math-result">
-          <h3>Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В·Р В Р Р‹Р РЋРІР‚СљР В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р вЂ°Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљРЎв„ў</h3>
-          <p>Throughput: {result.throughput.toFixed(2)} Р В Р’В Р вЂ™Р’В·Р В Р’В Р вЂ™Р’В°Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР Р‹/Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦</p>
+          <h3>Результаты сессии</h3>
+          <p>Throughput: {result.throughput.toFixed(2)} задач/мин</p>
           <p>Accuracy: {(result.accuracy * 100).toFixed(1)}%</p>
-          <p>Avg solve: {result.avgSolveMs.toFixed(0)} Р В Р’В Р РЋР’ВР В Р Р‹Р В РЎвЂњ</p>
+          <p>Avg solve: {result.avgSolveMs.toFixed(0)} мс</p>
           <p>Best streak: {result.streakBest}</p>
           <p>Score: {result.score.toFixed(2)}</p>
           <p data-testid="sprint-math-save-status">{saved ? "saved" : "saving"}</p>
-          <p>{saved ? "Р В Р’В Р В Р вЂ№Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РЎвЂњР В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ Р В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР’В¦Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°." : "Р В Р’В Р В Р вЂ№Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР’В¦Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р Р‹Р В Р РЏР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋР’В Р В Р Р‹Р В РЎвЂњР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РЎвЂњР В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚ВР В Р Р‹Р В РІР‚в„–..."}</p>
+          <p>
+            {saved
+              ? "Результаты сохранены в статистику."
+              : "Сохраняем результаты..."}
+          </p>
         </section>
       ) : null}
 

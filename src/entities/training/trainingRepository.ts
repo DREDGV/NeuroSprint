@@ -2,6 +2,7 @@ import Dexie from "dexie";
 import { db } from "../../db/database";
 import { createId } from "../../shared/lib/id";
 import { computeAdaptiveDecision } from "../../shared/lib/training/adaptive";
+import { recommendModeByPerformance } from "../../shared/lib/training/recommendation";
 import type {
   AdaptiveDecision,
   ModeRecommendation,
@@ -33,10 +34,6 @@ function createDefaultProfile(
     lastEvaluatedAt: null,
     updatedAt: now
   };
-}
-
-function sortByTimestampDesc(sessions: Session[]): Session[] {
-  return [...sessions].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 }
 
 export const trainingRepository = {
@@ -112,7 +109,7 @@ export const trainingRepository = {
         avgAccuracy: 0,
         scoreGrowthPct: 0,
         scoreDropPct: 0,
-        reason: "Автоадаптация отключена, применяется ручной уровень.",
+        reason: "Автоадаптация отключена: применяется ручной уровень.",
         applied: manualLevel !== profile.level,
         source: "manual",
         evaluatedAt: now,
@@ -155,50 +152,6 @@ export const trainingRepository = {
 
   async recommendModeForToday(userId: string): Promise<ModeRecommendation> {
     const sessions = await db.sessions.where("userId").equals(userId).toArray();
-    if (sessions.length === 0) {
-      return {
-        modeId: "classic_plus",
-        reason: "Начните с базовой оценки в Classic+.",
-        confidence: 0.6
-      };
-    }
-
-    const byMode = new Map<TrainingModeId, Session[]>();
-    for (const session of sessions) {
-      const bucket = byMode.get(session.modeId) ?? [];
-      bucket.push(session);
-      byMode.set(session.modeId, bucket);
-    }
-
-    const candidates: Array<{ modeId: TrainingModeId; score: number }> = [];
-    (
-      [
-        "classic_plus",
-        "timed_plus",
-        "reverse",
-        "sprint_add_sub",
-        "sprint_mixed"
-      ] as TrainingModeId[]
-    ).forEach(
-      (modeId) => {
-        const items = sortByTimestampDesc(byMode.get(modeId) ?? []).slice(0, 3);
-        if (items.length === 0) {
-          candidates.push({ modeId, score: 0 });
-          return;
-        }
-        const avgAccuracy =
-          items.reduce((sum, entry) => sum + entry.accuracy, 0) / items.length;
-        candidates.push({ modeId, score: avgAccuracy });
-      }
-    );
-
-    candidates.sort((a, b) => a.score - b.score);
-    const target = candidates[0];
-    return {
-      modeId: target.modeId,
-      reason:
-        "Рекомендуем потренировать режим с наименьшей текущей стабильностью точности.",
-      confidence: 0.75
-    };
+    return recommendModeByPerformance(sessions);
   }
 };

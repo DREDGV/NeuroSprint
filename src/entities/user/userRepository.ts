@@ -1,12 +1,25 @@
 import { db } from "../../db/database";
 import { createId } from "../../shared/lib/id";
-import type { User } from "../../shared/types/domain";
+import type { AppRole, User } from "../../shared/types/domain";
+import {
+  UserRoleGuardError,
+  isTeacherRole,
+  normalizeUserRole
+} from "./userRole";
+
+function normalizeUser(user: User): User {
+  return {
+    ...user,
+    role: normalizeUserRole(user.role)
+  };
+}
 
 export const userRepository = {
-  async create(name: string): Promise<User> {
+  async create(name: string, role: AppRole = "student"): Promise<User> {
     const user: User = {
       id: createId(),
       name: name.trim(),
+      role: normalizeUserRole(role),
       createdAt: new Date().toISOString()
     };
 
@@ -15,11 +28,43 @@ export const userRepository = {
   },
 
   async list(): Promise<User[]> {
-    return db.users.orderBy("createdAt").toArray();
+    const users = await db.users.orderBy("createdAt").toArray();
+    return users.map(normalizeUser);
+  },
+
+  async getById(id: string): Promise<User | null> {
+    const user = await db.users.get(id);
+    return user ? normalizeUser(user) : null;
   },
 
   async rename(id: string, name: string): Promise<void> {
     await db.users.update(id, { name: name.trim() });
+  },
+
+  async updateRole(id: string, role: AppRole): Promise<void> {
+    await db.transaction("rw", db.users, async () => {
+      const current = await db.users.get(id);
+      if (!current) {
+        return;
+      }
+
+      const currentRole = normalizeUserRole(current.role);
+      const nextRole = normalizeUserRole(role);
+      if (currentRole === nextRole) {
+        return;
+      }
+
+      if (isTeacherRole(currentRole) && !isTeacherRole(nextRole)) {
+        const teacherCount = await db.users
+          .filter((entry) => isTeacherRole(normalizeUserRole(entry.role)))
+          .count();
+        if (teacherCount <= 1) {
+          throw new UserRoleGuardError("last_teacher_role_change");
+        }
+      }
+
+      await db.users.update(id, { role: nextRole });
+    });
   },
 
   async remove(id: string): Promise<void> {
@@ -27,12 +72,22 @@ export const userRepository = {
       "rw",
       [db.users, db.sessions, db.userModeProfiles, db.userPreferences, db.groupMembers],
       async () => {
-      await db.users.delete(id);
-      await db.sessions.where("userId").equals(id).delete();
-      await db.userModeProfiles.where("userId").equals(id).delete();
-      await db.userPreferences.where("userId").equals(id).delete();
-      await db.groupMembers.where("userId").equals(id).delete();
-    }
+        const target = await db.users.get(id);
+        if (target && isTeacherRole(normalizeUserRole(target.role))) {
+          const teacherCount = await db.users
+            .filter((entry) => isTeacherRole(normalizeUserRole(entry.role)))
+            .count();
+          if (teacherCount <= 1) {
+            throw new UserRoleGuardError("last_teacher_delete");
+          }
+        }
+
+        await db.users.delete(id);
+        await db.sessions.where("userId").equals(id).delete();
+        await db.userModeProfiles.where("userId").equals(id).delete();
+        await db.userPreferences.where("userId").equals(id).delete();
+        await db.groupMembers.where("userId").equals(id).delete();
+      }
     );
   }
 };

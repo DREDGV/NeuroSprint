@@ -10,6 +10,8 @@ test.describe("NeuroSprint Sprint Math", () => {
     await page.goto("/training");
     await expect(page.getByTestId("training-hub-page")).toBeVisible();
     await page.getByTestId("training-open-sprint_math").click();
+    await expect(page.getByTestId("pre-session-page")).toBeVisible();
+    await page.getByTestId("pre-session-start-btn").click();
     await expect(page.getByTestId("sprint-math-setup-page")).toBeVisible();
     await page.getByTestId("sprint-math-start-btn").click();
 

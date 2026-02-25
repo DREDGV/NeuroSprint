@@ -1,4 +1,5 @@
 export type Mode = "classic" | "timed" | "reverse" | "sprint_math";
+export type AppRole = "teacher" | "student" | "home";
 export type TrainingModuleId = "schulte" | "sprint_math";
 export type TrainingModeId =
   | "classic_plus"
@@ -48,6 +49,7 @@ export interface AudioSettings {
 export interface User {
   id: string;
   name: string;
+  role: AppRole;
   createdAt: string;
 }
 

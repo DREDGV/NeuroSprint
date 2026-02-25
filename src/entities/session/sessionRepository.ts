@@ -2,6 +2,8 @@ import Dexie from "dexie";
 import { db } from "../../db/database";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import { DEFAULT_AUDIO_SETTINGS } from "../../shared/lib/audio/audioSettings";
+import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
+import { recommendModeByPerformance } from "../../shared/lib/training/recommendation";
 import type {
   ClassicDailyPoint,
   ComparePeriod,
@@ -291,14 +293,20 @@ async function loadModeSessions(
   modeId: TrainingModeId,
   period: ComparePeriod
 ): Promise<Session[]> {
+  const moduleId = moduleIdByModeId(modeId);
   const fromLocalDate = getFromLocalDate(period);
   if (!fromLocalDate) {
-    return db.sessions.where("modeId").equals(modeId).toArray();
+    return db.sessions
+      .where("modeId")
+      .equals(modeId)
+      .and((session) => session.moduleId === moduleId)
+      .toArray();
   }
 
   return db.sessions
     .where("[modeId+localDate]")
     .between([modeId, fromLocalDate], [modeId, Dexie.maxKey])
+    .and((session) => session.moduleId === moduleId)
     .toArray();
 }
 
@@ -324,45 +332,7 @@ export function calculateStreak(localDates: string[]): number {
 }
 
 export function recommendModeFromSessions(sessions: Session[]): ModeRecommendation {
-  const modes: TrainingModeId[] = [
-    "classic_plus",
-    "timed_plus",
-    "reverse",
-    "sprint_add_sub",
-    "sprint_mixed"
-  ];
-  const byMode = new Map<TrainingModeId, Session[]>();
-
-  for (const modeId of modes) {
-    byMode.set(modeId, []);
-  }
-
-  for (const session of sessions) {
-    const bucket = byMode.get(session.modeId) ?? [];
-    bucket.push(session);
-    byMode.set(session.modeId, bucket);
-  }
-
-  const scores = modes.map((modeId) => {
-    const recent = (byMode.get(modeId) ?? [])
-      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-      .slice(0, 3);
-    if (recent.length === 0) {
-      return { modeId, score: 0 };
-    }
-    const avgAccuracy =
-      recent.reduce((sum, entry) => sum + entry.accuracy, 0) / recent.length;
-    return { modeId, score: avgAccuracy };
-  });
-
-  scores.sort((a, b) => a.score - b.score);
-  const selected = scores[0];
-  return {
-    modeId: selected.modeId,
-    reason:
-      "Рекомендуется режим с наименьшей текущей стабильностью точности.",
-    confidence: 0.75
-  };
+  return recommendModeByPerformance(sessions);
 }
 
 export const sessionRepository = {

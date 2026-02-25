@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import { TRAINING_MODULES } from "../shared/lib/training/presets";
 
 const moduleRouteById: Record<string, string> = {
-  schulte: "/training/schulte",
-  sprint_math: "/training/sprint-math"
+  schulte: "/training/pre-session?module=schulte",
+  sprint_math: "/training/pre-session?module=sprint_math"
 };
 
 export function TrainingHubPage() {

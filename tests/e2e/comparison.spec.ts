@@ -16,6 +16,9 @@ test.describe("NeuroSprint comparisons", () => {
     await expect(fixtureStatus).toBeVisible({ timeout: 45_000 });
     await expect(fixtureStatus).toContainText("Демо-данные созданы");
 
+    await page.getByTestId("app-role-select").selectOption("teacher");
+    await page.getByTestId("save-settings-btn").click();
+
     await page.goto("/stats/individual");
     await expect(page.getByTestId("stats-individual-page")).toBeVisible();
     await expect(page.getByTestId("individual-comparison-block")).toBeVisible();
@@ -24,7 +27,7 @@ test.describe("NeuroSprint comparisons", () => {
     const individualValues = page.locator(
       '[data-testid="individual-comparison-block"] .stat-card-value'
     );
-    await expect(individualValues.first()).not.toHaveText("—");
+    await expect(individualValues.nth(3)).not.toHaveText("—");
 
     await page.goto("/stats/group");
     await expect(page.getByTestId("stats-group-page")).toBeVisible();
