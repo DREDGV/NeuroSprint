@@ -2,6 +2,7 @@ import Dexie from "dexie";
 import { db } from "../../db/database";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import { createId } from "../../shared/lib/id";
+import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
 import type {
   ClassGroup,
   GroupMember,
@@ -93,20 +94,21 @@ async function loadSessionsForMembersByMode(
   }
 
   const fromDateKey = computeFromDateKey(period);
+  const moduleId = moduleIdByModeId(modeId);
   const perMember = await Promise.all(
     memberIds.map((memberId) => {
       if (!fromDateKey) {
         return db.sessions
           .where("[userId+moduleId+modeId]")
-          .equals([memberId, "schulte", modeId])
+          .equals([memberId, moduleId, modeId])
           .toArray();
       }
 
       return db.sessions
         .where("[userId+moduleId+modeId+localDate]")
         .between(
-          [memberId, "schulte", modeId, fromDateKey],
-          [memberId, "schulte", modeId, Dexie.maxKey]
+          [memberId, moduleId, modeId, fromDateKey],
+          [memberId, moduleId, modeId, Dexie.maxKey]
         )
         .toArray();
     })

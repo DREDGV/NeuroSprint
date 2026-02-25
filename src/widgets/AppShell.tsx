@@ -1,9 +1,12 @@
-﻿import type { PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
+import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { APP_NAME, APP_VERSION } from "../shared/constants/appMeta";
 import { MainNav } from "./MainNav";
 import { PwaStatusBar } from "./PwaStatusBar";
 
 export function AppShell({ children }: PropsWithChildren) {
+  const { activeUserName } = useActiveUserDisplayName();
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -19,6 +22,9 @@ export function AppShell({ children }: PropsWithChildren) {
           </div>
         </div>
       </header>
+      <div className="active-user-banner" data-testid="active-user-banner">
+        Активный пользователь: <strong>{activeUserName}</strong>
+      </div>
       <PwaStatusBar />
       <MainNav />
       <main className="app-content">{children}</main>

@@ -20,7 +20,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
     id: "sprint_math",
     title: "Sprint Math",
     description: "Скоростной счет и вычисления.",
-    status: "coming_soon"
+    status: "active"
   },
   {
     id: "n_back",
@@ -50,6 +50,23 @@ export const SCHULTE_MODES: TrainingMode[] = [
     description: "Поиск чисел в обратном порядке от N до 1."
   }
 ];
+
+export const SPRINT_MATH_MODES: TrainingMode[] = [
+  {
+    id: "sprint_add_sub",
+    moduleId: "sprint_math",
+    title: "Sprint Add/Sub",
+    description: "Р‘С‹СЃС‚СЂС‹Р№ СЂРµР¶РёРј РЅР° СЃР»РѕР¶РµРЅРёРµ Рё РІС‹С‡РёС‚Р°РЅРёРµ."
+  },
+  {
+    id: "sprint_mixed",
+    moduleId: "sprint_math",
+    title: "Sprint Mixed",
+    description: "РЎРјРµС€Р°РЅРЅС‹Рµ РѕРїРµСЂР°С†РёРё: +, -, * и /."
+  }
+];
+
+export const TRAINING_MODES: TrainingMode[] = [...SCHULTE_MODES, ...SPRINT_MATH_MODES];
 
 const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
   easy: {
@@ -166,7 +183,11 @@ export function normalizeThemeId(value: string | undefined): SchulteThemeId {
     value === "classic_bw" ||
     value === "contrast" ||
     value === "soft" ||
-    value === "rainbow"
+    value === "rainbow" ||
+    value === "kid_candy" ||
+    value === "kid_ocean" ||
+    value === "kid_space" ||
+    value === "kid_comics"
   ) {
     return value;
   }

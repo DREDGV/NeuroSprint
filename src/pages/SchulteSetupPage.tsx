@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useActiveUser } from "../app/ActiveUserContext";
 import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
@@ -26,16 +26,36 @@ import type {
 
 const LEVEL_OPTIONS = Array.from({ length: 10 }, (_, index) => index + 1);
 
+function isTrainingModeId(value: string | null): value is TrainingModeId {
+  return value === "classic_plus" || value === "timed_plus" || value === "reverse";
+}
+
 export function SchulteSetupPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activeUserId } = useActiveUser();
-  const [modeId, setModeId] = useState<TrainingModeId>("classic_plus");
-  const [setup, setSetup] = useState<TrainingSetup>(() =>
-    getTrainingSetup("classic_plus")
-  );
+  const [modeId, setModeId] = useState<TrainingModeId>(() => {
+    const requestedMode = searchParams.get("mode");
+    return isTrainingModeId(requestedMode) ? requestedMode : "classic_plus";
+  });
+  const [setup, setSetup] = useState<TrainingSetup>(() => {
+    const requestedMode = searchParams.get("mode");
+    const initialMode = isTrainingModeId(requestedMode)
+      ? requestedMode
+      : "classic_plus";
+    return getTrainingSetup(initialMode);
+  });
   const [profile, setProfile] = useState<UserModeProfile | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const requestedMode = searchParams.get("mode");
+    if (!isTrainingModeId(requestedMode) || requestedMode === modeId) {
+      return;
+    }
+    setModeId(requestedMode);
+  }, [modeId, searchParams]);
 
   useEffect(() => {
     if (!activeUserId) {
@@ -157,6 +177,13 @@ export function SchulteSetupPage() {
     }));
   }
 
+  function handleModeChange(nextModeId: TrainingModeId) {
+    setModeId(nextModeId);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("mode", nextModeId);
+    setSearchParams(nextParams, { replace: true });
+  }
+
   return (
     <section className="panel" data-testid="schulte-setup-page">
       <h2>Таблица Шульте</h2>
@@ -168,7 +195,7 @@ export function SchulteSetupPage() {
             key={mode.id}
             type="button"
             className={mode.id === modeId ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => setModeId(mode.id)}
+            onClick={() => handleModeChange(mode.id)}
             data-testid={`mode-${mode.id}`}
           >
             {mode.title}

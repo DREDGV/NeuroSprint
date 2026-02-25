@@ -86,6 +86,16 @@ body {
   letter-spacing: 0.01em;
 }
 
+.active-user-banner {
+  margin-top: 10px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid #bfe2d4;
+  background: #edf8f4;
+  color: #1c5f52;
+  font-weight: 700;
+}
+
 .pwa-status-bar {
   margin-top: 12px;
   border-radius: 14px;
@@ -278,6 +288,12 @@ textarea:focus-visible {
   color: var(--text-muted);
 }
 
+.active-user-inline {
+  margin: 8px 0 12px;
+  color: #1c5f52;
+  font-weight: 700;
+}
+
 .profiles-list {
   margin: 14px 0 0;
   padding: 0;
@@ -383,7 +399,12 @@ textarea:focus-visible {
 
 .schulte-grid {
   display: grid;
-  grid-template-columns: repeat(var(--grid-size, 5), minmax(48px, 1fr));
+  width: min(92vmin, 560px);
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  grid-template-columns: repeat(var(--grid-size, 5), 1fr);
+  grid-auto-rows: 1fr;
   gap: 10px;
   padding: 10px;
   border-radius: 14px;
@@ -392,13 +413,22 @@ textarea:focus-visible {
 }
 
 .grid-cell {
-  min-height: 62px;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  place-items: center;
   border-radius: 12px;
   border: 2px solid #c8dfd6;
   background: var(--schulte-cell-bg, #fff);
   color: var(--schulte-number-color, var(--text-primary));
-  font-size: clamp(1.1rem, 2vw, 1.5rem);
-  font-weight: 800;
+  font-size: var(--schulte-number-size, clamp(1.1rem, 2.4vmin, 1.7rem));
+  font-weight: var(--schulte-number-weight, 800);
+  font-family: var(
+    --schulte-number-font,
+    "Trebuchet MS",
+    "Segoe UI",
+    sans-serif
+  );
   cursor: pointer;
   transition: transform 0.12s ease, border-color 0.12s ease;
 }
@@ -426,6 +456,25 @@ textarea:focus-visible {
 .grid-cell:disabled {
   cursor: default;
   opacity: 0.72;
+}
+
+.schulte-grid[data-theme-id="kid_candy"],
+.schulte-grid[data-theme-id="kid_ocean"],
+.schulte-grid[data-theme-id="kid_space"],
+.schulte-grid[data-theme-id="kid_comics"] {
+  --schulte-number-font: ui-rounded, "Trebuchet MS", "Segoe UI", sans-serif;
+  --schulte-number-weight: 900;
+  --schulte-number-size: clamp(1.22rem, 3.1vmin, 2.1rem);
+}
+
+.schulte-grid[data-theme-id="kid_candy"] .grid-cell,
+.schulte-grid[data-theme-id="kid_comics"] .grid-cell {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.schulte-grid[data-theme-id="kid_space"] .grid-cell {
+  border-color: rgba(255, 255, 255, 0.18);
+  text-shadow: 0 0 10px rgba(138, 92, 255, 0.25);
 }
 
 .result-box {
@@ -458,6 +507,27 @@ textarea:focus-visible {
 
 .today-progress h3 {
   margin: 0 0 8px;
+}
+
+.active-player-card {
+  margin-top: 12px;
+  border: 1px solid #c6dfd6;
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #edf8f4 0%, #f6fbf9 100%);
+}
+
+.active-player-label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.active-player-name {
+  margin: 4px 0 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--accent-main-dark);
 }
 
 .progress-track {
@@ -519,6 +589,66 @@ textarea:focus-visible {
   margin-top: 0;
 }
 
+.release-list {
+  display: grid;
+  gap: 10px;
+}
+
+.release-card {
+  border: 1px solid #d3e6de;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f9fcfb;
+}
+
+.release-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.release-version {
+  margin: 0;
+  font-weight: 800;
+}
+
+.release-date {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.release-title {
+  margin: 8px 0;
+  font-weight: 700;
+}
+
+.release-badge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.release-alpha {
+  background: #fff4da;
+  border: 1px solid #edd9a8;
+  color: #6b4d1f;
+}
+
+.release-dev {
+  background: #e8f0ff;
+  border: 1px solid #c4d7ff;
+  color: #284a86;
+}
+
+.release-stable {
+  background: #edf8f4;
+  border: 1px solid #bfe2d4;
+  color: #1c5f52;
+}
+
 .theme-preview {
   margin-top: 10px;
   border: 2px solid #cfe4dc;
@@ -561,10 +691,6 @@ textarea:focus-visible {
   .pwa-status-bar {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .grid-cell {
-    min-height: 54px;
   }
 
   .comparison-grid {

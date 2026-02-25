@@ -10,6 +10,7 @@ import type {
   ModeRecommendation,
   ModeMetricSnapshot,
   Session,
+  SprintMathDailyPoint,
   TimedDailyPoint,
   TrainingModeId
 } from "../../shared/types/domain";
@@ -88,6 +89,42 @@ export function buildTimedDailyPoints(sessions: Session[]): TimedDailyPoint[] {
   return points.sort(byDateAsc);
 }
 
+export function buildSprintMathDailyPoints(sessions: Session[]): SprintMathDailyPoint[] {
+  const grouped = new Map<string, Session[]>();
+  for (const session of sessions) {
+    if (session.mode !== "sprint_math") {
+      continue;
+    }
+
+    const bucket = grouped.get(session.localDate);
+    if (bucket) {
+      bucket.push(session);
+    } else {
+      grouped.set(session.localDate, [session]);
+    }
+  }
+
+  const points: SprintMathDailyPoint[] = [];
+  for (const [date, values] of grouped.entries()) {
+    const throughput =
+      values.reduce((sum, entry) => sum + entry.speed, 0) / values.length;
+    const accuracy =
+      values.reduce((sum, entry) => sum + entry.accuracy, 0) / values.length;
+    const avgScore =
+      values.reduce((sum, entry) => sum + entry.score, 0) / values.length;
+
+    points.push({
+      date,
+      throughput,
+      accuracy,
+      avgScore,
+      count: values.length
+    });
+  }
+
+  return points.sort(byDateAsc);
+}
+
 export function buildDailyProgressSummary(
   sessions: Session[],
   date: string
@@ -128,15 +165,23 @@ export function buildDailyProgressSummary(
 }
 
 function normalizeSession(session: Session): Session {
+  const resolvedTaskId = session.taskId ?? "schulte";
+  const resolvedModuleId =
+    session.moduleId ??
+    (resolvedTaskId === "sprint_math" ? "sprint_math" : "schulte");
+
   return {
     ...session,
-    moduleId: session.moduleId ?? "schulte",
+    taskId: resolvedTaskId,
+    moduleId: resolvedModuleId,
     modeId:
       session.modeId ??
       (session.mode === "timed"
         ? "timed_plus"
         : session.mode === "reverse"
           ? "reverse"
+          : session.mode === "sprint_math"
+            ? "sprint_add_sub"
           : "classic_plus"),
     level: session.level ?? 1,
     presetId: session.presetId ?? "legacy",
@@ -279,7 +324,13 @@ export function calculateStreak(localDates: string[]): number {
 }
 
 export function recommendModeFromSessions(sessions: Session[]): ModeRecommendation {
-  const modes: TrainingModeId[] = ["classic_plus", "timed_plus", "reverse"];
+  const modes: TrainingModeId[] = [
+    "classic_plus",
+    "timed_plus",
+    "reverse",
+    "sprint_add_sub",
+    "sprint_mixed"
+  ];
   const byMode = new Map<TrainingModeId, Session[]>();
 
   for (const modeId of modes) {
@@ -351,10 +402,19 @@ export const sessionRepository = {
     return buildTimedDailyPoints(sessions);
   },
 
+  async aggregateDailySprintMath(userId: string): Promise<SprintMathDailyPoint[]> {
+    const sessions = await db.sessions
+      .where("userId")
+      .equals(userId)
+      .and((session) => session.mode === "sprint_math")
+      .toArray();
+    return buildSprintMathDailyPoints(sessions);
+  },
+
   async aggregateDailyByModeId(
     userId: string,
     modeId: TrainingModeId
-  ): Promise<TimedDailyPoint[] | ClassicDailyPoint[]> {
+  ): Promise<TimedDailyPoint[] | ClassicDailyPoint[] | SprintMathDailyPoint[]> {
     const sessions = await db.sessions
       .where("userId")
       .equals(userId)
@@ -363,6 +423,9 @@ export const sessionRepository = {
 
     if (modeId === "timed_plus") {
       return buildTimedDailyPoints(sessions);
+    }
+    if (modeId === "sprint_add_sub" || modeId === "sprint_mixed") {
+      return buildSprintMathDailyPoints(sessions);
     }
 
     return buildClassicDailyPoints(sessions);

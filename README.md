@@ -6,6 +6,8 @@
 - Спецификация: `NeuroSprint_PROJECT_FULL_SPEC_RU.md`
 - Дорожная карта: `docs/NeuroSprint_MVP_Roadmap_RU.md`
 - Текущий статус исполнения: `docs/NeuroSprint_Execution_Status_RU.md`
+- История изменений: `docs/CHANGELOG_RU.md`
+- Встроенная справка в приложении: `/help`
 
 ## Быстрый старт
 ```powershell

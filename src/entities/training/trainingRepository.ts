@@ -171,7 +171,15 @@ export const trainingRepository = {
     }
 
     const candidates: Array<{ modeId: TrainingModeId; score: number }> = [];
-    (["classic_plus", "timed_plus", "reverse"] as TrainingModeId[]).forEach(
+    (
+      [
+        "classic_plus",
+        "timed_plus",
+        "reverse",
+        "sprint_add_sub",
+        "sprint_mixed"
+      ] as TrainingModeId[]
+    ).forEach(
       (modeId) => {
         const items = sortByTimestampDesc(byMode.get(modeId) ?? []).slice(0, 3);
         if (items.length === 0) {

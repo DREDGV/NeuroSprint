@@ -35,6 +35,38 @@ export const SCHULTE_THEME_PRESETS: Record<SchulteThemeId, SchulteThemeConfig> =
     highlightColor: "#ff9f1c",
     successColor: "#2ec4b6",
     errorColor: "#e71d36"
+  },
+  kid_candy: {
+    boardBg: "#fff0f6",
+    cellBg: "#ffffff",
+    numberColor: "#4a154b",
+    highlightColor: "#ff4d6d",
+    successColor: "#2ecc71",
+    errorColor: "#ff6b6b"
+  },
+  kid_ocean: {
+    boardBg: "#e6fbff",
+    cellBg: "#ffffff",
+    numberColor: "#0b3d5c",
+    highlightColor: "#00a3ff",
+    successColor: "#00c48c",
+    errorColor: "#ff5a5f"
+  },
+  kid_space: {
+    boardBg: "#0b1020",
+    cellBg: "#141b34",
+    numberColor: "#eaf2ff",
+    highlightColor: "#8a5cff",
+    successColor: "#2ecc71",
+    errorColor: "#ff6b6b"
+  },
+  kid_comics: {
+    boardBg: "#fff7d6",
+    cellBg: "#ffffff",
+    numberColor: "#222222",
+    highlightColor: "#ffb703",
+    successColor: "#00b894",
+    errorColor: "#d63031"
   }
 };
 
@@ -77,5 +109,9 @@ export const SCHULTE_THEME_OPTIONS: Array<{
   { id: "classic_bw", label: "Ч/Б" },
   { id: "contrast", label: "Контраст" },
   { id: "soft", label: "Мягкая" },
-  { id: "rainbow", label: "Радуга" }
+  { id: "rainbow", label: "Радуга" },
+  { id: "kid_candy", label: "Конфетки" },
+  { id: "kid_ocean", label: "Океан" },
+  { id: "kid_space", label: "Космос" },
+  { id: "kid_comics", label: "Комикс" }
 ];

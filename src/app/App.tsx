@@ -27,10 +27,23 @@ const SchulteSetupPage = lazy(() =>
     default: module.SchulteSetupPage
   }))
 );
+const SprintMathSetupPage = lazy(() =>
+  import("../pages/SprintMathSetupPage").then((module) => ({
+    default: module.SprintMathSetupPage
+  }))
+);
+const SprintMathSessionPage = lazy(() =>
+  import("../pages/SprintMathSessionPage").then((module) => ({
+    default: module.SprintMathSessionPage
+  }))
+);
 const SchulteSessionPage = lazy(() =>
   import("../pages/SchulteSessionPage").then((module) => ({
     default: module.SchulteSessionPage
   }))
+);
+const StatsPage = lazy(() =>
+  import("../pages/StatsPage").then((module) => ({ default: module.StatsPage }))
 );
 const StatsIndividualPage = lazy(() =>
   import("../pages/StatsIndividualPage").then((module) => ({
@@ -40,6 +53,11 @@ const StatsIndividualPage = lazy(() =>
 const StatsGroupPage = lazy(() =>
   import("../pages/StatsGroupPage").then((module) => ({
     default: module.StatsGroupPage
+  }))
+);
+const HelpPage = lazy(() =>
+  import("../pages/HelpPage").then((module) => ({
+    default: module.HelpPage
   }))
 );
 const SettingsPage = lazy(() =>
@@ -98,6 +116,22 @@ export function App() {
                 }
               />
               <Route
+                path="/training/sprint-math"
+                element={
+                  <RequireActiveUser>
+                    <SprintMathSetupPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/sprint-math/session"
+                element={
+                  <RequireActiveUser>
+                    <SprintMathSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
                 path="/play/schulte/classic"
                 element={<Navigate to="/training/schulte/classic_plus" replace />}
               />
@@ -107,7 +141,11 @@ export function App() {
               />
               <Route
                 path="/stats"
-                element={<Navigate to="/stats/individual" replace />}
+                element={
+                  <RequireActiveUser>
+                    <StatsPage />
+                  </RequireActiveUser>
+                }
               />
               <Route
                 path="/stats/individual"
@@ -125,6 +163,7 @@ export function App() {
                   </RequireActiveUser>
                 }
               />
+              <Route path="/help" element={<HelpPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

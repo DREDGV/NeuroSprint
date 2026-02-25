@@ -1,14 +1,31 @@
-export type Mode = "classic" | "timed" | "reverse";
-export type TrainingModuleId = "schulte";
-export type TrainingModeId = "classic_plus" | "timed_plus" | "reverse";
+export type Mode = "classic" | "timed" | "reverse" | "sprint_math";
+export type TrainingModuleId = "schulte" | "sprint_math";
+export type TrainingModeId =
+  | "classic_plus"
+  | "timed_plus"
+  | "reverse"
+  | "sprint_add_sub"
+  | "sprint_mixed";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
-export type TrainingPresetId = "easy" | "standard" | "intense" | "legacy";
+export type TrainingPresetId =
+  | "easy"
+  | "standard"
+  | "intense"
+  | "legacy";
 export type GridSize = 3 | 4 | 5 | 6;
 export type TimeLimitSec = 30 | 45 | 60 | 90;
 export type SpawnStrategy = "same_cell" | "random_cell";
 export type GroupMetric = "score" | "accuracy" | "speed";
 export type ComparePeriod = number | "all";
-export type SchulteThemeId = "classic_bw" | "contrast" | "soft" | "rainbow";
+export type SchulteThemeId =
+  | "classic_bw"
+  | "contrast"
+  | "soft"
+  | "rainbow"
+  | "kid_candy"
+  | "kid_ocean"
+  | "kid_space"
+  | "kid_comics";
 
 export interface SchulteThemeConfig {
   boardBg: string;
@@ -42,12 +59,17 @@ export interface Difficulty {
   errorPenalty?: number;
   hintsEnabled?: boolean;
   spawnStrategy?: SpawnStrategy;
+  sprintTierId?: "kids" | "standard" | "pro";
+  sprintMaxOperand?: number;
+  sprintAllowNegative?: boolean;
+  sprintAllowDivision?: boolean;
+  sprintAutoEnter?: boolean;
 }
 
 export interface Session {
   id: string;
   userId: string;
-  taskId: "schulte";
+  taskId: "schulte" | "sprint_math";
   mode: Mode;
   moduleId: TrainingModuleId;
   modeId: TrainingModeId;
@@ -78,6 +100,14 @@ export interface ClassicDailyPoint {
 export interface TimedDailyPoint {
   date: string;
   effectivePerMinute: number;
+  avgScore: number;
+  count: number;
+}
+
+export interface SprintMathDailyPoint {
+  date: string;
+  throughput: number;
+  accuracy: number;
   avgScore: number;
   count: number;
 }

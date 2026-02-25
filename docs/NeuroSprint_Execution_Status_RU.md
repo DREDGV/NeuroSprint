@@ -1,46 +1,32 @@
-﻿# NeuroSprint Execution Status (RU)
+# NeuroSprint Execution Status (RU)
 
 ## Дата/время
-- 2026-02-24 22:35
+- 2026-02-25 03:05
 
 ## Что завершено
-- Реализован и стабилизирован `v0.4` (A-E):
-- Шульте Visual+: темы `Ч/Б`, `Контраст`, `Мягкая`, `Радуга` + advanced-настройка цветов.
-- Прогрессия уровней со стартом `3x3` и лестницей до `6x6`.
-- Новый раздел `Классы`: создание/переименование/удаление класса, создание ученика, перенос между классами, bulk add списком.
-- Звук: start/end по умолчанию, optional click/correct/error, `mute` и `volume`.
-- Dev-mode в настройках: demo/benchmark скрыты при `devMode=false`.
-- Исправлен критичный сбой миграции Dexie v5 (`ConstraintError` из-за duplicate index в `groupMembers`).
-- Добавлены/обновлены `data-testid` для устойчивых e2e сценариев.
-- Добавлен/обновлён e2e контур: smoke, classes, comparison, benchmark.
-- Полный регресс подтверждён:
-- `npm test`
-- `npm run build`
-- `npm run test:e2e`
-- Внедрён пакет рекомендаций из deep-research:
-- Timed метрики: `effectiveCorrect` больше не уходит в минус (clamp до 0).
-- Адаптация сложности в `SchulteSessionPage`: `withLevelDefaults` применяется при прямом входе и после авто-решения.
-- Агрегация Reverse без подмены `mode`.
-- Dexie upgraded до `version(6)` с индексом `[userId+moduleId+modeId+timestamp]` для быстрых recent-сессий.
-- `trainingRepository.listRecentSessionsByMode` переведён на индексный range-query.
-- Добавлен CSV-экспорт из `Настроек` (`users`, `sessions`, `classGroups`, `groupMembers`).
-- Добавлены a11y/pwa улучшения: `:focus-visible` стили и iOS подсказка по установке PWA.
-- Добавлен CI workflow `.github/workflows/ci.yml` (`npm test`, `npm run build`, `npm run test:e2e`).
-- После внедрения рекомендаций снова подтверждён полный регресс:
-- `npm test`
-- `npm run build`
-- `npm run test:e2e`
+- Закрыт этап `v0.5.C` (Sprint Math в TrainingHub + расширенная индивидуальная аналитика).
+- Выполнена фиксация состояния проекта перед следующим этапом:
+- обновлены `docs/NeuroSprint_MVP_Roadmap_RU.md` и текущий статус;
+- добавлен полноценный `docs/CHANGELOG_RU.md`;
+- добавлена встроенная страница `Справка` (`/help`) с историей версий и датами;
+- усилена видимость активного пользователя (`AppShell`, `Home`, `SchulteSession`, `SprintMathSession`).
 
 ## Что в работе
-- Подготовка релизной фиксации `alpha-v0.4.1` и выбор способа деплоя.
+- Подготовка `v0.5.D`: расширение групповой аналитики для Sprint Math.
 
 ## Блокеры
 - Технических блокеров нет.
 
 ## Следующие 3 шага
-1. Зафиксировать релиз `alpha-v0.4.1` (commit + tag + push).
-2. Выбрать и настроить деплой: `Netlify` (предпочтительно) или `GitHub Pages` (с SPA fallback).
-3. После релиза перейти к roadmap `v0.5` (первый новый модуль).
+1. Добавить Sprint Math режимы в фильтры `StatsGroupPage` и проверить корректность сравнений group/global.
+2. Добавить unit/integration тесты для mode-aware групповых агрегаций Sprint Math.
+3. Выполнить полный регресс (`npm test`, `npm run build`, `npm run test:e2e`) и закрыть `v0.5.D`.
+
+## Перспектива (после v0.5.D)
+1. Мягкая мотивация: streak badges без давления.
+2. Экран «Перед тренировкой» с целью дня и рекомендацией.
+3. Роли интерфейса: `Учительский` / `Домашний`.
+4. Планирование `v0.6`: новый модуль тренировки (вне Schulte/Sprint Math).
 
 ## Команды для быстрого старта
 ```powershell

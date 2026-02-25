@@ -13,13 +13,16 @@ import { groupRepository } from "../entities/group/groupRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import { userRepository } from "../entities/user/userRepository";
-import { SCHULTE_MODES } from "../shared/lib/training/presets";
+import { isSprintMathMode, isTimedMode, moduleIdByModeId } from "../shared/lib/training/modeMapping";
+import { TRAINING_MODES } from "../shared/lib/training/presets";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   ClassGroup,
   ClassicDailyPoint,
   GroupMetric,
   ModeRecommendation,
+  Session,
+  SprintMathDailyPoint,
   TimedDailyPoint,
   TrainingModeId,
   User,
@@ -61,6 +64,8 @@ export function StatsIndividualPage() {
   const [modeId, setModeId] = useState<TrainingModeId>("classic_plus");
   const [dailyClassic, setDailyClassic] = useState<ClassicDailyPoint[]>([]);
   const [dailyTimed, setDailyTimed] = useState<TimedDailyPoint[]>([]);
+  const [dailySprintMath, setDailySprintMath] = useState<SprintMathDailyPoint[]>([]);
+  const [recentSessions, setRecentSessions] = useState<Session[]>([]);
   const [profiles, setProfiles] = useState<UserModeProfile[]>([]);
   const [recommendation, setRecommendation] = useState<ModeRecommendation | null>(null);
   const [streakDays, setStreakDays] = useState(0);
@@ -95,12 +100,18 @@ export function StatsIndividualPage() {
 
     void (async () => {
       try {
+        const modeModuleId = moduleIdByModeId(modeId);
         const [daily, insights, modeProfiles, sessions, loadedUsers, loadedGroups] =
           await Promise.all([
             sessionRepository.aggregateDailyByModeId(activeUserId, modeId),
             sessionRepository.getIndividualInsights(activeUserId),
             trainingRepository.listUserModeProfiles(activeUserId),
-            trainingRepository.listRecentSessionsByMode(activeUserId, "schulte", modeId, 30),
+            trainingRepository.listRecentSessionsByMode(
+              activeUserId,
+              modeModuleId,
+              modeId,
+              30
+            ),
             userRepository.list(),
             groupRepository.listGroupsForUser(activeUserId)
           ]);
@@ -109,13 +120,20 @@ export function StatsIndividualPage() {
           return;
         }
 
-        if (modeId === "timed_plus") {
+        if (isTimedMode(modeId)) {
           setDailyTimed(daily as TimedDailyPoint[]);
+          setDailyClassic([]);
+          setDailySprintMath([]);
+        } else if (isSprintMathMode(modeId)) {
+          setDailySprintMath(daily as SprintMathDailyPoint[]);
+          setDailyTimed([]);
           setDailyClassic([]);
         } else {
           setDailyClassic(daily as ClassicDailyPoint[]);
           setDailyTimed([]);
+          setDailySprintMath([]);
         }
+        setRecentSessions(sessions);
 
         setProfiles(modeProfiles);
         setRecommendation(insights.recommendation);
@@ -226,17 +244,18 @@ export function StatsIndividualPage() {
   }, [activeUserId, compareGroupId, compareMetric, comparePeriod, compareUserId, modeId]);
 
   const selectedMode = useMemo(
-    () => SCHULTE_MODES.find((entry) => entry.id === modeId) ?? SCHULTE_MODES[0],
+    () => TRAINING_MODES.find((entry) => entry.id === modeId) ?? TRAINING_MODES[0],
     [modeId]
   );
 
   const selectedProfileLevel = useMemo(() => {
     const profile = profiles.find((entry) => entry.modeId === modeId);
-    if (!profile) {
-      return "—";
+    if (profile) {
+      return String(profile.autoAdjust ? profile.level : profile.manualLevel ?? profile.level);
     }
-    return String(profile.autoAdjust ? profile.level : profile.manualLevel ?? profile.level);
-  }, [modeId, profiles]);
+    const latestLevel = recentSessions[0]?.level;
+    return latestLevel ? String(latestLevel) : "—";
+  }, [modeId, profiles, recentSessions]);
 
   const compareUserOptions = useMemo(
     () => users.filter((entry) => entry.id !== activeUserId),
@@ -254,23 +273,64 @@ export function StatsIndividualPage() {
   );
 
   const chartData = useMemo(() => {
-    if (modeId === "timed_plus") {
+    if (isTimedMode(modeId)) {
       return dailyTimed.map((entry) => ({
         date: entry.date,
         valueA: Number(entry.effectivePerMinute.toFixed(2)),
         valueB: Number(entry.avgScore.toFixed(2)),
+        valueC: null,
         nameA: "effectiveCorrect / мин",
-        nameB: "Средний score"
+        nameB: "Средний score",
+        nameC: ""
+      }));
+    }
+    if (isSprintMathMode(modeId)) {
+      return dailySprintMath.map((entry) => ({
+        date: entry.date,
+        valueA: Number(entry.throughput.toFixed(2)),
+        valueB: Number((entry.accuracy * 100).toFixed(2)),
+        valueC: Number(entry.avgScore.toFixed(2)),
+        nameA: "Задач/мин",
+        nameB: "Точность (%)",
+        nameC: "Средний score"
       }));
     }
     return dailyClassic.map((entry) => ({
       date: entry.date,
       valueA: Number((entry.bestDurationMs / 1000).toFixed(2)),
       valueB: Number((entry.avgDurationMs / 1000).toFixed(2)),
+      valueC: null,
       nameA: "Лучшее время (сек)",
-      nameB: "Среднее время (сек)"
+      nameB: "Среднее время (сек)",
+      nameC: ""
     }));
-  }, [dailyClassic, dailyTimed, modeId]);
+  }, [dailyClassic, dailySprintMath, dailyTimed, modeId]);
+
+  const sprintSummary = useMemo(() => {
+    if (!isSprintMathMode(modeId) || recentSessions.length === 0) {
+      return null;
+    }
+
+    const avgThroughput =
+      recentSessions.reduce((sum, entry) => sum + entry.speed, 0) / recentSessions.length;
+    const avgAccuracy =
+      (recentSessions.reduce((sum, entry) => sum + entry.accuracy, 0) / recentSessions.length) * 100;
+    const avgScore =
+      recentSessions.reduce((sum, entry) => sum + entry.score, 0) / recentSessions.length;
+    const avgCorrect =
+      recentSessions.reduce((sum, entry) => sum + (entry.correctCount ?? 0), 0) /
+      recentSessions.length;
+    const avgErrors =
+      recentSessions.reduce((sum, entry) => sum + entry.errors, 0) / recentSessions.length;
+
+    return {
+      avgThroughput,
+      avgAccuracy,
+      avgScore,
+      avgCorrect,
+      avgErrors
+    };
+  }, [modeId, recentSessions]);
 
   return (
     <section className="panel" data-testid="stats-individual-page">
@@ -287,7 +347,7 @@ export function StatsIndividualPage() {
       </div>
 
       <div className="segmented-row">
-        {SCHULTE_MODES.map((mode) => (
+        {TRAINING_MODES.map((mode) => (
           <button
             key={mode.id}
             type="button"
@@ -316,6 +376,19 @@ export function StatsIndividualPage() {
           value={previousWeekAvgScore != null ? previousWeekAvgScore.toFixed(2) : "—"}
         />
       </div>
+
+      {sprintSummary ? (
+        <section className="setup-block" data-testid="sprint-individual-insights">
+          <h3>Sprint Math: последние 30 сессий</h3>
+          <div className="stats-grid compact">
+            <StatCard title="Задач/мин" value={sprintSummary.avgThroughput.toFixed(2)} />
+            <StatCard title="Точность" value={`${sprintSummary.avgAccuracy.toFixed(1)}%`} />
+            <StatCard title="Средний score" value={sprintSummary.avgScore.toFixed(2)} />
+            <StatCard title="Верных задач" value={sprintSummary.avgCorrect.toFixed(1)} />
+            <StatCard title="Ошибок" value={sprintSummary.avgErrors.toFixed(1)} />
+          </div>
+        </section>
+      ) : null}
 
       <section className="setup-block" data-testid="individual-comparison-block">
         <h3>Сравнение результатов</h3>
@@ -396,7 +469,10 @@ export function StatsIndividualPage() {
 
       {recommendation ? (
         <p className="status-line">
-          Рекомендованный режим: {SCHULTE_MODES.find((entry) => entry.id === recommendation.modeId)?.title}.{" "}
+          Рекомендованный режим:{" "}
+          {TRAINING_MODES.find((entry) => entry.id === recommendation.modeId)?.title ??
+            recommendation.modeId}
+          .{" "}
           {recommendation.reason}
         </p>
       ) : null}
@@ -417,6 +493,7 @@ export function StatsIndividualPage() {
               <Line
                 type="monotone"
                 dataKey="valueA"
+                name={chartData[0]?.nameA}
                 stroke="#1e7f71"
                 strokeWidth={3}
                 dot={{ r: 4 }}
@@ -424,10 +501,21 @@ export function StatsIndividualPage() {
               <Line
                 type="monotone"
                 dataKey="valueB"
+                name={chartData[0]?.nameB}
                 stroke="#f2a93b"
                 strokeWidth={3}
                 dot={{ r: 4 }}
               />
+              {isSprintMathMode(modeId) ? (
+                <Line
+                  type="monotone"
+                  dataKey="valueC"
+                  name={chartData[0]?.nameC}
+                  stroke="#2e62c9"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              ) : null}
             </LineChart>
           </ResponsiveContainer>
         </div>

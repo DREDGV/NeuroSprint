@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
-import { useActiveUser } from "../app/ActiveUserContext";
+import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
@@ -69,7 +69,7 @@ function initialExpected(modeId: TrainingModeId, numbersCount: number): number {
 }
 
 export function SchulteSessionPage() {
-  const { activeUserId } = useActiveUser();
+  const { activeUserId, activeUserName } = useActiveUserDisplayName();
   const { mode } = useParams<{ mode: string }>();
   const location = useLocation();
   const state = (location.state as SessionNavState | null) ?? null;
@@ -381,11 +381,11 @@ export function SchulteSessionPage() {
     setIsRunning(true);
   }
 
-  function finishClassic(now: number) {
-    if (!startedAtMs) {
+  function finishClassic(now: number, startedAtValue: number | null = startedAtMs) {
+    if (!startedAtValue) {
       return;
     }
-    const durationMs = Math.max(0, now - startedAtMs);
+    const durationMs = Math.max(0, now - startedAtValue);
     const metrics = calcClassicMetrics({
       durationMs,
       errors,
@@ -403,8 +403,17 @@ export function SchulteSessionPage() {
   }
 
   function onCellClick(value: number, index: number) {
-    if (!isRunning || finished) {
+    if (finished) {
       return;
+    }
+
+    let effectiveStartedAt = startedAtMs;
+    if (!isRunning) {
+      const startTimestamp = Date.now();
+      effectiveStartedAt = startTimestamp;
+      setStartedAtMs(startTimestamp);
+      setIsRunning(true);
+      playAudioCue("start", audioSettings);
     }
 
     playAudioCue("click", audioSettings);
@@ -443,7 +452,7 @@ export function SchulteSessionPage() {
     const now = Date.now();
     if (modeId === "reverse") {
       if (expected === 1) {
-        finishClassic(now);
+        finishClassic(now, effectiveStartedAt);
       } else {
         setExpected((current) => current - 1);
       }
@@ -451,7 +460,7 @@ export function SchulteSessionPage() {
     }
 
     if (expected === numbersCount) {
-      finishClassic(now);
+      finishClassic(now, effectiveStartedAt);
     } else {
       setExpected((current) => current + 1);
     }
@@ -469,6 +478,9 @@ export function SchulteSessionPage() {
     <section className="panel" data-testid="schulte-session-page">
       <h2>Шульте: {selectedMode.title}</h2>
       <p>{selectedMode.description}</p>
+      <p className="active-user-inline" data-testid="session-active-user">
+        Активный пользователь: <strong>{activeUserName}</strong>
+      </p>
 
       <div className="stats-grid">
         {modeId === "timed_plus" ? (
@@ -478,7 +490,7 @@ export function SchulteSessionPage() {
         )}
         <StatCard
           title="Следующее число"
-          value={finished ? "Готово" : isRunning ? String(expected) : "Старт"}
+          value={finished ? "Готово" : String(expected)}
         />
         <StatCard title="Ошибки" value={String(errors)} />
         <StatCard title="Уровень" value={String(level)} />
@@ -494,6 +506,7 @@ export function SchulteSessionPage() {
           <p>Сетка: {setup.gridSize}x{setup.gridSize}</p>
           <p>Штраф: {setup.errorPenalty}</p>
           {modeId === "timed_plus" ? <p>Время: {setup.timeLimitSec} сек</p> : null}
+          <p>Старт автоматически при первом клике по клетке.</p>
         </section>
       ) : null}
 
@@ -504,19 +517,19 @@ export function SchulteSessionPage() {
         themeId={setup.visualThemeId}
         flash={flash}
         onCellClick={onCellClick}
-        disabled={!isRunning || finished}
+        disabled={finished}
         highlightValue={setup.hintsEnabled ? expected : null}
       />
 
       <div className="action-row">
         <button
           type="button"
-          className="btn-primary"
+          className="btn-secondary"
           onClick={startGame}
           disabled={isRunning || finished}
           data-testid="schulte-start"
         >
-          Начать
+          Старт сейчас (опционально)
         </button>
         <button type="button" className="btn-secondary" onClick={resetGame}>
           Новая попытка

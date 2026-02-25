@@ -5,6 +5,7 @@ const navItems = [
   { to: "/training", label: "Тренировки" },
   { to: "/stats", label: "Статистика" },
   { to: "/classes", label: "Классы" },
+  { to: "/help", label: "Справка" },
   { to: "/profiles", label: "Профили" },
   { to: "/settings", label: "Настройки" }
 ];
