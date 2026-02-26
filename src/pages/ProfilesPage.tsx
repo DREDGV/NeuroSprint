@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveUser } from "../app/ActiveUserContext";
-import { useAppRole } from "../app/useAppRole";
+import { useRoleAccess } from "../app/useRoleAccess";
 import { userRepository } from "../entities/user/userRepository";
 import {
   isTeacherRole,
@@ -9,19 +9,13 @@ import {
   normalizeUserRole,
   userRoleGuardMessage
 } from "../entities/user/userRole";
-import {
-  canActivateProfile,
-  canCreateProfiles,
-  canEditProfiles,
-  canUpdateProfileRole,
-  canViewProfiles
-} from "../shared/lib/auth/permissions";
+import { guardAccess } from "../shared/lib/auth/permissions";
 import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
 import type { AppRole, User } from "../shared/types/domain";
 
 export function ProfilesPage() {
   const navigate = useNavigate();
-  const appRole = useAppRole();
+  const access = useRoleAccess();
   const { activeUserId, setActiveUserId } = useActiveUser();
   const [users, setUsers] = useState<User[]>([]);
   const [name, setName] = useState("");
@@ -33,16 +27,13 @@ export function ProfilesPage() {
 
   const hasProfiles = users.length > 0;
   const canCreate = name.trim().length >= 2;
-  const canViewProfilesAccess = canViewProfiles(appRole);
-  const canCreateProfilesAccess = canCreateProfiles(appRole);
-  const canEditProfilesAccess = canEditProfiles(appRole);
-  const canUpdateProfileRoleAccess = canUpdateProfileRole(appRole);
-  const canAssignRoleOnCreate = canUpdateProfileRoleAccess;
-  const canActivateProfileAccess = canActivateProfile(appRole);
   const teachersCount = useMemo(
     () => users.filter((user) => isTeacherRole(normalizeUserRole(user.role))).length,
     [users]
   );
+  const recoveryMode = teachersCount === 0;
+  const canAssignRoleOnCreate = access.profiles.updateRole || recoveryMode;
+  const canUpdateProfileRoles = access.profiles.updateRole || recoveryMode;
 
   const loadUsers = useCallback(async () => {
     const items = await userRepository.list();
@@ -66,8 +57,13 @@ export function ProfilesPage() {
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
-    if (!canCreateProfilesAccess) {
-      setError("В этой роли создание профилей недоступно.");
+    if (
+      !guardAccess(
+        access.profiles.create,
+        setError,
+        "В этой роли создание профилей недоступно."
+      )
+    ) {
       return;
     }
     if (!canCreate) {
@@ -96,8 +92,13 @@ export function ProfilesPage() {
   }
 
   async function handleRename(user: User) {
-    if (!canEditProfilesAccess) {
-      setError("В этой роли редактирование профилей недоступно.");
+    if (
+      !guardAccess(
+        access.profiles.edit,
+        setError,
+        "В этой роли редактирование профилей недоступно."
+      )
+    ) {
       return;
     }
     const nextName = window.prompt("Новое имя профиля", user.name);
@@ -116,8 +117,9 @@ export function ProfilesPage() {
   }
 
   async function handleDelete(user: User) {
-    if (!canEditProfilesAccess) {
-      setError("В этой роли удаление профилей недоступно.");
+    if (
+      !guardAccess(access.profiles.edit, setError, "В этой роли удаление профилей недоступно.")
+    ) {
       return;
     }
     const approved = window.confirm(`Удалить профиль "${user.name}"?`);
@@ -143,8 +145,13 @@ export function ProfilesPage() {
   }
 
   function handleSetActive(user: User) {
-    if (!canActivateProfileAccess) {
-      setError("В этой роли выбор активного профиля недоступен.");
+    if (
+      !guardAccess(
+        access.profiles.activate,
+        setError,
+        "В этой роли выбор активного профиля недоступен."
+      )
+    ) {
       return;
     }
     setActiveUserId(user.id);
@@ -153,8 +160,13 @@ export function ProfilesPage() {
   }
 
   async function handleSaveRole(user: User) {
-    if (!canUpdateProfileRoleAccess) {
-      setError("В этой роли смена ролей профилей недоступна.");
+    if (
+      !guardAccess(
+        canUpdateProfileRoles,
+        setError,
+        "В этой роли смена ролей профилей недоступна."
+      )
+    ) {
       return;
     }
     const nextRole = roleDrafts[user.id] ?? normalizeUserRole(user.role);
@@ -180,7 +192,7 @@ export function ProfilesPage() {
     [activeUserId, users]
   );
 
-  if (!canViewProfilesAccess) {
+  if (!access.profiles.view) {
     return (
       <section className="panel" data-testid="profiles-page">
         <h2>Профили пользователей</h2>
@@ -193,8 +205,14 @@ export function ProfilesPage() {
     <section className="panel" data-testid="profiles-page">
       <h2>Профили пользователей</h2>
       <p>Создайте профиль, назначьте роль и выберите активного пользователя для тренировки.</p>
+      {recoveryMode ? (
+        <p className="status-line" data-testid="profiles-recovery-mode-note">
+          В системе нет роли «Учитель». Назначьте хотя бы одного пользователя учителем, чтобы
+          восстановить полный доступ к управлению.
+        </p>
+      ) : null}
 
-      {canCreateProfilesAccess ? (
+      {access.profiles.create ? (
         <form className="inline-form" onSubmit={handleCreate}>
           <label htmlFor="profile-name">Имя</label>
           <input
@@ -206,25 +224,27 @@ export function ProfilesPage() {
             maxLength={32}
             data-testid="profile-name-input"
           />
-          {canAssignRoleOnCreate ? (
-            <>
-              <label htmlFor="profile-role">Роль профиля</label>
-              <select
-                id="profile-role"
-                value={newRole}
-                onChange={(event) => setNewRole(event.target.value as AppRole)}
-                data-testid="profile-role-select"
-              >
-                <option value="student">Ученик</option>
-                <option value="teacher">Учитель</option>
-                <option value="home">Домашний</option>
-              </select>
-            </>
-          ) : (
+          <label htmlFor="profile-role">Роль профиля</label>
+          <select
+            id="profile-role"
+            value={canAssignRoleOnCreate ? newRole : "student"}
+            onChange={(event) => setNewRole(event.target.value as AppRole)}
+            data-testid="profile-role-select"
+            disabled={!canAssignRoleOnCreate}
+          >
+            <option value="student">Ученик</option>
+            <option value="teacher" disabled={!canAssignRoleOnCreate}>
+              Учитель
+            </option>
+            <option value="home" disabled={!canAssignRoleOnCreate}>
+              Домашний
+            </option>
+          </select>
+          {!canAssignRoleOnCreate ? (
             <p className="status-line" data-testid="profiles-create-role-note">
-              Новые профили будут созданы с ролью «Ученик».
+              В текущей роли можно создать только профиль «Ученик».
             </p>
-          )}
+          ) : null}
           <button
             type="submit"
             className="btn-primary"
@@ -268,32 +288,36 @@ export function ProfilesPage() {
                   Создан: {new Date(user.createdAt).toLocaleDateString("ru-RU")}
                 </p>
                 <span className="role-pill">{appRoleLabel(currentRole)}</span>
-                {canUpdateProfileRoleAccess ? (
-                  <div className="profile-role-controls">
-                    <select
-                      value={draftRole}
-                      onChange={(event) =>
-                        setRoleDrafts((current) => ({
-                          ...current,
-                          [user.id]: event.target.value as AppRole
-                        }))
-                      }
-                      data-testid={`profile-role-edit-${user.id}`}
-                    >
-                      <option value="student">Ученик</option>
-                      <option value="teacher">Учитель</option>
-                      <option value="home">Домашний</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      onClick={() => void handleSaveRole(user)}
-                      disabled={draftRole === currentRole || roleChangeBlocked}
-                      data-testid={`save-profile-role-${user.id}`}
-                    >
-                      Сохранить роль
-                    </button>
-                  </div>
+                <div className="profile-role-controls">
+                  <select
+                    value={draftRole}
+                    onChange={(event) =>
+                      setRoleDrafts((current) => ({
+                        ...current,
+                        [user.id]: event.target.value as AppRole
+                      }))
+                    }
+                    data-testid={`profile-role-edit-${user.id}`}
+                    disabled={!canUpdateProfileRoles}
+                  >
+                    <option value="student">Ученик</option>
+                    <option value="teacher">Учитель</option>
+                    <option value="home">Домашний</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => void handleSaveRole(user)}
+                    disabled={
+                      !canUpdateProfileRoles || draftRole === currentRole || roleChangeBlocked
+                    }
+                    data-testid={`save-profile-role-${user.id}`}
+                  >
+                    Сохранить роль
+                  </button>
+                </div>
+                {!canUpdateProfileRoles ? (
+                  <p className="profile-date">Смена роли доступна только для роли «Учитель».</p>
                 ) : null}
                 {isLastTeacher ? (
                   <p className="profile-date">
@@ -302,7 +326,7 @@ export function ProfilesPage() {
                 ) : null}
               </div>
               <div className="action-row">
-                {canActivateProfileAccess ? (
+                {access.profiles.activate ? (
                   <button
                     type="button"
                     className={
@@ -313,7 +337,7 @@ export function ProfilesPage() {
                     {user.id === activeUserId ? "Активен" : "Сделать активным"}
                   </button>
                 ) : null}
-                {canEditProfilesAccess ? (
+                {access.profiles.edit ? (
                   <button
                     type="button"
                     className="btn-ghost"
@@ -322,7 +346,7 @@ export function ProfilesPage() {
                     Переименовать
                   </button>
                 ) : null}
-                {canEditProfilesAccess ? (
+                {access.profiles.edit ? (
                   <button
                     type="button"
                     className="btn-danger"

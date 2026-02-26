@@ -152,6 +152,20 @@ describe("ProfilesPage roles", () => {
 
   it("limits student role: create only student profiles and no role editing", async () => {
     localStorage.setItem(APP_ROLE_KEY, "student");
+    mocks.setUsers([
+      {
+        id: "t1",
+        name: "Учитель",
+        role: "teacher",
+        createdAt: "2026-02-25T12:00:00.000Z"
+      },
+      {
+        id: "u1",
+        name: "Лёва",
+        role: "student",
+        createdAt: "2026-02-25T12:00:00.000Z"
+      }
+    ]);
     const user = userEvent.setup();
 
     render(
@@ -163,7 +177,8 @@ describe("ProfilesPage roles", () => {
     );
 
     expect(await screen.findByTestId("profiles-create-role-note")).toBeInTheDocument();
-    expect(screen.queryByTestId("profile-role-select")).not.toBeInTheDocument();
+    const createRoleSelect = screen.getByTestId("profile-role-select");
+    expect(createRoleSelect).toBeDisabled();
 
     await user.type(screen.getByTestId("profile-name-input"), "Новый");
     await user.click(screen.getByTestId("create-profile-btn"));
@@ -172,8 +187,41 @@ describe("ProfilesPage roles", () => {
       expect(mocks.userRepository.create).toHaveBeenCalledWith("Новый", "student");
     });
 
-    await user.click(screen.getByRole("button", { name: "Сделать активным" }));
-    expect(localStorage.getItem(ACTIVE_USER_KEY)).toBe("u1");
-    expect(screen.queryByTestId("profile-role-edit-u1")).not.toBeInTheDocument();
+    const roleEdit = screen.getByTestId("profile-role-edit-t1");
+    expect(roleEdit).toBeDisabled();
+    expect(screen.getByTestId("save-profile-role-t1")).toBeDisabled();
+    expect(screen.getByTestId("profile-role-edit-u1")).toBeDisabled();
+    expect(screen.getByTestId("save-profile-role-u1")).toBeDisabled();
+  });
+
+  it("enables recovery mode when no teacher exists", async () => {
+    localStorage.setItem(APP_ROLE_KEY, "student");
+    mocks.setUsers([
+      {
+        id: "u1",
+        name: "Лёва",
+        role: "student",
+        createdAt: "2026-02-25T12:00:00.000Z"
+      }
+    ]);
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <ProfilesPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("profiles-recovery-mode-note")).toBeInTheDocument();
+
+    await user.type(screen.getByTestId("profile-name-input"), "Новый учитель");
+    await user.selectOptions(screen.getByTestId("profile-role-select"), "teacher");
+    await user.click(screen.getByTestId("create-profile-btn"));
+
+    await waitFor(() => {
+      expect(mocks.userRepository.create).toHaveBeenCalledWith("Новый учитель", "teacher");
+    });
   });
 });

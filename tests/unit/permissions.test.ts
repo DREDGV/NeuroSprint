@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildRoleAccess,
   canCreateProfiles,
   canEditAudioSettings,
   canEditProfiles,
@@ -11,6 +12,7 @@ import {
   canUseDevTools,
   canViewComparisonStats,
   canViewGroupStats,
+  guardAccess,
   canViewProfiles,
   hasPermission,
   rolesWithPermission
@@ -83,5 +85,31 @@ describe("permissions", () => {
   it("returns roles that can access a permission", () => {
     expect(rolesWithPermission("classes:view")).toEqual(["teacher"]);
     expect(rolesWithPermission("settings:export")).toEqual(["teacher", "home"]);
+  });
+
+  it("builds normalized role access map", () => {
+    const teacherAccess = buildRoleAccess("teacher");
+    const studentAccess = buildRoleAccess("student");
+
+    expect(teacherAccess.profiles.updateRole).toBe(true);
+    expect(teacherAccess.settings.devtools).toBe(true);
+    expect(studentAccess.profiles.updateRole).toBe(false);
+    expect(studentAccess.settings.updateAudio).toBe(true);
+    expect(studentAccess.settings.export).toBe(false);
+  });
+
+  it("guards denied actions with provided message", () => {
+    let deniedMessage: string | null = null;
+
+    const denied = guardAccess(false, (message) => {
+      deniedMessage = message;
+    }, "Нет доступа");
+    const allowed = guardAccess(true, () => {
+      throw new Error("unexpected call");
+    }, "Не используется");
+
+    expect(denied).toBe(false);
+    expect(allowed).toBe(true);
+    expect(deniedMessage).toBe("Нет доступа");
   });
 });

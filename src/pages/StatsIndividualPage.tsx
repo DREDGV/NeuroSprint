@@ -9,16 +9,12 @@ import {
   YAxis
 } from "recharts";
 import { useActiveUser } from "../app/ActiveUserContext";
-import { useAppRole } from "../app/useAppRole";
+import { useRoleAccess } from "../app/useRoleAccess";
 import { groupRepository } from "../entities/group/groupRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import { normalizeUserRole } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
-import {
-  canViewComparisonStats,
-  canViewGroupStats
-} from "../shared/lib/auth/permissions";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import { isSprintMathMode, isTimedMode, moduleIdByModeId } from "../shared/lib/training/modeMapping";
 import { TRAINING_MODES } from "../shared/lib/training/presets";
@@ -84,9 +80,9 @@ function formatDelta(current: number | null, previous: number | null, suffix = "
 
 export function StatsIndividualPage() {
   const { activeUserId } = useActiveUser();
-  const appRole = useAppRole();
-  const canViewGroupStatsAccess = canViewGroupStats(appRole);
-  const canViewComparisonAccess = canViewComparisonStats(appRole);
+  const access = useRoleAccess();
+  const canViewGroupStatsAccess = access.stats.viewGroup;
+  const canViewComparisonAccess = access.stats.viewComparison;
   const [modeId, setModeId] = useState<TrainingModeId>("classic_plus");
   const [dailyClassic, setDailyClassic] = useState<ClassicDailyPoint[]>([]);
   const [dailyTimed, setDailyTimed] = useState<TimedDailyPoint[]>([]);

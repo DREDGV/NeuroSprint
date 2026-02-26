@@ -1,20 +1,13 @@
 ﻿import { FormEvent, useEffect, useState } from "react";
 import { db } from "../db/database";
 import { useActiveUser } from "../app/ActiveUserContext";
-import { useAppRole } from "../app/useAppRole";
+import { useRoleAccess } from "../app/useRoleAccess";
 import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { groupRepository } from "../entities/group/groupRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { isTeacherRole, isUserRoleGuardError, userRoleGuardMessage } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
-import {
-  canEditAudioSettings,
-  canEditTrainingSettings,
-  canExportData,
-  canUpdateActiveUserRole,
-  canUseDevTools,
-  canViewSettings
-} from "../shared/lib/auth/permissions";
+import { guardAccess } from "../shared/lib/auth/permissions";
 import {
   DEFAULT_AUDIO_SETTINGS,
   getAudioSettings,
@@ -55,7 +48,7 @@ function benchmarkThresholdMs(period: BenchmarkPeriod): number {
 
 export function SettingsPage() {
   const { activeUserId, setActiveUserId } = useActiveUser();
-  const viewerRole = useAppRole();
+  const access = useRoleAccess();
   const initial = getSettings();
   const initialAudio = getAudioSettings();
 
@@ -86,13 +79,6 @@ export function SettingsPage() {
   const [benchmarkReport, setBenchmarkReport] = useState<string | null>(null);
   const [exportBusy, setExportBusy] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
-
-  const canViewSettingsAccess = canViewSettings(viewerRole);
-  const canEditTrainingSettingsAccess = canEditTrainingSettings(viewerRole);
-  const canEditAudioSettingsAccess = canEditAudioSettings(viewerRole);
-  const canUpdateActiveRoleAccess = canUpdateActiveUserRole(viewerRole);
-  const canExportDataAccess = canExportData(viewerRole);
-  const canUseDevToolsAccess = canUseDevTools(viewerRole);
 
   useEffect(() => {
     if (!activeUserId) {
@@ -142,12 +128,12 @@ export function SettingsPage() {
     try {
       let hasChanges = false;
 
-      if (canEditTrainingSettingsAccess) {
+      if (access.settings.updateTraining) {
         saveSettings(nextSettings);
         hasChanges = true;
       }
 
-      if (canEditAudioSettingsAccess) {
+      if (access.settings.updateAudio) {
         saveAudioSettings(nextAudio);
         hasChanges = true;
         if (activeUserId) {
@@ -155,12 +141,12 @@ export function SettingsPage() {
         }
       }
 
-      if (canUseDevToolsAccess) {
+      if (access.settings.devtools) {
         setDevModeEnabled(devModeEnabled);
         hasChanges = true;
       }
 
-      if (canUpdateActiveRoleAccess && activeUserId) {
+      if (access.settings.updateRole && activeUserId) {
         await userRepository.updateRole(activeUserId, appRole);
         setActiveUserRole(appRole);
         const users = await userRepository.list();
@@ -184,8 +170,13 @@ export function SettingsPage() {
   }
 
   async function handleGenerateDemoFixture() {
-    if (!canUseDevToolsAccess) {
-      setFixtureMessage("Demo-инструменты доступны только для роли «Учитель».");
+    if (
+      !guardAccess(
+        access.settings.devtools,
+        setFixtureMessage,
+        "Demo-инструменты доступны только для роли «Учитель»."
+      )
+    ) {
       return;
     }
 
@@ -230,8 +221,13 @@ export function SettingsPage() {
   }
 
   async function handleRunBenchmark() {
-    if (!canUseDevToolsAccess) {
-      setBenchmarkReport("Benchmark доступен только для роли «Учитель».");
+    if (
+      !guardAccess(
+        access.settings.devtools,
+        setBenchmarkReport,
+        "Benchmark доступен только для роли «Учитель»."
+      )
+    ) {
       return;
     }
 
@@ -297,8 +293,13 @@ export function SettingsPage() {
   }
 
   async function handleExportCsv() {
-    if (!canExportDataAccess) {
-      setExportMessage("Экспорт доступен только для ролей «Учитель» и «Домашний».");
+    if (
+      !guardAccess(
+        access.settings.export,
+        setExportMessage,
+        "Экспорт доступен только для ролей «Учитель» и «Домашний»."
+      )
+    ) {
       return;
     }
 
@@ -393,12 +394,12 @@ export function SettingsPage() {
     teachersCount <= 1;
 
   const canPersistSettings =
-    canEditTrainingSettingsAccess ||
-    canEditAudioSettingsAccess ||
-    canUseDevToolsAccess ||
-    canUpdateActiveRoleAccess;
+    access.settings.updateTraining ||
+    access.settings.updateAudio ||
+    access.settings.devtools ||
+    access.settings.updateRole;
 
-  if (!canViewSettingsAccess) {
+  if (!access.settings.view) {
     return (
       <section className="panel" data-testid="settings-page">
         <h2>Настройки</h2>
@@ -420,7 +421,7 @@ export function SettingsPage() {
           onChange={(event) =>
             setTimedDefaultLimitSec(Number(event.target.value) as TimeLimit)
           }
-          disabled={!canEditTrainingSettingsAccess}
+          disabled={!access.settings.updateTraining}
         >
           <option value={30}>30 секунд</option>
           <option value={45}>45 секунд</option>
@@ -436,7 +437,7 @@ export function SettingsPage() {
           step={0.1}
           value={timedErrorPenalty}
           onChange={(event) => setTimedErrorPenalty(Number(event.target.value))}
-          disabled={!canEditTrainingSettingsAccess}
+          disabled={!access.settings.updateTraining}
         />
 
         <label htmlFor="daily-goal">Цель на день (сессий)</label>
@@ -447,7 +448,7 @@ export function SettingsPage() {
           max={20}
           value={dailyGoalSessions}
           onChange={(event) => setDailyGoalSessions(Number(event.target.value))}
-          disabled={!canEditTrainingSettingsAccess}
+          disabled={!access.settings.updateTraining}
         />
 
         <h3>Роль активного профиля</h3>
@@ -457,7 +458,7 @@ export function SettingsPage() {
           value={appRole}
           onChange={(event) => setAppRole(event.target.value as AppRole)}
           data-testid="app-role-select"
-          disabled={!activeUserId || !canUpdateActiveRoleAccess}
+          disabled={!activeUserId || !access.settings.updateRole}
         >
           <option value="teacher">Учитель (полный режим)</option>
           <option value="student" disabled={isLastTeacherActive}>
@@ -468,7 +469,7 @@ export function SettingsPage() {
           </option>
         </select>
         <p className="status-line">
-          {!canUpdateActiveRoleAccess
+          {!access.settings.updateRole
             ? "Смена роли активного профиля доступна только для роли «Учитель»."
             : activeUserId
               ? "Роль применяется после нажатия «Сохранить» и синхронизируется с интерфейсом."
@@ -489,7 +490,7 @@ export function SettingsPage() {
             onChange={(event) =>
               setAudioSettingsState((current) => ({ ...current, muted: event.target.checked }))
             }
-            disabled={!canEditAudioSettingsAccess}
+            disabled={!access.settings.updateAudio}
           />
           Без звука (mute)
         </label>
@@ -508,7 +509,7 @@ export function SettingsPage() {
               volume: Number(event.target.value)
             }))
           }
-          disabled={!canEditAudioSettingsAccess}
+          disabled={!access.settings.updateAudio}
         />
 
         <label htmlFor="audio-start-end">
@@ -522,7 +523,7 @@ export function SettingsPage() {
                 startEnd: event.target.checked
               }))
             }
-            disabled={!canEditAudioSettingsAccess}
+            disabled={!access.settings.updateAudio}
           />
           Сигналы старт/финиш
         </label>
@@ -535,7 +536,7 @@ export function SettingsPage() {
             onChange={(event) =>
               setAudioSettingsState((current) => ({ ...current, click: event.target.checked }))
             }
-            disabled={!canEditAudioSettingsAccess}
+            disabled={!access.settings.updateAudio}
           />
           Звук клика
         </label>
@@ -548,7 +549,7 @@ export function SettingsPage() {
             onChange={(event) =>
               setAudioSettingsState((current) => ({ ...current, correct: event.target.checked }))
             }
-            disabled={!canEditAudioSettingsAccess}
+            disabled={!access.settings.updateAudio}
           />
           Звук верного ответа
         </label>
@@ -561,12 +562,12 @@ export function SettingsPage() {
             onChange={(event) =>
               setAudioSettingsState((current) => ({ ...current, error: event.target.checked }))
             }
-            disabled={!canEditAudioSettingsAccess}
+            disabled={!access.settings.updateAudio}
           />
           Звук ошибки
         </label>
 
-        {canUseDevToolsAccess ? (
+        {access.settings.devtools ? (
           <>
             <h3>Режим разработчика</h3>
             <label htmlFor="dev-mode-toggle">
@@ -599,7 +600,7 @@ export function SettingsPage() {
           type="button"
           className="btn-ghost"
           onClick={() => setAudioSettingsState(DEFAULT_AUDIO_SETTINGS)}
-          disabled={!canEditAudioSettingsAccess}
+          disabled={!access.settings.updateAudio}
         >
           Сбросить звук к default
         </button>
@@ -612,7 +613,7 @@ export function SettingsPage() {
         <p className="status-line">
           Экспортирует users/sessions/classes в CSV файлы на устройство.
         </p>
-        {canExportDataAccess ? (
+        {access.settings.export ? (
           <div className="action-row">
             <button
               type="button"
@@ -636,7 +637,7 @@ export function SettingsPage() {
         ) : null}
       </section>
 
-      {canUseDevToolsAccess && devModeEnabled ? (
+      {access.settings.devtools && devModeEnabled ? (
         <section className="setup-block" data-testid="settings-fixture-block">
           <h3>Тестовые данные для класса</h3>
           <p>
@@ -711,7 +712,7 @@ export function SettingsPage() {
             </pre>
           ) : null}
         </section>
-      ) : canUseDevToolsAccess ? (
+      ) : access.settings.devtools ? (
         <p className="status-line" data-testid="dev-tools-hidden-note">
           Инструменты demo/benchmark скрыты. Включите режим разработчика, если они нужны.
         </p>

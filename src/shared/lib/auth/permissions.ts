@@ -17,6 +17,33 @@ export type AppPermission =
   | "settings:export"
   | "settings:devtools";
 
+export interface RoleAccess {
+  role: AppRole;
+  profiles: {
+    view: boolean;
+    create: boolean;
+    edit: boolean;
+    updateRole: boolean;
+    activate: boolean;
+  };
+  classes: {
+    view: boolean;
+    manage: boolean;
+  };
+  stats: {
+    viewGroup: boolean;
+    viewComparison: boolean;
+  };
+  settings: {
+    view: boolean;
+    updateTraining: boolean;
+    updateAudio: boolean;
+    updateRole: boolean;
+    export: boolean;
+    devtools: boolean;
+  };
+}
+
 const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
   teacher: [
     "profiles:view",
@@ -63,6 +90,47 @@ export function rolesWithPermission(permission: AppPermission): AppRole[] {
   return (Object.keys(ROLE_PERMISSIONS) as AppRole[]).filter((role) =>
     ROLE_PERMISSIONS[role].includes(permission)
   );
+}
+
+export function buildRoleAccess(role: AppRole): RoleAccess {
+  return {
+    role,
+    profiles: {
+      view: hasPermission(role, "profiles:view"),
+      create: hasPermission(role, "profiles:create"),
+      edit: hasPermission(role, "profiles:edit"),
+      updateRole: hasPermission(role, "profiles:role:update"),
+      activate: hasPermission(role, "profiles:activate")
+    },
+    classes: {
+      view: hasPermission(role, "classes:view"),
+      manage: hasPermission(role, "classes:manage")
+    },
+    stats: {
+      viewGroup: hasPermission(role, "stats:group:view"),
+      viewComparison: hasPermission(role, "stats:comparison:view")
+    },
+    settings: {
+      view: hasPermission(role, "settings:view"),
+      updateTraining: hasPermission(role, "settings:training:update"),
+      updateAudio: hasPermission(role, "settings:audio:update"),
+      updateRole: hasPermission(role, "settings:role:update"),
+      export: hasPermission(role, "settings:export"),
+      devtools: hasPermission(role, "settings:devtools")
+    }
+  };
+}
+
+export function guardAccess(
+  allowed: boolean,
+  onDenied: (message: string) => void,
+  deniedMessage: string
+): boolean {
+  if (allowed) {
+    return true;
+  }
+  onDenied(deniedMessage);
+  return false;
 }
 
 export function canViewProfiles(role: AppRole): boolean {

@@ -1,7 +1,7 @@
 # NeuroSprint MVP Roadmap (RU)
 
 ## Scope
-### In scope (MVP + v0.4 + v0.4.2 + v0.5.J)
+### In scope (MVP + v0.4 + v0.4.2 + v0.5.K)
 - Профили пользователей на одном устройстве.
 - Активный пользователь в `localStorage` (`ns.activeUserId`).
 - Шульте: `Classic+`, `Timed+`, `Reverse`.
@@ -79,6 +79,7 @@
 | v0.5.H | Sprint Math analytics + recommendation engine | Done | `/stats`: фильтр Sprint Math по подрежимам (`Все/Add-Sub/Mixed`), `/stats/individual`: 7-дневный тренд, единый recommendation engine для pre-session и stats |
 | v0.5.I | Fine role-policy + encoding guard | Done | Детализирована матрица прав (`profiles/settings/stats`), добавлены role-specific ограничения в UI, покрытие integration/e2e и `check:encoding` в CI |
 | v0.5.J | Route-level permission guard + role-aware hints | Done | Добавлен единый `RequirePermission` на маршрутах `/classes*` и `/stats/group`, внедрены подсказки доступа по роли и расширено покрытие tests/e2e |
+| v0.5.K | Action-level role-check unification | Done | Добавлены `useRoleAccess` + `buildRoleAccess/guardAccess`, страницы `Profiles/Settings/StatsIndividual` переведены на единый слой прав |
 
 ## Interfaces & Contracts
 ### Routes
@@ -174,6 +175,7 @@
 - 2026-02-25: Закрыт `v0.5.I`: внедрена тонкая role-policy по действиям (`profiles/settings/stats`) с разделением teacher/student/home, студентам оставлен безопасный профильный поток (создание только `student`, без role-edit), в `Settings` введены role-aware ограничения (export/dev-tools/role change), в `StatsIndividual` comparison блок ограничен по роли; добавлены tests `profiles-role`, `settings-devmode`, `stats-individual-comparison`, e2e `role-policy.spec.ts`; demo fixture обновлена (`[DEMO] Учитель` как активный профиль) для стабильного admin-потока; добавлен `scripts/check-encoding.mjs` + `npm run check:encoding` в CI; подтвержден регресс `npm run check:encoding`, `npm test`, `npm run build`, `npm run test:e2e`.
 - 2026-02-25: Закрыт `v0.5.J`: реализован route-level guard `src/app/RequirePermission.tsx`; маршруты `/classes`/`/classes/:classId` и `/stats/group` переведены на централизованную проверку прав через `App.tsx`; добавлены role-aware подсказки доступа (текущая роль + требуемая роль + быстрые ссылки на `Профили/Настройки`); добавлены tests `tests/integration/require-permission.test.tsx`, e2e `tests/e2e/role-policy.spec.ts` расширен direct URL проверками; подтвержден регресс `npm run check:encoding`, `npm test`, `npm run build`, `npm run test:e2e`.
 - 2026-02-26: Зафиксирован dev-release `0.5.0-dev.1`: обновлены версия в `package.json`, встроенная история релизов (`src/shared/constants/changelog.ts`) и `docs/CHANGELOG_RU.md`; next step закреплён на `v0.5.K`.
+- 2026-02-26: Закрыт `v0.5.K`: унифицированы action-level проверки ролей через общий хук `src/app/useRoleAccess.ts` и helper-контракты `buildRoleAccess/guardAccess` в `src/shared/lib/auth/permissions.ts`; страницы `Profiles/Settings/StatsIndividual` переведены на единый слой прав; добавлены unit-тесты контрактов прав (`tests/unit/permissions.test.ts`); подтвержден регресс `npm run check:encoding`, `npm test`, `npm run build`.
 
 ## Risks & Decisions
 ### Decisions
@@ -206,6 +208,7 @@
 - На `v0.5.I` добавлен автоматический контроль кодировки (`check:encoding`) как обязательный шаг CI до тестов.
 - На `v0.5.J` route-level доступ централизован через `RequirePermission`, чтобы прямые переходы по URL были защищены единообразно.
 - На `v0.5.J` UX ограничений сделан явным: показывается текущая роль, требуемая роль и быстрый переход к смене роли.
+- На `v0.5.K` action-level проверки прав централизованы: страницы используют единый `useRoleAccess`, а проверки отказа стандартизированы через `guardAccess`.
 
 ### Risks
 - Рост локальных данных класса (30+) требует контроля производительности агрегаций.
@@ -216,7 +219,7 @@
 ### Backlog notes (v0.5 candidates)
 - Расширение мотивации: недельные персональные мини-планы и мягкие награды за стабильность.
 - Полноценная аналитика Sprint Math на экране статистики.
-- Вынести action-level permission guard из страниц в единый хук/утилиту (чтобы убрать дубли условий в `Profiles/Settings/StatsIndividual`).
+- Доприменить `useRoleAccess` на оставшихся экранах, где еще есть локальные вычисления role-флагов.
 
 ## Next Session Start
-1. Перейти к `v0.5.K`: вынести повторяющиеся action-level проверки ролей в общий слой (hook + helper) и сократить дублирование в страницах.
+1. Перейти к `v0.5.L`: расширить Sprint Math аналитику на `/stats` (mode-aware сводки и более читаемые сравнения подрежимов).

@@ -9,14 +9,15 @@ export interface ReleaseEntry {
 export const RELEASE_HISTORY: ReleaseEntry[] = [
   {
     version: "0.5.0-dev.1",
-    date: "2026-02-25",
-    title: "Релизная фиксация v0.5.J: версия, справка и changelog",
+    date: "2026-02-26",
+    title: "Релиз v0.5.0-dev.1: унификация role-checks (v0.5.K)",
     status: "dev",
     highlights: [
       "Подготовлен dev-релиз v0.5.0-dev.1 и обновлена версия приложения в шапке/справке.",
-      "Справка синхронизирована с актуальной историей изменений и статусом этапа v0.5.J.",
-      "Проектный changelog обновлён и закрепляет route-level роль-политику для teacher-only маршрутов.",
-      "Текущий фокус следующей итерации сохранён: v0.5.K (унификация action-level role-checks)."
+      "Справка и changelog синхронизированы: зафиксирован завершённый этап v0.5.K.",
+      "Добавлены общие контракты прав `buildRoleAccess` и `guardAccess`, а также хук `useRoleAccess`.",
+      "Страницы `Profiles`, `Settings`, `StatsIndividual` переведены на единый action-level слой прав.",
+      "Следующий фокус итерации: v0.5.L (расширение Sprint Math аналитики на `/stats`)."
     ]
   },
   {
