@@ -379,6 +379,23 @@ textarea:focus-visible {
   gap: 10px;
 }
 
+.sprint-compare-grid {
+  align-items: stretch;
+}
+
+.sprint-mode-card {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.sprint-mode-line {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
 .comparison-note {
   margin: 8px 0 0;
   color: var(--text-muted);
@@ -431,21 +448,24 @@ textarea:focus-visible {
 
 .schulte-grid {
   display: grid;
-  width: min(92vmin, 560px);
+  width: min(90vw, 520px);
+  min-width: min(96vw, 280px);
   max-width: 100%;
   aspect-ratio: 1 / 1;
   margin: 0 auto;
   grid-template-columns: repeat(var(--grid-size, 5), 1fr);
   grid-auto-rows: 1fr;
-  gap: 10px;
-  padding: 10px;
+  gap: clamp(2px, 0.8vmin, 10px);
+  padding: clamp(4px, 1.2vmin, 10px);
   border-radius: 14px;
   background: var(--schulte-board-bg, #f8fcfa);
   border: 1px solid #cfe4dc;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .grid-cell {
-  min-height: 0;
+  min-height: 48px;
   height: 100%;
   display: grid;
   place-items: center;
@@ -463,6 +483,9 @@ textarea:focus-visible {
   );
   cursor: pointer;
   transition: transform 0.12s ease, border-color 0.12s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 .grid-cell:hover:enabled {
@@ -488,6 +511,13 @@ textarea:focus-visible {
 .grid-cell:disabled {
   cursor: default;
   opacity: 0.72;
+}
+
+@media (hover: none) {
+  .grid-cell:hover:enabled {
+    transform: none;
+    border-color: #c8dfd6;
+  }
 }
 
 .schulte-grid[data-theme-id="kid_candy"],

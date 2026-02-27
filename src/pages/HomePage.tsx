@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { sessionRepository } from "../entities/session/sessionRepository";
@@ -93,7 +93,9 @@ export function HomePage() {
           <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
         </div>
         <p className="status-line">
-          {summaryLoading ? "Считаем статистику..." : `Сессии: ${progressValue} / ${dailyGoalSessions}`}
+          {summaryLoading
+            ? "Считаем статистику..."
+            : `Сессии: ${progressValue} / ${dailyGoalSessions}`}
         </p>
 
         <div className="stats-grid compact">
@@ -102,16 +104,24 @@ export function HomePage() {
             value={
               dailySummary?.bestClassicDurationMs != null
                 ? formatSecondsFromMs(dailySummary.bestClassicDurationMs)
-                : "—"
+                : "-"
             }
           />
           <StatCard
             title="Лучший Timed"
-            value={dailySummary?.bestTimedScore != null ? dailySummary.bestTimedScore.toFixed(1) : "—"}
+            value={
+              dailySummary?.bestTimedScore != null
+                ? dailySummary.bestTimedScore.toFixed(1)
+                : "-"
+            }
           />
           <StatCard
             title="Средняя точность"
-            value={dailySummary?.avgAccuracy != null ? `${(dailySummary.avgAccuracy * 100).toFixed(1)}%` : "—"}
+            value={
+              dailySummary?.avgAccuracy != null
+                ? `${(dailySummary.avgAccuracy * 100).toFixed(1)}%`
+                : "-"
+            }
           />
           <StatCard title="Сессий сегодня" value={String(dailySummary?.sessionsTotal ?? 0)} />
         </div>
@@ -130,7 +140,11 @@ export function HomePage() {
         </div>
         {nextBadge ? (
           <p className="status-line">
-            До бейджа «{nextBadge.title}» осталось {Math.max(0, nextBadge.minDays - streakDays)} дн.
+            До бейджа «{nextBadge.title}» осталось
+            {" "}
+            {Math.max(0, nextBadge.minDays - streakDays)}
+            {" "}
+            дн.
           </p>
         ) : (
           <p className="status-line">Вы уже на максимальном бейдже серии.</p>
@@ -151,16 +165,37 @@ export function HomePage() {
       </section>
 
       <div className="action-row">
-        <Link className="btn-primary" to="/training/pre-session?mode=classic_plus">
+        <Link
+          className="btn-primary"
+          to="/training/schulte?mode=classic_plus"
+          data-testid="home-start-classic"
+        >
           Начать Classic
         </Link>
-        <Link className="btn-secondary" to="/training/pre-session?mode=timed_plus">
+        <Link
+          className="btn-secondary"
+          to="/training/schulte?mode=timed_plus"
+          data-testid="home-start-timed"
+        >
           Начать Timed
         </Link>
-        <Link className="btn-ghost" to="/training/pre-session?mode=reverse">
+        <Link
+          className="btn-ghost"
+          to="/training/schulte?mode=reverse"
+          data-testid="home-start-reverse"
+        >
           Начать Reverse
         </Link>
       </div>
+
+      <p className="status-line">
+        Нужен детальный план дня?
+        {" "}
+        <Link to="/training/pre-session?mode=classic_plus">
+          Перейти в pre-session (опционально)
+        </Link>
+        .
+      </p>
     </section>
   );
 }

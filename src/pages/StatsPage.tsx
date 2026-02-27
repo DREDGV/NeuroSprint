@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Line,
@@ -9,9 +9,8 @@ import {
   YAxis
 } from "recharts";
 import { useActiveUser } from "../app/ActiveUserContext";
-import { useAppRole } from "../app/useAppRole";
+import { useRoleAccess } from "../app/useRoleAccess";
 import { sessionRepository } from "../entities/session/sessionRepository";
-import { canViewGroupStats } from "../shared/lib/auth/permissions";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   ClassicDailyPoint,
@@ -21,6 +20,7 @@ import type {
 
 type StatsMode = "classic" | "timed" | "sprint_math";
 type SprintModeFilter = "all" | "sprint_add_sub" | "sprint_mixed";
+type SprintSubmode = "sprint_add_sub" | "sprint_mixed";
 
 interface SprintSummary {
   sessions: number;
@@ -29,12 +29,55 @@ interface SprintSummary {
   avgScore: number | null;
 }
 
+interface SprintComparisonSummary {
+  addSub: SprintSummary;
+  mixed: SprintSummary;
+  bestMode: SprintSubmode | null;
+  throughputDelta: number | null;
+  accuracyDeltaPct: number | null;
+  scoreDelta: number | null;
+  ready: boolean;
+}
+
+interface ProgressSnapshot {
+  label: string;
+  value: number;
+  date: string;
+}
+
+interface ProgressInsight {
+  headline: string;
+  previousAvg: number | null;
+  currentAvg: number | null;
+  changePct: number | null;
+  snapshot: ProgressSnapshot | null;
+}
+
 function formatDateShort(dateKey: string): string {
   const [year, month, day] = dateKey.split("-");
   if (!year || !month || !day) {
     return dateKey;
   }
   return `${day}.${month}`;
+}
+
+function formatMetric(value: number | null, digits = 2, suffix = ""): string {
+  if (value == null) {
+    return "-";
+  }
+  return `${value.toFixed(digits)}${suffix}`;
+}
+
+function formatSignedMetric(value: number | null, digits = 2, suffix = ""): string {
+  if (value == null) {
+    return "-";
+  }
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(digits)}${suffix}`;
+}
+
+function sprintSubmodeLabel(mode: SprintSubmode): string {
+  return mode === "sprint_add_sub" ? "Add/Sub" : "Mixed";
 }
 
 function summarizeSprint(data: SprintMathDailyPoint[]): SprintSummary {
@@ -72,10 +115,100 @@ function sprintFilterLabel(filter: SprintModeFilter): string {
   return "Все";
 }
 
+function buildSprintComparisonSummary(
+  addSub: SprintSummary,
+  mixed: SprintSummary
+): SprintComparisonSummary {
+  const hasAddSub = addSub.sessions > 0;
+  const hasMixed = mixed.sessions > 0;
+  const ready = hasAddSub && hasMixed;
+
+  let bestMode: SprintSubmode | null = null;
+  if (hasAddSub && !hasMixed) {
+    bestMode = "sprint_add_sub";
+  } else if (hasMixed && !hasAddSub) {
+    bestMode = "sprint_mixed";
+  } else if (ready) {
+    const addScore = addSub.avgScore ?? 0;
+    const mixedScore = mixed.avgScore ?? 0;
+    bestMode = addScore >= mixedScore ? "sprint_add_sub" : "sprint_mixed";
+  }
+
+  const throughputDelta =
+    addSub.avgThroughput != null && mixed.avgThroughput != null
+      ? addSub.avgThroughput - mixed.avgThroughput
+      : null;
+  const accuracyDeltaPct =
+    addSub.avgAccuracyPct != null && mixed.avgAccuracyPct != null
+      ? addSub.avgAccuracyPct - mixed.avgAccuracyPct
+      : null;
+  const scoreDelta =
+    addSub.avgScore != null && mixed.avgScore != null
+      ? addSub.avgScore - mixed.avgScore
+      : null;
+
+  return {
+    addSub,
+    mixed,
+    bestMode,
+    throughputDelta,
+    accuracyDeltaPct,
+    scoreDelta,
+    ready
+  };
+}
+
+function average(numbers: number[]): number | null {
+  if (numbers.length === 0) {
+    return null;
+  }
+  return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+}
+
+function computeChangePercent(
+  previous: number | null,
+  current: number | null,
+  higherIsBetter: boolean
+): number | null {
+  if (previous == null || current == null || previous === 0) {
+    return null;
+  }
+  if (higherIsBetter) {
+    return ((current - previous) / Math.abs(previous)) * 100;
+  }
+  return ((previous - current) / Math.abs(previous)) * 100;
+}
+
+function buildProgressHeadline(
+  changePct: number | null,
+  metricName: string,
+  pointsCount: number
+): string {
+  if (changePct == null) {
+    return "Недостаточно данных для сравнения по периодам.";
+  }
+
+  if (changePct >= 0) {
+    return `Вы улучшили ${metricName} на +${changePct.toFixed(1)}% за ${pointsCount} дн.`;
+  }
+
+  return `Показатель ${metricName} снизился на ${Math.abs(changePct).toFixed(1)}% за ${pointsCount} дн.`;
+}
+
+function splitForTrend(values: number[]): { previous: number | null; current: number | null } {
+  if (values.length < 4) {
+    return { previous: null, current: null };
+  }
+  const middle = Math.floor(values.length / 2);
+  const previous = average(values.slice(0, middle));
+  const current = average(values.slice(middle));
+  return { previous, current };
+}
+
 export function StatsPage() {
   const { activeUserId } = useActiveUser();
-  const appRole = useAppRole();
-  const canViewGroupStatsAccess = canViewGroupStats(appRole);
+  const access = useRoleAccess();
+  const canViewGroupStatsAccess = access.stats.viewGroup;
   const [mode, setMode] = useState<StatsMode>("classic");
   const [sprintFilter, setSprintFilter] = useState<SprintModeFilter>("all");
   const [classicData, setClassicData] = useState<ClassicDailyPoint[]>([]);
@@ -178,6 +311,95 @@ export function StatsPage() {
   );
 
   const sprintSummary = useMemo(() => summarizeSprint(sprintActiveData), [sprintActiveData]);
+  const sprintModeSummary = useMemo(
+    () => ({
+      addSub: summarizeSprint(sprintAddSubData),
+      mixed: summarizeSprint(sprintMixedData)
+    }),
+    [sprintAddSubData, sprintMixedData]
+  );
+  const sprintComparison = useMemo(
+    () => buildSprintComparisonSummary(sprintModeSummary.addSub, sprintModeSummary.mixed),
+    [sprintModeSummary.addSub, sprintModeSummary.mixed]
+  );
+
+  const progressInsight = useMemo<ProgressInsight>(() => {
+    if (mode === "classic") {
+      const values = classicChartData.map((point) => point.bestSec);
+      const trend = splitForTrend(values);
+      const changePct = computeChangePercent(trend.previous, trend.current, false);
+      const bestPoint =
+        classicChartData.length > 0
+          ? classicChartData.reduce((best, point) =>
+              point.bestSec < best.bestSec ? point : best
+            )
+          : null;
+
+      return {
+        headline: buildProgressHeadline(changePct, "скорость прохождения", classicChartData.length),
+        previousAvg: trend.previous,
+        currentAvg: trend.current,
+        changePct,
+        snapshot: bestPoint
+          ? {
+              label: `Лучшее время: ${bestPoint.bestSec.toFixed(2)} сек`,
+              value: bestPoint.bestSec,
+              date: bestPoint.date
+            }
+          : null
+      };
+    }
+
+    if (mode === "timed") {
+      const values = timedChartData.map((point) => point.avgScore);
+      const trend = splitForTrend(values);
+      const changePct = computeChangePercent(trend.previous, trend.current, true);
+      const bestPoint =
+        timedChartData.length > 0
+          ? timedChartData.reduce((best, point) =>
+              point.avgScore > best.avgScore ? point : best
+            )
+          : null;
+
+      return {
+        headline: buildProgressHeadline(changePct, "score в Timed", timedChartData.length),
+        previousAvg: trend.previous,
+        currentAvg: trend.current,
+        changePct,
+        snapshot: bestPoint
+          ? {
+              label: `Лучший score: ${bestPoint.avgScore.toFixed(2)}`,
+              value: bestPoint.avgScore,
+              date: bestPoint.date
+            }
+          : null
+      };
+    }
+
+    const values = sprintMathChartData.map((point) => point.avgScore);
+    const trend = splitForTrend(values);
+    const changePct = computeChangePercent(trend.previous, trend.current, true);
+    const bestPoint =
+      sprintMathChartData.length > 0
+        ? sprintMathChartData.reduce((best, point) =>
+            point.avgScore > best.avgScore ? point : best
+          )
+        : null;
+
+    return {
+      headline: buildProgressHeadline(changePct, "score в Sprint Math", sprintMathChartData.length),
+      previousAvg: trend.previous,
+      currentAvg: trend.current,
+      changePct,
+      snapshot: bestPoint
+        ? {
+            label: `Лучший score: ${bestPoint.avgScore.toFixed(2)}`,
+            value: bestPoint.avgScore,
+            date: bestPoint.date
+          }
+        : null
+    };
+  }, [classicChartData, mode, sprintMathChartData, timedChartData]);
 
   const isEmpty = useMemo(() => {
     if (mode === "classic") {
@@ -193,8 +415,8 @@ export function StatsPage() {
     <section className="panel" data-testid="stats-page">
       <h2>Статистика по дням</h2>
       <p>
-        Базовый экран прогресса: понятные графики по режимам и быстрый переход к расширенной
-        аналитике.
+        Базовый экран прогресса: понятные графики по режимам и быстрый переход к
+        расширенной аналитике.
       </p>
 
       <div className="segmented-row">
@@ -267,26 +489,100 @@ export function StatsPage() {
         </div>
       ) : null}
 
+      <section className="setup-block" data-testid="stats-progress-headline">
+        <h3>Прогресс за период</h3>
+        <p className="status-line">{progressInsight.headline}</p>
+        <div className="stats-grid compact">
+          <StatCard
+            title="Прошлый период"
+            value={formatMetric(progressInsight.previousAvg)}
+          />
+          <StatCard
+            title="Текущий период"
+            value={formatMetric(progressInsight.currentAvg)}
+          />
+          <StatCard
+            title="Изменение"
+            value={formatSignedMetric(progressInsight.changePct, 1, "%")}
+          />
+          <StatCard
+            title="Личный рекорд"
+            value={progressInsight.snapshot?.label ?? "-"}
+          />
+        </div>
+        {progressInsight.snapshot ? (
+          <p className="status-line">Дата рекорда: {progressInsight.snapshot.date}</p>
+        ) : (
+          <p className="status-line">Личный рекорд появится после первых сессий.</p>
+        )}
+      </section>
+
       {mode === "sprint_math" ? (
         <section className="setup-block" data-testid="stats-sprint-summary">
           <h3>Sprint Math: {sprintFilterLabel(sprintFilter)}</h3>
           <div className="stats-grid compact">
             <StatCard title="Сессий" value={String(sprintSummary.sessions)} />
-            <StatCard
-              title="Задач/мин"
-              value={sprintSummary.avgThroughput != null ? sprintSummary.avgThroughput.toFixed(2) : "—"}
-            />
+            <StatCard title="Задач/мин" value={formatMetric(sprintSummary.avgThroughput)} />
             <StatCard
               title="Точность"
-              value={
-                sprintSummary.avgAccuracyPct != null
-                  ? `${sprintSummary.avgAccuracyPct.toFixed(1)}%`
-                  : "—"
-              }
+              value={formatMetric(sprintSummary.avgAccuracyPct, 1, "%")}
+            />
+            <StatCard title="Средний score" value={formatMetric(sprintSummary.avgScore)} />
+          </div>
+        </section>
+      ) : null}
+
+      {mode === "sprint_math" ? (
+        <section className="setup-block" data-testid="stats-sprint-comparison">
+          <h3>Сравнение подрежимов</h3>
+          <div className="comparison-grid sprint-compare-grid">
+            <article className="stat-card sprint-mode-card" data-testid="stats-sprint-card-add-sub">
+              <p className="stat-card-title">Add/Sub</p>
+              <p className="sprint-mode-line">Сессий: {sprintComparison.addSub.sessions}</p>
+              <p className="sprint-mode-line">
+                Задач/мин: {formatMetric(sprintComparison.addSub.avgThroughput)}
+              </p>
+              <p className="sprint-mode-line">
+                Точность: {formatMetric(sprintComparison.addSub.avgAccuracyPct, 1, "%")}
+              </p>
+              <p className="sprint-mode-line">Score: {formatMetric(sprintComparison.addSub.avgScore)}</p>
+            </article>
+
+            <article className="stat-card sprint-mode-card" data-testid="stats-sprint-card-mixed">
+              <p className="stat-card-title">Mixed</p>
+              <p className="sprint-mode-line">Сессий: {sprintComparison.mixed.sessions}</p>
+              <p className="sprint-mode-line">
+                Задач/мин: {formatMetric(sprintComparison.mixed.avgThroughput)}
+              </p>
+              <p className="sprint-mode-line">
+                Точность: {formatMetric(sprintComparison.mixed.avgAccuracyPct, 1, "%")}
+              </p>
+              <p className="sprint-mode-line">Score: {formatMetric(sprintComparison.mixed.avgScore)}</p>
+            </article>
+          </div>
+
+          <p className="comparison-note" data-testid="stats-sprint-best-mode">
+            {sprintComparison.bestMode
+              ? `Сильнее сейчас: ${sprintSubmodeLabel(sprintComparison.bestMode)}`
+              : "Недостаточно данных: выполните хотя бы одну сессию в Add/Sub или Mixed."}
+          </p>
+
+          <div className="stats-grid compact" data-testid="stats-sprint-delta-grid">
+            <StatCard
+              title="Delta темп (Add/Sub - Mixed)"
+              value={formatSignedMetric(sprintComparison.throughputDelta)}
             />
             <StatCard
-              title="Средний score"
-              value={sprintSummary.avgScore != null ? sprintSummary.avgScore.toFixed(2) : "—"}
+              title="Delta точность (Add/Sub - Mixed)"
+              value={formatSignedMetric(sprintComparison.accuracyDeltaPct, 1, "%")}
+            />
+            <StatCard
+              title="Delta score (Add/Sub - Mixed)"
+              value={formatSignedMetric(sprintComparison.scoreDelta)}
+            />
+            <StatCard
+              title="Готовность сравнения"
+              value={sprintComparison.ready ? "Да" : "Нужно больше данных"}
             />
           </div>
         </section>

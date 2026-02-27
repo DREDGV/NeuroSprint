@@ -1,4 +1,4 @@
-export type SprintMathModeId = "add_sub" | "mixed";
+﻿export type SprintMathModeId = "add_sub" | "mixed";
 export type SprintMathTierId = "kids" | "standard" | "pro";
 export type SprintMathSessionSec = 30 | 60 | 90;
 export type SprintMathOperator = "+" | "-" | "*" | "/";
@@ -200,7 +200,7 @@ function buildOperands(
 }
 
 function toExpression(left: number, right: number, operator: SprintMathOperator): string {
-  const op = operator === "/" ? "÷" : operator;
+  const op = operator === "/" ? "/" : operator;
   return `${left} ${op} ${right}`;
 }
 

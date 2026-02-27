@@ -1,64 +1,59 @@
-# NeuroSprint Changelog (RU)
+﻿# NeuroSprint Changelog (RU)
 
 Формат: фиксируем версии, даты и ключевые изменения для быстрого восстановления контекста.
 
-## [0.5.0-dev.1] - 2026-02-26
+## [0.5.0-dev.2] - 2026-02-27
 ### Добавлено
-- Зафиксирован dev-релиз `v0.5.0-dev.1` с актуальной версией в приложении.
-- Обновлена встроенная история релизов в `Справке` (`/help`) для быстрого восстановления контекста.
+- В `/stats` добавлен верхний блок «Прогресс за период»:
+  - сравнение прошлого и текущего периода,
+  - изменение в процентах,
+  - личный рекорд и дата.
+- Обновлена встроенная справка (`/help`) с отдельным блоком «Что нового в текущей версии».
 
 ### Изменено
-- Релизные заметки синхронизированы с фактически завершённым этапом `v0.5.J` (route-level role guard).
-- Закрыт `v0.5.K`: action-level role-checks унифицированы через `useRoleAccess` и `guardAccess` (страницы `Profiles/Settings/StatsIndividual`).
-- Следующий фокус итерации перенесён на `v0.5.L` (расширение Sprint Math аналитики на `/stats`).
+- Исправлена кодировка и русские тексты в ключевых экранах:
+  - `Home`, `TrainingHub`, `SprintMathSetup`, `SprintMathSession`, `Stats`, `Classes`, `AppShell`, `MainNav`.
+- Страницы `Stats`, `StatsGroup`, `Classes` переведены на единый role-access слой (`useRoleAccess`).
+- Исправлено отображение деления в Sprint Math (`/` вместо поврежденного символа).
+- Синхронизирована версия приложения: `package.json` + `package-lock.json` -> `0.5.0-dev.2`.
+
+### Проверки
+- `npm run check:encoding` — passed.
+- `npm run build` — passed.
+- `npm test -- tests/integration/stats-page-sprint.test.tsx tests/integration/pre-session-page.test.tsx tests/integration/schulte-grid.test.tsx` — passed.
+- `npm run test:e2e -- tests/e2e/classes.spec.ts tests/e2e/smoke.spec.ts tests/e2e/sprint-math.spec.ts` — passed.
+
+## [0.5.0-dev.1] - 2026-02-26
+### Добавлено
+- Подготовлен dev-релиз `v0.5.0-dev.1` с отображением версии в приложении.
+- Добавлены общие контракты прав `buildRoleAccess` и `guardAccess`, а также хук `useRoleAccess`.
+
+### Изменено
+- Страницы `Profiles`, `Settings`, `StatsIndividual` переведены на единый action-level слой прав.
+- Синхронизированы roadmap/status/help/changelog под завершенный этап `v0.5.K`.
 
 ## [0.5.0-dev.0] - 2026-02-25
 ### Добавлено
-- Sprint Math активирован в `TrainingHub` как полноценный модуль.
-- Расширенная индивидуальная аналитика Sprint Math на `/stats/individual`.
-- Встроенная страница `Справка` (`/help`) с историей версий.
-- Явный баннер активного пользователя в интерфейсе.
-- Роли интерфейса `Учитель / Ученик / Домашний` с ролевой навигацией.
-- Экран `Перед тренировкой` (`/training/pre-session`): цель дня, рекомендация и быстрый старт в setup.
-- Роли перенесены на уровень профиля пользователя (создание + редактирование в `Профили`).
-- Защита role-инвариантов: нельзя удалить/понизить последнего учителя.
-- Мягкая мотивация (`v0.5.G`): streak badges и мини-цели дня в `Home` и `Pre-session`.
-- Этап `v0.5.H`: mode-aware аналитика Sprint Math и единый recommendation engine.
-- Этап `v0.5.I`: детализированная role-policy по действиям (`profiles/settings/stats`) и e2e сценарий `role-policy`.
-- Этап `v0.5.J`: route-level guard прав доступа (`/classes*`, `/stats/group`) и role-aware панель ограничений.
-- Добавлен автоматический контроль кодировки `npm run check:encoding`.
-
-### Изменено
-- Поток запуска закреплён как `Home/TrainingHub -> Pre-session -> Setup -> Session`.
-- `Settings` управляет ролью активного профиля и синхронизирует интерфейсную роль.
-- В `Классах` для назначения отображаются только профили роли `student`.
-- `/stats` получил фильтр Sprint Math подрежимов `Все / Add-Sub / Mixed` и сводку по выбранному подрежиму.
-- `/stats/individual` получил блок `7 дней vs предыдущие 7 дней` для Sprint Math.
-- Рекомендации унифицированы: pre-session и individual insights используют один движок `shared/lib/training/recommendation.ts`.
-- `Settings` и `Profiles` переведены на action-level role guards (student/home/teacher с разным набором разрешений).
-- Demo fixture теперь создаёт и активирует профиль `[DEMO] Учитель`, чтобы не ломать teacher-flow в benchmark/comparison.
-- Доступ к teacher-only маршрутам теперь централизован в `RequirePermission` вместо разрозненных проверок в роутере.
-
-### Проверки
-- Зелёный регресс: `npm run check:encoding`, `npm test`, `npm run build`, `npm run test:e2e`.
+- Sprint Math активирован в `TrainingHub` и в аналитике `/stats` и `/stats/individual`.
+- Экран `pre-session` (цель дня, рекомендация, быстрый переход в setup).
+- Роли интерфейса `Учитель / Ученик / Домашний` и route-level guard для teacher-only разделов.
+- Мягкая мотивация: streak badges и мини-цели дня.
+- Автопроверка кодировки `npm run check:encoding`.
 
 ## [0.4.1] - 2026-02-24
 ### Добавлено
-- Цветовые темы и детские пресеты Шульте.
-- Классы и ручное управление составом.
-- Аудио-сигналы (start/end по умолчанию, расширенные toggles).
-
-### Исправлено
-- Усилены миграции Dexie и стабильность e2e-сценариев.
+- Цветовые темы Шульте и advanced-настройка цветов.
+- Ручное управление классами и составом учеников.
+- Аудио-сигналы start/end по умолчанию, расширенные audio toggles.
 
 ## [0.3.0] - 2026-02-24
 ### Добавлено
-- Групповая аналитика и сравнения (`user/group/global`).
-- Fixture-генератор класса и benchmark для агрегаций.
+- Групповая аналитика и сравнения user/group/global.
+- Перцентиль ученика, распределение уровней, динамика группы.
 
 ## [0.2.0] - 2026-02-24
 ### Добавлено
-- Новая IA/навигация с выделенным разделом `Тренировки`.
+- Новая IA с выделенным разделом «Тренировки».
 - Режимы Шульте: `Classic+`, `Timed+`, `Reverse`.
 - Адаптивная сложность и ручной override.
 

@@ -1,4 +1,4 @@
-import { useEffect, type PropsWithChildren } from "react";
+﻿import { useEffect, type PropsWithChildren } from "react";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { useAppRole } from "../app/useAppRole";
 import { APP_NAME, APP_VERSION } from "../shared/constants/appMeta";
@@ -32,6 +32,7 @@ export function AppShell({ children }: PropsWithChildren) {
           </div>
         </div>
       </header>
+
       <div className="active-user-banner" data-testid="active-user-banner">
         <span>
           Активный пользователь: <strong>{activeUserName}</strong>
@@ -40,6 +41,7 @@ export function AppShell({ children }: PropsWithChildren) {
           Роль: {appRoleLabel(appRole)}
         </span>
       </div>
+
       <PwaStatusBar />
       <MainNav role={appRole} />
       <main className="app-content">{children}</main>

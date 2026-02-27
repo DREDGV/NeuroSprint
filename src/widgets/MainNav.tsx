@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+﻿import { NavLink } from "react-router-dom";
 import type { AppRole } from "../shared/types/domain";
 import {
   canManageClasses,
@@ -14,27 +14,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: "home", to: "/", label: "Главная", visible: () => true },
-  {
-    id: "training",
-    to: "/training",
-    label: "Тренировки",
-    visible: () => true
-  },
-  {
-    id: "stats",
-    to: "/stats",
-    label: "Статистика",
-    visible: () => true
-  },
+  { id: "training", to: "/training", label: "Тренировки", visible: () => true },
+  { id: "stats", to: "/stats", label: "Статистика", visible: () => true },
   { id: "classes", to: "/classes", label: "Классы", visible: canManageClasses },
   { id: "help", to: "/help", label: "Справка", visible: () => true },
   { id: "profiles", to: "/profiles", label: "Профили", visible: canViewProfiles },
-  {
-    id: "settings",
-    to: "/settings",
-    label: "Настройки",
-    visible: () => true
-  }
+  { id: "settings", to: "/settings", label: "Настройки", visible: () => true }
 ];
 
 export function MainNav({ role = "teacher" }: { role?: AppRole }) {

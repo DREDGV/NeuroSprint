@@ -1,4 +1,4 @@
-﻿import { expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("NeuroSprint smoke", () => {
   test("first run: create profile -> classic -> stats", async ({ page }) => {
@@ -10,12 +10,9 @@ test.describe("NeuroSprint smoke", () => {
 
     await page.goto("/");
     await page.getByRole("link", { name: "Начать Classic" }).click();
-    await expect(page.getByTestId("pre-session-page")).toBeVisible();
-    await page.getByTestId("pre-session-start-btn").click();
     await expect(page.getByTestId("schulte-setup-page")).toBeVisible();
     await page.getByTestId("setup-start-btn").click();
 
-    await page.getByTestId("schulte-start").click();
     for (let i = 1; i <= 9; i += 1) {
       await page.getByRole("button", { name: String(i), exact: true }).click();
     }
@@ -38,7 +35,7 @@ test.describe("NeuroSprint smoke", () => {
     await page.selectOption("#time-limit", "30");
     await page.getByTestId("setup-start-btn").click();
 
-    await page.getByTestId("schulte-start").click();
+    await page.getByTestId("cell-0").click();
     await expect(page.getByTestId("schulte-result")).toBeVisible({ timeout: 45_000 });
   });
 });

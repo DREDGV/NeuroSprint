@@ -1,4 +1,4 @@
-﻿import { expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("NeuroSprint classes and themes", () => {
   test("teacher creates class and adds students", async ({ page }) => {
@@ -34,7 +34,6 @@ test.describe("NeuroSprint classes and themes", () => {
     const grid = page.getByTestId("schulte-grid");
     await expect(grid).toHaveAttribute("data-theme-id", "rainbow");
 
-    await page.getByTestId("schulte-start").click();
     for (let i = 1; i <= 9; i += 1) {
       await page.getByRole("button", { name: String(i), exact: true }).click();
     }

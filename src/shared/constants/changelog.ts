@@ -1,4 +1,4 @@
-export interface ReleaseEntry {
+﻿export interface ReleaseEntry {
   version: string;
   date: string;
   title: string;
@@ -8,50 +8,50 @@ export interface ReleaseEntry {
 
 export const RELEASE_HISTORY: ReleaseEntry[] = [
   {
+    version: "0.5.0-dev.2",
+    date: "2026-02-27",
+    title: "Технический срез v0.5.0-dev.2: кодировка, справка, прогресс-статистика",
+    status: "dev",
+    highlights: [
+      "Исправлена битая кодировка в ключевых экранах (Home, TrainingHub, Sprint Math, Stats, Classes, AppShell).",
+      "В /stats добавлен верхний блок «Прогресс за период» с личным рекордом и сравнением периодов.",
+      "Страницы Stats и Classes переведены на единый role-access слой (useRoleAccess).",
+      "Обновлена встроенная справка и история релизов в приложении.",
+      "Синхронизированы версии package.json и package-lock.json до v0.5.0-dev.2."
+    ]
+  },
+  {
     version: "0.5.0-dev.1",
     date: "2026-02-26",
     title: "Релиз v0.5.0-dev.1: унификация role-checks (v0.5.K)",
     status: "dev",
     highlights: [
-      "Подготовлен dev-релиз v0.5.0-dev.1 и обновлена версия приложения в шапке/справке.",
-      "Справка и changelog синхронизированы: зафиксирован завершённый этап v0.5.K.",
-      "Добавлены общие контракты прав `buildRoleAccess` и `guardAccess`, а также хук `useRoleAccess`.",
-      "Страницы `Profiles`, `Settings`, `StatsIndividual` переведены на единый action-level слой прав.",
-      "Следующий фокус итерации: v0.5.L (расширение Sprint Math аналитики на `/stats`)."
+      "Добавлены общие контракты прав buildRoleAccess/guardAccess и хук useRoleAccess.",
+      "Страницы Profiles, Settings, StatsIndividual переведены на единый action-level слой прав.",
+      "Синхронизированы roadmap/status/help/changelog под завершенный этап v0.5.K."
     ]
   },
   {
     version: "0.5.0-dev.0",
     date: "2026-02-25",
-    title: "Sprint Math, роли, pre-session, мотивация и role-policy v0.5.J",
+    title: "Sprint Math, роли, pre-session, мотивация и route-level guards",
     status: "dev",
     highlights: [
-      "Sprint Math активирован в TrainingHub и включён в расширенную статистику.",
-      "Добавлен встроенный раздел «Справка» с историей версий.",
-      "Усилена видимость активного пользователя в интерфейсе.",
-      "Внедрены роли интерфейса: Учитель, Ученик, Домашний.",
-      "Teacher-only разделы ограничены по роли: Классы и Групповая статистика.",
-      "Добавлен экран «Перед тренировкой» (цель дня, рекомендация, быстрый старт в setup).",
-      "Роль привязана к профилю пользователя: выбор при создании и редактирование в разделе «Профили».",
-      "Добавлена мягкая мотивация: streak badges и мини-цели дня на Home и Pre-session.",
-      "Этап v0.5.H: /stats получил фильтр Sprint Math подрежимов (Все/Add-Sub/Mixed) и mode-aware сводку.",
-      "Этап v0.5.H: /stats/individual получил блок 7 дней vs предыдущие 7 дней для Sprint Math.",
-      "Рекомендации унифицированы: pre-session и individual insights используют общий движок recommendation.ts.",
-      "Этап v0.5.I: внедрена тонкая role-policy по действиям (profiles/settings/stats) для teacher/student/home.",
-      "Добавлен контроль кодировки: npm run check:encoding и CI-проверка перед тестами.",
-      "Demo fixture теперь создаёт активного профиля [DEMO] Учитель для стабильного admin-потока.",
-      "Этап v0.5.J: teacher-only маршруты защищены единым RequirePermission guard с role-aware подсказками."
+      "Активирован Sprint Math в TrainingHub и в аналитике /stats и /stats/individual.",
+      "Добавлен экран pre-session: цель дня, рекомендация и быстрый переход в setup.",
+      "Внедрены роли интерфейса (Учитель/Ученик/Домашний) и role-policy по действиям.",
+      "Добавлен route-level guard для teacher-only разделов (/classes*, /stats/group)."
     ]
   },
   {
     version: "0.4.1",
     date: "2026-02-24",
-    title: "Visual+ / Classes / Audio hardening",
+    title: "Visual+, классы, звук и hardening",
     status: "alpha",
     highlights: [
-      "Цветовые темы Шульте, advanced-настройка и детские визуальные пресеты.",
-      "Ручное управление классами и учениками, массовое добавление.",
-      "Аудио-сигналы (start/end default), mute/volume, стабильный e2e контур."
+      "Цветовые темы Шульте, advanced-настройка цветов и детские визуальные пресеты.",
+      "Ручное управление классами и составом учеников, включая bulk-add.",
+      "Аудио-сигналы start/end по умолчанию и дополнительные toggles."
     ]
   },
   {
@@ -60,9 +60,9 @@ export const RELEASE_HISTORY: ReleaseEntry[] = [
     title: "Групповая аналитика и сравнения",
     status: "alpha",
     highlights: [
-      "Сравнения user/group/global для индивидуальной и групповой статистики.",
-      "Перцентиль ученика, распределение уровней, динамика групп.",
-      "Fixture-генератор для классов и benchmark агрегаций."
+      "Сравнения user/group/global и перцентиль ученика.",
+      "Распределение уровней и динамика группы.",
+      "Fixture-генератор класса и benchmark агрегаций."
     ]
   },
   {
@@ -71,8 +71,8 @@ export const RELEASE_HISTORY: ReleaseEntry[] = [
     title: "Новая IA и расширение Шульте",
     status: "alpha",
     highlights: [
-      "Выделенный раздел Тренировки и setup-поток перед запуском.",
-      "Режимы Schulte: Classic+, Timed+, Reverse.",
+      "Выделен раздел «Тренировки» и setup-поток перед запуском.",
+      "Режимы Шульте: Classic+, Timed+, Reverse.",
       "Адаптивная сложность и ручной override уровня."
     ]
   },
@@ -83,7 +83,7 @@ export const RELEASE_HISTORY: ReleaseEntry[] = [
     status: "alpha",
     highlights: [
       "Профили пользователей и активный пользователь.",
-      "Classic/Timed Шульте, сохранение сессий в IndexedDB.",
+      "Classic/Timed Шульте и сохранение сессий в IndexedDB.",
       "Базовая статистика по дням и PWA offline-first."
     ]
   }

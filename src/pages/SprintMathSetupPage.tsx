@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   buildSprintMathTask,
@@ -20,8 +20,15 @@ interface SessionNavState {
   setup: SprintMathSetup;
 }
 
-function isSprintMathModeId(value: string | null): value is SprintMathModeId {
+function isSprintMathModeId(value: string | null): value is "sprint_add_sub" | "sprint_mixed" {
   return value === "sprint_add_sub" || value === "sprint_mixed";
+}
+
+function mapRouteModeToSetupMode(mode: "sprint_add_sub" | "sprint_mixed"): SprintMathModeId {
+  if (mode === "sprint_mixed") {
+    return "mixed";
+  }
+  return "add_sub";
 }
 
 export function SprintMathSetupPage() {
@@ -37,7 +44,12 @@ export function SprintMathSetupPage() {
       return;
     }
 
-    setSetup((current) => normalizeSprintMathSetup({ ...current, modeId: requestedMode }));
+    setSetup((current) =>
+      normalizeSprintMathSetup({
+        ...current,
+        modeId: mapRouteModeToSetupMode(requestedMode)
+      })
+    );
   }, [searchParams]);
 
   function update(next: Partial<SprintMathSetup>) {
@@ -60,7 +72,7 @@ export function SprintMathSetupPage() {
     <section className="panel" data-testid="sprint-math-setup-page">
       <h2>Sprint Math</h2>
       <p>
-        Тренировка устного счета на скорость. Выберите параметры, проверьте пример и
+        Тренировка устного счёта на скорость. Выберите параметры, проверьте пример и
         нажмите «Начать».
       </p>
 
@@ -144,6 +156,18 @@ export function SprintMathSetupPage() {
           </label>
         </div>
       </section>
+
+      <details className="setup-block">
+        <summary>
+          <strong>Как играть</strong>
+        </summary>
+        <p>1. Нажмите «Начать Sprint Math».</p>
+        <p>
+          2. Введите ответ и подтвердите кнопкой «Проверить» (или авто-проверкой,
+          если она включена).
+        </p>
+        <p>3. Держите точность выше 85%: это заметно влияет на score.</p>
+      </details>
 
       <section className="session-brief">
         <h3>Пример задания</h3>

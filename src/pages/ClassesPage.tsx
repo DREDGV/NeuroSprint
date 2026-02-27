@@ -1,16 +1,15 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useAppRole } from "../app/useAppRole";
+import { useRoleAccess } from "../app/useRoleAccess";
 import { groupRepository } from "../entities/group/groupRepository";
 import { normalizeUserRole } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
-import { canManageClasses } from "../shared/lib/auth/permissions";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import type { ClassGroup, User } from "../shared/types/domain";
 
 export function ClassesPage() {
-  const appRole = useAppRole();
-  const canManageClassesAccess = canManageClasses(appRole);
+  const access = useRoleAccess();
+  const canManageClassesAccess = access.classes.manage;
   const navigate = useNavigate();
   const { classId } = useParams<{ classId?: string }>();
 
@@ -325,9 +324,7 @@ export function ClassesPage() {
               <li key={student.id} className="profile-item">
                 <div>
                   <p className="profile-name">{student.name}</p>
-                  <span className="role-pill">
-                    {appRoleLabel(normalizeUserRole(student.role))}
-                  </span>
+                  <span className="role-pill">{appRoleLabel(normalizeUserRole(student.role))}</span>
                 </div>
                 <button
                   type="button"

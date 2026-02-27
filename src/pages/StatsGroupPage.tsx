@@ -1,6 +1,6 @@
 ﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAppRole } from "../app/useAppRole";
+import { useRoleAccess } from "../app/useRoleAccess";
 import {
   Bar,
   BarChart,
@@ -19,7 +19,6 @@ import {
   normalizeUserRole
 } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
-import { canViewGroupStats } from "../shared/lib/auth/permissions";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import {
   SCHULTE_MODES,
@@ -63,8 +62,8 @@ function formatMetric(value: number | null | undefined, metric: GroupMetric): st
 }
 
 export function StatsGroupPage() {
-  const appRole = useAppRole();
-  const canViewGroupStatsAccess = canViewGroupStats(appRole);
+  const access = useRoleAccess();
+  const canViewGroupStatsAccess = access.stats.viewGroup;
   const [groups, setGroups] = useState<ClassGroup[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [groupId, setGroupId] = useState<string>("");
@@ -573,5 +572,7 @@ export function StatsGroupPage() {
     </section>
   );
 }
+
+
 
 

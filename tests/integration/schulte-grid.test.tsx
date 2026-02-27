@@ -15,5 +15,12 @@ describe("SchulteGrid", () => {
     await user.click(screen.getByText("7"));
     expect(handleClick).toHaveBeenCalledWith(7, expect.any(Number));
   });
-});
 
+  it("keeps grid semantics and applies explicit grid size", () => {
+    const values = Array.from({ length: 9 }, (_, index) => index + 1);
+    render(<SchulteGrid values={values} onCellClick={() => undefined} gridSize={6} />);
+
+    const grid = screen.getByRole("grid", { name: "Таблица Шульте" });
+    expect(grid).toHaveStyle({ "--grid-size": "6" });
+  });
+});

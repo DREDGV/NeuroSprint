@@ -68,6 +68,48 @@ function initialExpected(modeId: TrainingModeId, numbersCount: number): number {
   return modeId === "reverse" ? numbersCount : 1;
 }
 
+function formatDurationMs(durationMs: number): string {
+  return `${(durationMs / 1000).toFixed(1)} с`;
+}
+
+function formatSigned(value: number): string {
+  return value >= 0 ? `+${value.toFixed(2)}` : value.toFixed(2);
+}
+
+function pickBestHistoricalSession(
+  modeId: TrainingModeId,
+  sessions: Session[]
+): Session | null {
+  if (sessions.length === 0) {
+    return null;
+  }
+  if (modeId === "timed_plus") {
+    return sessions.reduce((best, current) =>
+      current.score > best.score ? current : best
+    );
+  }
+  return sessions.reduce((best, current) =>
+    current.durationMs < best.durationMs ? current : best
+  );
+}
+
+function buildSchulteTip(
+  modeId: TrainingModeId,
+  accuracy: number,
+  errors: number
+): string {
+  if (accuracy < 0.85) {
+    return "Старайтесь держать точность выше 85%: сначала аккуратность, потом темп.";
+  }
+  if (errors > 0) {
+    return "Ошибки снижают итог. Попробуйте снизить количество промахов в следующей попытке.";
+  }
+  if (modeId === "timed_plus") {
+    return "Отлично! Попробуйте удержать точность и увеличить темп.";
+  }
+  return "Отличный результат. Попробуйте пройти сетку быстрее без потери точности.";
+}
+
 export function SchulteSessionPage() {
   const { activeUserId, activeUserName } = useActiveUserDisplayName();
   const { mode } = useParams<{ mode: string }>();
@@ -112,6 +154,8 @@ export function SchulteSessionPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [adaptiveDecision, setAdaptiveDecision] = useState<AdaptiveDecision | null>(null);
+  const [previousSession, setPreviousSession] = useState<Session | null>(null);
+  const [bestSession, setBestSession] = useState<Session | null>(null);
   const [flash, setFlash] = useState<{ index: number; type: "correct" | "error" } | null>(null);
 
   const flashTimerRef = useRef<number | null>(null);
@@ -287,12 +331,14 @@ export function SchulteSessionPage() {
         setSaved(true);
         setSaveError(null);
 
-        const decision = await trainingRepository.evaluateAdaptiveLevel(
-          activeUserId,
-          "schulte",
-          modeId
-        );
+        const [decision, history] = await Promise.all([
+          trainingRepository.evaluateAdaptiveLevel(activeUserId, "schulte", modeId),
+          trainingRepository.listRecentSessionsByMode(activeUserId, "schulte", modeId, 50)
+        ]);
         if (!cancelled) {
+          const historicalSessions = history.filter((entry) => entry.id !== session.id);
+          setPreviousSession(historicalSessions[0] ?? null);
+          setBestSession(pickBestHistoricalSession(modeId, historicalSessions));
           setAdaptiveDecision(decision);
           setLevel(decision.nextLevel);
           if (decision.source === "auto") {
@@ -369,16 +415,9 @@ export function SchulteSessionPage() {
     setSaved(false);
     setSaveError(null);
     setAdaptiveDecision(null);
+    setPreviousSession(null);
+    setBestSession(null);
     setFlash(null);
-  }
-
-  function startGame() {
-    if (isRunning || finished) {
-      return;
-    }
-    playAudioCue("start", audioSettings);
-    setStartedAtMs(Date.now());
-    setIsRunning(true);
   }
 
   function finishClassic(now: number, startedAtValue: number | null = startedAtMs) {
@@ -522,15 +561,6 @@ export function SchulteSessionPage() {
       />
 
       <div className="action-row">
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={startGame}
-          disabled={isRunning || finished}
-          data-testid="schulte-start"
-        >
-          Старт сейчас (опционально)
-        </button>
         <button type="button" className="btn-secondary" onClick={resetGame}>
           Новая попытка
         </button>
@@ -545,6 +575,32 @@ export function SchulteSessionPage() {
           {modeId === "timed_plus" ? (
             <p>effectiveCorrect: {(result.effectiveCorrect ?? 0).toFixed(2)}</p>
           ) : null}
+          {previousSession ? (
+            modeId === "timed_plus" ? (
+              <p>
+                С прошлой попыткой: {formatSigned(result.score - previousSession.score)} по score
+                {" "} (было {previousSession.score.toFixed(2)}).
+              </p>
+            ) : (
+              <p>
+                С прошлой попыткой:{" "}
+                {result.durationMs <= previousSession.durationMs
+                  ? `быстрее на ${((previousSession.durationMs - result.durationMs) / 1000).toFixed(1)} с`
+                  : `медленнее на ${((result.durationMs - previousSession.durationMs) / 1000).toFixed(1)} с`}
+                {" "} (было {formatDurationMs(previousSession.durationMs)}).
+              </p>
+            )
+          ) : (
+            <p>Это первая сохраненная попытка в этом режиме.</p>
+          )}
+          {bestSession ? (
+            modeId === "timed_plus" ? (
+              <p>Лучший результат в режиме: score {bestSession.score.toFixed(2)}.</p>
+            ) : (
+              <p>Лучший результат в режиме: {formatDurationMs(bestSession.durationMs)}.</p>
+            )
+          ) : null}
+          <p className="status-line">{buildSchulteTip(modeId, result.accuracy, errors)}</p>
           <p>{saved ? "Сессия сохранена." : "Сохраняем сессию..."}</p>
           {adaptiveDecision ? (
             <p className="status-line">

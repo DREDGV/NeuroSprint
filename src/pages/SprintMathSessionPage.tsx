@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { sessionRepository } from "../entities/session/sessionRepository";
+import { trainingRepository } from "../entities/training/trainingRepository";
 import {
   buildSprintMathTask,
   calcSprintMathMetrics,
@@ -37,6 +38,11 @@ function parseAnswer(value: string): number | null {
 
 function formatSeconds(ms: number): string {
   return `${(ms / 1000).toFixed(1)} сек`;
+}
+
+function formatSigned(value: number, digits = 2, suffix = ""): string {
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(digits)}${suffix}`;
 }
 
 function mapTierToLevel(tierId: SprintMathSetup["tierId"]): number {
@@ -104,7 +110,7 @@ function createSprintMathSession(
 
 function getModeLabel(modeId: SprintMathSetup["modeId"]): string {
   if (modeId === "mixed") {
-    return "Смешанный (+, -, ×, ÷)";
+    return "Смешанный (+, -, *, /)";
   }
   return "Сложение и вычитание";
 }
@@ -117,6 +123,28 @@ function getTierLabel(tierId: SprintMathSetup["tierId"]): string {
     return "Стандарт";
   }
   return "Продвинутый";
+}
+
+function pickBestSession(sessions: Session[]): Session | null {
+  if (sessions.length === 0) {
+    return null;
+  }
+  return sessions.reduce((best, current) =>
+    current.score > best.score ? current : best
+  );
+}
+
+function buildSprintMathTip(metrics: SprintMathMetrics, errors: number): string {
+  if (metrics.accuracy < 0.85) {
+    return "Старайтесь держать точность выше 85%: сначала аккуратные ответы, потом ускорение.";
+  }
+  if (errors > 0) {
+    return "Ошибки заметно снижают score. Полезно немного снизить темп и убрать промахи.";
+  }
+  if (metrics.avgSolveMs > 1800) {
+    return "Точность хорошая. Следующий шаг - чуть повысить темп решения.";
+  }
+  return "Отлично! Удерживайте этот темп и точность в серии сессий.";
 }
 
 export function SprintMathSessionPage() {
@@ -147,6 +175,9 @@ export function SprintMathSessionPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<"correct" | "error" | null>(null);
+  const [lastExpectedAnswer, setLastExpectedAnswer] = useState<number | null>(null);
+  const [previousSession, setPreviousSession] = useState<Session | null>(null);
+  const [bestSession, setBestSession] = useState<Session | null>(null);
 
   useEffect(() => {
     if (!isRunning || finished || startedAtMs == null) {
@@ -195,10 +226,25 @@ export function SprintMathSessionPage() {
 
     void sessionRepository
       .save(session)
-      .then(() => {
+      .then(async () => {
+        if (cancelled) {
+          return;
+        }
+
+        setSaved(true);
+        setSaveError(null);
+
+        const history = await trainingRepository.listRecentSessionsByMode(
+          activeUserId,
+          "sprint_math",
+          mapSprintModeToSessionModeId(setup.modeId),
+          50
+        );
+
         if (!cancelled) {
-          setSaved(true);
-          setSaveError(null);
+          const historical = history.filter((entry) => entry.id !== session.id);
+          setPreviousSession(historical[0] ?? null);
+          setBestSession(pickBestSession(historical));
         }
       })
       .catch(() => {
@@ -240,6 +286,9 @@ export function SprintMathSessionPage() {
     setSaved(false);
     setSaveError(null);
     setFeedback(null);
+    setLastExpectedAnswer(null);
+    setPreviousSession(null);
+    setBestSession(null);
   }
 
   function finishSessionEarly() {
@@ -264,10 +313,13 @@ export function SprintMathSessionPage() {
       return;
     }
 
+    const expectedAnswer = task.answer;
     const parsed = parseAnswer(answerOverride ?? answerInput);
-    const isCorrect = parsed != null && parsed === task.answer;
+    const isCorrect = parsed != null && parsed === expectedAnswer;
     const currentTaskStart = taskStartedAtMs ?? now;
     const taskDuration = Math.max(1, now - currentTaskStart);
+
+    setLastExpectedAnswer(expectedAnswer);
 
     if (isCorrect) {
       setCorrectCount((current) => current + 1);
@@ -305,7 +357,10 @@ export function SprintMathSessionPage() {
         <StatCard title="Прошло времени" value={formatSeconds(elapsedMs)} />
         <StatCard title="Верных ответов" value={String(correctCount)} />
         <StatCard title="Ошибок" value={String(errors)} />
-        <StatCard title="Серия (текущая / лучшая)" value={`${currentStreak} / ${bestStreak}`} />
+        <StatCard
+          title="Серия (текущая / лучшая)"
+          value={`${currentStreak} / ${bestStreak}`}
+        />
       </div>
 
       {!isRunning && !finished ? (
@@ -315,8 +370,7 @@ export function SprintMathSessionPage() {
           <p>Уровень: {getTierLabel(setup.tierId)}</p>
           <p>Длительность: {setup.sessionSec} сек</p>
           <p>
-            Если включена авто-проверка, правильный ответ засчитывается сразу после
-            ввода.
+            Если включена авто-проверка, правильный ответ засчитывается сразу после ввода.
           </p>
         </section>
       ) : null}
@@ -368,7 +422,7 @@ export function SprintMathSessionPage() {
 
         {feedback === "correct" ? <p className="status-line">Верно</p> : null}
         {feedback === "error" ? (
-          <p className="error-text">Ошибка. Правильный ответ: {task.answer}</p>
+          <p className="error-text">Ошибка. Правильный ответ: {lastExpectedAnswer ?? "-"}</p>
         ) : null}
       </section>
 
@@ -395,17 +449,37 @@ export function SprintMathSessionPage() {
       {result ? (
         <section className="result-box" data-testid="sprint-math-result">
           <h3>Результаты сессии</h3>
-          <p>Throughput: {result.throughput.toFixed(2)} задач/мин</p>
-          <p>Accuracy: {(result.accuracy * 100).toFixed(1)}%</p>
-          <p>Avg solve: {result.avgSolveMs.toFixed(0)} мс</p>
-          <p>Best streak: {result.streakBest}</p>
+          <p>Темп: {result.throughput.toFixed(2)} задач/мин</p>
+          <p>Точность: {(result.accuracy * 100).toFixed(1)}%</p>
+          <p>Среднее время решения: {result.avgSolveMs.toFixed(0)} мс</p>
+          <p>Лучшая серия: {result.streakBest}</p>
           <p>Score: {result.score.toFixed(2)}</p>
+
+          {previousSession ? (
+            <>
+              <p>
+                С прошлой попыткой: {formatSigned(result.score - previousSession.score)} по score
+                {" "}(было {previousSession.score.toFixed(2)}).
+              </p>
+              <p>
+                Изменение темпа: {formatSigned(result.throughput - previousSession.speed)} задач/мин,
+                точности:{" "}
+                {formatSigned((result.accuracy - previousSession.accuracy) * 100, 1, "%")}.
+              </p>
+            </>
+          ) : (
+            <p>Это первая сохраненная попытка в выбранном режиме.</p>
+          )}
+
+          {bestSession ? (
+            <p>
+              Лучший результат в режиме: score {bestSession.score.toFixed(2)} ({bestSession.localDate}).
+            </p>
+          ) : null}
+
+          <p className="status-line">{buildSprintMathTip(result, errors)}</p>
           <p data-testid="sprint-math-save-status">{saved ? "saved" : "saving"}</p>
-          <p>
-            {saved
-              ? "Результаты сохранены в статистику."
-              : "Сохраняем результаты..."}
-          </p>
+          <p>{saved ? "Результаты сохранены в статистику." : "Сохраняем результаты..."}</p>
         </section>
       ) : null}
 

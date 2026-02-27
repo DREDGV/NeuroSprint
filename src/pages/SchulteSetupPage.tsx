@@ -475,6 +475,13 @@ export function SchulteSetupPage() {
         <p>Источник сложности: {profile?.autoAdjust ? "Авто" : "Ручной"}</p>
       </section>
 
+      <details className="setup-block">
+        <summary><strong>Как играть</strong></summary>
+        <p>1. Нажмите «Начать тренировку».</p>
+        <p>2. Ищите числа по порядку (или в обратном порядке для Reverse).</p>
+        <p>3. Ошибки не блокируют игру, но снижают итоговый результат.</p>
+      </details>
+
       <div className="action-row">
         <button
           type="button"

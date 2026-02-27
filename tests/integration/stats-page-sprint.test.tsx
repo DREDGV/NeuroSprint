@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+﻿import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -86,6 +86,12 @@ describe("StatsPage sprint filters", () => {
 
     await user.click(await screen.findByTestId("stats-mode-sprint"));
     expect(screen.getByTestId("stats-sprint-filter-row")).toBeInTheDocument();
+    expect(screen.getByTestId("stats-progress-headline")).toHaveTextContent(
+      "Прогресс за период"
+    );
+    expect(screen.getByTestId("stats-progress-headline")).toHaveTextContent(
+      "Лучший score: 22.00"
+    );
 
     const summary = screen.getByTestId("stats-sprint-summary");
     expect(within(summary).getByText("Sprint Math: Все")).toBeInTheDocument();
@@ -94,5 +100,33 @@ describe("StatsPage sprint filters", () => {
     await user.click(screen.getByTestId("stats-sprint-filter-mixed"));
     expect(within(summary).getByText("Sprint Math: Mixed")).toBeInTheDocument();
     expect(within(summary).getByText("10.00")).toBeInTheDocument();
+  });
+
+  it("renders sprint submode comparison with best mode and deltas", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    await user.click(await screen.findByTestId("stats-mode-sprint"));
+
+    const compare = screen.getByTestId("stats-sprint-comparison");
+    expect(within(compare).getByTestId("stats-sprint-card-add-sub")).toHaveTextContent("Сессий: 2");
+    expect(within(compare).getByTestId("stats-sprint-card-mixed")).toHaveTextContent("Сессий: 1");
+
+    expect(screen.getByTestId("stats-sprint-best-mode")).toHaveTextContent(
+      "Сильнее сейчас: Add/Sub"
+    );
+
+    const deltaGrid = screen.getByTestId("stats-sprint-delta-grid");
+    expect(within(deltaGrid).getByText("+10.00")).toBeInTheDocument();
+    expect(within(deltaGrid).getByText("+18.0%")).toBeInTheDocument();
+    expect(within(deltaGrid).getByText("+14.00")).toBeInTheDocument();
+    expect(within(deltaGrid).getByText("Да")).toBeInTheDocument();
   });
 });
