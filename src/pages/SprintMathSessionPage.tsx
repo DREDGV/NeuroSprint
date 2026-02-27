@@ -12,6 +12,7 @@ import { getSprintMathSetup } from "../features/sprint-math/setupStorage";
 import { DEFAULT_AUDIO_SETTINGS } from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
+import { SessionResultSummary } from "../shared/ui/SessionResultSummary";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   SprintMathMetrics,
@@ -426,61 +427,80 @@ export function SprintMathSessionPage() {
         ) : null}
       </section>
 
-      <div className="action-row">
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={finishSessionEarly}
-          disabled={!isRunning || finished}
-          data-testid="sprint-math-finish-btn"
-        >
-          Завершить досрочно
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={resetSession}
-          data-testid="sprint-math-reset-btn"
-        >
-          Начать заново
-        </button>
-      </div>
+      {!result ? (
+        <div className="action-row">
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={finishSessionEarly}
+            disabled={!isRunning || finished}
+            data-testid="sprint-math-finish-btn"
+          >
+            Завершить досрочно
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={resetSession}
+            data-testid="sprint-math-reset-btn"
+          >
+            Начать заново
+          </button>
+        </div>
+      ) : null}
 
       {result ? (
-        <section className="result-box" data-testid="sprint-math-result">
-          <h3>Результаты сессии</h3>
-          <p>Темп: {result.throughput.toFixed(2)} задач/мин</p>
-          <p>Точность: {(result.accuracy * 100).toFixed(1)}%</p>
-          <p>Среднее время решения: {result.avgSolveMs.toFixed(0)} мс</p>
-          <p>Лучшая серия: {result.streakBest}</p>
-          <p>Score: {result.score.toFixed(2)}</p>
-
-          {previousSession ? (
-            <>
-              <p>
-                С прошлой попыткой: {formatSigned(result.score - previousSession.score)} по score
-                {" "}(было {previousSession.score.toFixed(2)}).
-              </p>
-              <p>
-                Изменение темпа: {formatSigned(result.throughput - previousSession.speed)} задач/мин,
-                точности:{" "}
-                {formatSigned((result.accuracy - previousSession.accuracy) * 100, 1, "%")}.
-              </p>
-            </>
-          ) : (
-            <p>Это первая сохраненная попытка в выбранном режиме.</p>
-          )}
-
-          {bestSession ? (
-            <p>
-              Лучший результат в режиме: score {bestSession.score.toFixed(2)} ({bestSession.localDate}).
-            </p>
-          ) : null}
-
-          <p className="status-line">{buildSprintMathTip(result, errors)}</p>
-          <p data-testid="sprint-math-save-status">{saved ? "saved" : "saving"}</p>
-          <p>{saved ? "Результаты сохранены в статистику." : "Сохраняем результаты..."}</p>
-        </section>
+        <SessionResultSummary
+          testId="sprint-math-result"
+          title="Результаты сессии"
+          metrics={[
+            {
+              label: "Темп",
+              value: `${result.throughput.toFixed(2)} задач/мин`
+            },
+            {
+              label: "Точность",
+              value: `${(result.accuracy * 100).toFixed(1)}%`
+            },
+            {
+              label: "Среднее время решения",
+              value: `${result.avgSolveMs.toFixed(0)} мс`
+            },
+            {
+              label: "Лучшая серия",
+              value: String(result.streakBest)
+            },
+            {
+              label: "Score",
+              value: result.score.toFixed(2)
+            }
+          ]}
+          previousSummary={
+            previousSession
+              ? `С прошлой попыткой: ${formatSigned(result.score - previousSession.score)} по score (было ${previousSession.score.toFixed(2)}).`
+              : "Это первая сохраненная попытка в выбранном режиме."
+          }
+          bestSummary={
+            bestSession
+              ? `Лучший результат в режиме: score ${bestSession.score.toFixed(2)} (${bestSession.localDate}).`
+              : null
+          }
+          tip={buildSprintMathTip(result, errors)}
+          saveState={{
+            testId: "sprint-math-save-status",
+            text: saved ? "saved" : "saving"
+          }}
+          saveSummary={saved ? "Результаты сохранены в статистику." : "Сохраняем результаты..."}
+          extraNotes={
+            previousSession
+              ? [
+                  `Изменение темпа: ${formatSigned(result.throughput - previousSession.speed)} задач/мин, точности: ${formatSigned((result.accuracy - previousSession.accuracy) * 100, 1, "%")}.`
+                ]
+              : undefined
+          }
+          retryLabel="Начать заново"
+          onRetry={resetSession}
+        />
       ) : null}
 
       {saveError ? <p className="error-text">{saveError}</p> : null}

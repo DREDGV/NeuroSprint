@@ -1,7 +1,7 @@
 ﻿# NeuroSprint Execution Status (RU)
 
 ## Дата/время
-- 2026-02-27 13:17
+- 2026-02-27 15:22
 
 ## Что завершено
 - Версия приложения обновлена до `v0.5.0-dev.2` (`package.json` + `package-lock.json`).
@@ -38,17 +38,30 @@
   - `npm test`
   - `npm run build`
   - `npm run test:e2e`
+- Внедрен единый пост-сессионный экран результата:
+  - `src/shared/ui/SessionResultSummary.tsx`
+  - `src/pages/SchulteSessionPage.tsx`
+  - `src/pages/SprintMathSessionPage.tsx`
+- Добавлен integration-тест unified result-flow:
+  - `tests/integration/session-result-summary.test.tsx`
+- Подтвержден регресс ключевых игровых потоков после унификации result-flow:
+  - `npm run test:e2e -- tests/e2e/smoke.spec.ts tests/e2e/sprint-math.spec.ts tests/e2e/classes.spec.ts`
+- Подтвержден полный регрессионный цикл:
+  - `npm run check:encoding`
+  - `npm test`
+  - `npm run build`
+  - `npm run test:e2e`
 
 ## Что в работе
-- `v0.5.N`: подготовка и реализация единого пост-сессионного экрана результата с подсказками (по `NeuroSprint_AGENT_PLAN_RU.md`, этап 4).
+- `v0.5.O`: проектирование и внедрение единого блока «Как играть» в setup-потоках Schulte/Sprint Math.
 
 ## Блокеры
 - Нет.
 
 ## Следующие 3 шага
-1. Согласовать минимальный контракт `ResultScreen` (общие метрики + рекомендация + CTA «повторить/в stats»).
-2. Реализовать общий компонент и подключить его в `SchulteSessionPage` и `SprintMathSessionPage`.
-3. Покрыть unit/integration smoke и обновить e2e-сценарии пост-сессионного потока.
+1. Добавить в setup-экраны единый блок «Как играть» с короткими правилами и влиянием точности на score.
+2. Выровнять тексты подсказок между Schulte и Sprint Math (единый тон и структура).
+3. Прогнать `check:encoding`, `npm test`, `npm run build`, targeted `npm run test:e2e` и зафиксировать срез.
 
 ## Команды для быстрого старта
 ```powershell

@@ -26,6 +26,7 @@ import {
 import { getTrainingSetup } from "../shared/lib/training/setupStorage";
 import { resolveSchulteTheme } from "../shared/lib/training/themes";
 import { SchulteGrid } from "../shared/ui/SchulteGrid";
+import { SessionResultSummary } from "../shared/ui/SessionResultSummary";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   AdaptiveDecision,
@@ -560,55 +561,66 @@ export function SchulteSessionPage() {
         highlightValue={setup.hintsEnabled ? expected : null}
       />
 
-      <div className="action-row">
-        <button type="button" className="btn-secondary" onClick={resetGame}>
-          Новая попытка
-        </button>
-      </div>
+      {!result ? (
+        <div className="action-row">
+          <button type="button" className="btn-secondary" onClick={resetGame}>
+            Новая попытка
+          </button>
+        </div>
+      ) : null}
 
       {result ? (
-        <section className="result-box" data-testid="schulte-result">
-          <h3>Результат</h3>
-          <p>Точность: {(result.accuracy * 100).toFixed(1)}%</p>
-          <p>Скорость: {result.speed.toFixed(2)}</p>
-          <p>Score: {result.score.toFixed(2)}</p>
-          {modeId === "timed_plus" ? (
-            <p>effectiveCorrect: {(result.effectiveCorrect ?? 0).toFixed(2)}</p>
-          ) : null}
-          {previousSession ? (
-            modeId === "timed_plus" ? (
-              <p>
-                С прошлой попыткой: {formatSigned(result.score - previousSession.score)} по score
-                {" "} (было {previousSession.score.toFixed(2)}).
-              </p>
-            ) : (
-              <p>
-                С прошлой попыткой:{" "}
-                {result.durationMs <= previousSession.durationMs
-                  ? `быстрее на ${((previousSession.durationMs - result.durationMs) / 1000).toFixed(1)} с`
-                  : `медленнее на ${((result.durationMs - previousSession.durationMs) / 1000).toFixed(1)} с`}
-                {" "} (было {formatDurationMs(previousSession.durationMs)}).
-              </p>
-            )
-          ) : (
-            <p>Это первая сохраненная попытка в этом режиме.</p>
-          )}
-          {bestSession ? (
-            modeId === "timed_plus" ? (
-              <p>Лучший результат в режиме: score {bestSession.score.toFixed(2)}.</p>
-            ) : (
-              <p>Лучший результат в режиме: {formatDurationMs(bestSession.durationMs)}.</p>
-            )
-          ) : null}
-          <p className="status-line">{buildSchulteTip(modeId, result.accuracy, errors)}</p>
-          <p>{saved ? "Сессия сохранена." : "Сохраняем сессию..."}</p>
-          {adaptiveDecision ? (
-            <p className="status-line">
-              Адаптация: {adaptiveDecision.reason} (уровень {adaptiveDecision.previousLevel} →
-              {adaptiveDecision.nextLevel})
-            </p>
-          ) : null}
-        </section>
+        <SessionResultSummary
+          testId="schulte-result"
+          title="Результат"
+          metrics={[
+            {
+              label: "Точность",
+              value: `${(result.accuracy * 100).toFixed(1)}%`
+            },
+            {
+              label: "Скорость",
+              value: result.speed.toFixed(2)
+            },
+            {
+              label: "Score",
+              value: result.score.toFixed(2)
+            },
+            ...(modeId === "timed_plus"
+              ? [
+                  {
+                    label: "effectiveCorrect",
+                    value: (result.effectiveCorrect ?? 0).toFixed(2)
+                  }
+                ]
+              : [])
+          ]}
+          previousSummary={
+            previousSession
+              ? modeId === "timed_plus"
+                ? `С прошлой попыткой: ${formatSigned(result.score - previousSession.score)} по score (было ${previousSession.score.toFixed(2)}).`
+                : `С прошлой попыткой: ${result.durationMs <= previousSession.durationMs ? `быстрее на ${((previousSession.durationMs - result.durationMs) / 1000).toFixed(1)} с` : `медленнее на ${((result.durationMs - previousSession.durationMs) / 1000).toFixed(1)} с`} (было ${formatDurationMs(previousSession.durationMs)}).`
+              : "Это первая сохраненная попытка в этом режиме."
+          }
+          bestSummary={
+            bestSession
+              ? modeId === "timed_plus"
+                ? `Лучший результат в режиме: score ${bestSession.score.toFixed(2)}.`
+                : `Лучший результат в режиме: ${formatDurationMs(bestSession.durationMs)}.`
+              : null
+          }
+          tip={buildSchulteTip(modeId, result.accuracy, errors)}
+          saveSummary={saved ? "Сессия сохранена." : "Сохраняем сессию..."}
+          extraNotes={
+            adaptiveDecision
+              ? [
+                  `Адаптация: ${adaptiveDecision.reason} (уровень ${adaptiveDecision.previousLevel} → ${adaptiveDecision.nextLevel})`
+                ]
+              : undefined
+          }
+          retryLabel="Новая попытка"
+          onRetry={resetGame}
+        />
       ) : null}
 
       {saveError ? <p className="error-text">{saveError}</p> : null}

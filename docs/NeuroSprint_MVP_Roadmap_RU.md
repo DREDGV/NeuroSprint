@@ -278,3 +278,30 @@
   - `tests/e2e/role-policy.spec.ts` выровнен с текущей моделью recovery mode + student restrictions.
 - Подтвержден полный регрессионный прогон перед фиксацией:
   - `npm run check:encoding`, `npm test`, `npm run build`, `npm run test:e2e` — passed.
+
+## Incremental Update: v0.5.N (2026-02-27)
+### Status
+- Done.
+
+### Delivered in this session
+- Добавлен общий компонент пост-сессионного результата:
+  - `src/shared/ui/SessionResultSummary.tsx`
+- Унифицирован блок результата в Schulte:
+  - `src/pages/SchulteSessionPage.tsx`
+  - сохранены текущие метрики/подсказки/адаптивное сообщение,
+  - добавлены стандартные CTA «Новая попытка» и «К статистике».
+- Унифицирован блок результата в Sprint Math:
+  - `src/pages/SprintMathSessionPage.tsx`
+  - сохранены текущие метрики/сравнения/состояние сохранения,
+  - сохранен `data-testid="sprint-math-save-status"` для e2e-контракта.
+- Добавлен integration-тест на единый контракт result-flow:
+  - `tests/integration/session-result-summary.test.tsx`
+
+### Validation
+- `npm run check:encoding` — passed.
+- `npm test` — passed.
+- `npm run test:e2e` — passed.
+- `npm run build` — passed.
+
+### Next Session Start
+1. Перейти к `v0.5.O`: добавить в setup единый блок «Как играть» (короткие правила + подсказки на метрики score/accuracy) для Schulte и Sprint Math.
