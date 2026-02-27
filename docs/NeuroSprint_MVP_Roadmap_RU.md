@@ -245,7 +245,7 @@
 
 ## Incremental Update: v0.5.M (2026-02-27)
 ### Status
-- In progress.
+- Done.
 
 ### Delivered in this session
 - Исправлена кодировка и русские тексты в ключевых экранах: `Home`, `TrainingHub`, `SprintMathSetup`, `SprintMathSession`, `Stats`, `App` fallback.
@@ -258,15 +258,23 @@
 
 ### Validation
 - `npm run check:encoding` — passed.
-- `npm test -- tests/integration/stats-page-sprint.test.tsx tests/integration/pre-session-page.test.tsx tests/integration/schulte-grid.test.tsx` — passed.
-- `npm run test:e2e -- tests/e2e/smoke.spec.ts tests/e2e/sprint-math.spec.ts tests/e2e/classes.spec.ts` — passed.
+- `npm test` — passed.
 - `npm run build` — passed.
+- `npm run test:e2e` — passed.
 
 ### Next Session Start
-1. Перейти к следующему срезу `v0.5.M`: добить унификацию role-access на оставшихся местах и закрыть полный регрессионный прогон перед фиксацией релиза.
+1. Перейти к `v0.5.N`: реализовать единый пост-сессионный экран результата с короткими рекомендациями для Schulte и Sprint Math (этап 4 из `NeuroSprint_AGENT_PLAN_RU.md`).
 
 ### Additional progress (2026-02-27)
 - `ClassesPage` переведен на `useRoleAccess` и полностью очищен от битой кодировки.
 - `StatsPage` и `StatsGroupPage` переведены на единый источник прав через `useRoleAccess` (без локальных `useAppRole + can*` комбинаций).
 - Подтвержден регресс после унификации прав: `check:encoding`, `build`, integration и e2e (classes/smoke/sprint) — passed.
 - Выпущен технический срез `v0.5.0-dev.2`: обновлены встроенная справка, changelog и версия приложения.
+- Завершена унификация role-access в виджетах shell-навигации:
+  - `MainNav` переведен на `useRoleAccess` вместо пропса роли.
+  - `AppShell` обновлен под новый контракт `MainNav`.
+- Обновлены тесты role-policy:
+  - `tests/integration/main-nav-role.test.tsx` адаптирован под чтение роли из `localStorage`.
+  - `tests/e2e/role-policy.spec.ts` выровнен с текущей моделью recovery mode + student restrictions.
+- Подтвержден полный регрессионный прогон перед фиксацией:
+  - `npm run check:encoding`, `npm test`, `npm run build`, `npm run test:e2e` — passed.

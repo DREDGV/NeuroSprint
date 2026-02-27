@@ -1,29 +1,27 @@
 ﻿import { NavLink } from "react-router-dom";
-import type { AppRole } from "../shared/types/domain";
-import {
-  canManageClasses,
-  canViewProfiles
-} from "../shared/lib/auth/permissions";
+import { useRoleAccess } from "../app/useRoleAccess";
+import type { RoleAccess } from "../shared/lib/auth/permissions";
 
 interface NavItem {
   id: string;
   to: string;
   label: string;
-  visible: (role: AppRole) => boolean;
+  visible: (access: RoleAccess) => boolean;
 }
 
 const navItems: NavItem[] = [
   { id: "home", to: "/", label: "Главная", visible: () => true },
   { id: "training", to: "/training", label: "Тренировки", visible: () => true },
   { id: "stats", to: "/stats", label: "Статистика", visible: () => true },
-  { id: "classes", to: "/classes", label: "Классы", visible: canManageClasses },
+  { id: "classes", to: "/classes", label: "Классы", visible: (access) => access.classes.manage },
   { id: "help", to: "/help", label: "Справка", visible: () => true },
-  { id: "profiles", to: "/profiles", label: "Профили", visible: canViewProfiles },
+  { id: "profiles", to: "/profiles", label: "Профили", visible: (access) => access.profiles.view },
   { id: "settings", to: "/settings", label: "Настройки", visible: () => true }
 ];
 
-export function MainNav({ role = "teacher" }: { role?: AppRole }) {
-  const visibleItems = navItems.filter((item) => item.visible(role));
+export function MainNav() {
+  const access = useRoleAccess();
+  const visibleItems = navItems.filter((item) => item.visible(access));
 
   return (
     <nav className="main-nav" aria-label="Основная навигация">

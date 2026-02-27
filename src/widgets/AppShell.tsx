@@ -43,7 +43,7 @@ export function AppShell({ children }: PropsWithChildren) {
       </div>
 
       <PwaStatusBar />
-      <MainNav role={appRole} />
+      <MainNav />
       <main className="app-content">{children}</main>
     </div>
   );
