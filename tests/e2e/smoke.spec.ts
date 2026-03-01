@@ -9,6 +9,9 @@ test.describe("NeuroSprint smoke", () => {
     await expect(page.getByTestId("profiles-error")).toHaveCount(0);
 
     await page.goto("/");
+    await expect(page.getByTestId("home-open-pre-session")).toBeVisible();
+    await expect(page.getByTestId("home-start-sprint")).toBeVisible();
+    await expect(page.getByTestId("home-start-reaction")).toBeVisible();
     await page.getByRole("link", { name: "Начать Classic" }).click();
     await expect(page.getByTestId("schulte-setup-page")).toBeVisible();
     await page.getByTestId("setup-start-btn").click();
@@ -20,6 +23,20 @@ test.describe("NeuroSprint smoke", () => {
 
     await page.goto("/stats/individual");
     await expect(page.getByTestId("stats-individual-page")).toBeVisible();
+  });
+
+  test("home keeps optional pre-session path", async ({ page }) => {
+    await page.goto("/profiles");
+    await page.getByTestId("profile-name-input").fill("TestUser3");
+    await page.getByTestId("create-profile-btn").click();
+    await expect(page.getByTestId("active-profile-status")).toContainText("TestUser3");
+
+    await page.goto("/");
+    await page.getByTestId("home-open-pre-session").click();
+    await expect(page.getByTestId("pre-session-page")).toBeVisible();
+
+    await page.getByTestId("pre-session-start-btn").click();
+    await expect(page.getByTestId("schulte-setup-page")).toBeVisible();
   });
 
   test("timed mode completes and shows metrics", async ({ page }) => {

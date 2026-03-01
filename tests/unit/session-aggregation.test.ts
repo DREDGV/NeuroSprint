@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculatePercentileValue,
+  buildDailyCompareBandPoints,
   buildDailyProgressSummary,
   buildClassicDailyPoints,
+  buildReactionDailyPoints,
   buildTimedDailyPoints
 } from "../../src/entities/session/sessionRepository";
 import type { Session } from "../../src/shared/types/domain";
@@ -120,6 +123,68 @@ describe("session aggregation", () => {
     expect(points[0].avgScore).toBeCloseTo(32.5, 6);
   });
 
+  it("builds reaction daily points", () => {
+    const sessions: Session[] = [
+      {
+        id: "r1",
+        userId: "u1",
+        taskId: "reaction",
+        moduleId: "reaction",
+        modeId: "reaction_signal",
+        mode: "reaction",
+        level: 1,
+        presetId: "legacy",
+        adaptiveSource: "legacy",
+        timestamp: "2026-02-21T12:00:00.000Z",
+        localDate: "2026-02-21",
+        durationMs: 320,
+        score: 110,
+        accuracy: 1,
+        speed: 187.5,
+        errors: 0,
+        correctCount: 5,
+        effectiveCorrect: 5,
+        difficulty: {
+          gridSize: 3,
+          numbersCount: 5,
+          mode: "reaction"
+        }
+      },
+      {
+        id: "r2",
+        userId: "u1",
+        taskId: "reaction",
+        moduleId: "reaction",
+        modeId: "reaction_signal",
+        mode: "reaction",
+        level: 1,
+        presetId: "legacy",
+        adaptiveSource: "legacy",
+        timestamp: "2026-02-21T13:00:00.000Z",
+        localDate: "2026-02-21",
+        durationMs: 400,
+        score: 95,
+        accuracy: 0.8,
+        speed: 150,
+        errors: 1,
+        correctCount: 4,
+        effectiveCorrect: 3.5,
+        difficulty: {
+          gridSize: 3,
+          numbersCount: 5,
+          mode: "reaction"
+        }
+      }
+    ];
+
+    const points = buildReactionDailyPoints(sessions);
+    expect(points).toHaveLength(1);
+    expect(points[0].bestReactionMs).toBe(320);
+    expect(points[0].avgReactionMs).toBe(360);
+    expect(points[0].accuracy).toBeCloseTo(0.9, 6);
+    expect(points[0].avgScore).toBeCloseTo(102.5, 6);
+  });
+
   it("builds daily progress summary", () => {
     const sessions: Session[] = [
       {
@@ -189,5 +254,89 @@ describe("session aggregation", () => {
     expect(summary.bestTimedScore).toBe(35);
     expect(summary.bestReverseDurationMs).toBeNull();
     expect(summary.avgAccuracy).toBeCloseTo(0.9, 6);
+  });
+
+  it("builds compare band points by day for score metric", () => {
+    const sessions: Session[] = [
+      {
+        id: "s1",
+        userId: "u1",
+        taskId: "schulte",
+        ...baseSessionMeta,
+        modeId: "classic_plus",
+        mode: "classic",
+        timestamp: "2026-02-24T10:00:00.000Z",
+        localDate: "2026-02-24",
+        durationMs: 30_000,
+        score: 10,
+        accuracy: 0.95,
+        speed: 50,
+        errors: 1,
+        difficulty: baseDifficulty
+      },
+      {
+        id: "s2",
+        userId: "u2",
+        taskId: "schulte",
+        ...baseSessionMeta,
+        modeId: "classic_plus",
+        mode: "classic",
+        timestamp: "2026-02-24T10:00:00.000Z",
+        localDate: "2026-02-24",
+        durationMs: 30_000,
+        score: 20,
+        accuracy: 0.95,
+        speed: 50,
+        errors: 1,
+        difficulty: baseDifficulty
+      },
+      {
+        id: "s3",
+        userId: "u3",
+        taskId: "schulte",
+        ...baseSessionMeta,
+        modeId: "classic_plus",
+        mode: "classic",
+        timestamp: "2026-02-24T10:00:00.000Z",
+        localDate: "2026-02-24",
+        durationMs: 30_000,
+        score: 30,
+        accuracy: 0.95,
+        speed: 50,
+        errors: 1,
+        difficulty: baseDifficulty
+      },
+      {
+        id: "s4",
+        userId: "u4",
+        taskId: "schulte",
+        ...baseSessionMeta,
+        modeId: "classic_plus",
+        mode: "classic",
+        timestamp: "2026-02-24T10:00:00.000Z",
+        localDate: "2026-02-24",
+        durationMs: 30_000,
+        score: 40,
+        accuracy: 0.95,
+        speed: 50,
+        errors: 1,
+        difficulty: baseDifficulty
+      }
+    ];
+
+    const points = buildDailyCompareBandPoints(sessions, "score");
+    expect(points).toHaveLength(1);
+    expect(points[0].p25).toBeCloseTo(17.5, 6);
+    expect(points[0].median).toBeCloseTo(25, 6);
+    expect(points[0].p75).toBeCloseTo(32.5, 6);
+    expect(points[0].usersCount).toBe(4);
+    expect(points[0].sessionsCount).toBe(4);
+  });
+
+  it("calculates percentile value with interpolation", () => {
+    const values = [10, 20, 30, 40];
+    expect(calculatePercentileValue(values, 0.25)).toBeCloseTo(17.5, 6);
+    expect(calculatePercentileValue(values, 0.5)).toBeCloseTo(25, 6);
+    expect(calculatePercentileValue(values, 0.75)).toBeCloseTo(32.5, 6);
   });
 });

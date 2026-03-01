@@ -21,6 +21,7 @@ import {
 import { userRepository } from "../entities/user/userRepository";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import {
+  REACTION_MODES,
   SCHULTE_MODES,
   SPRINT_MATH_MODES
 } from "../shared/lib/training/presets";
@@ -38,7 +39,8 @@ import type {
 
 const GROUP_MODULES: Array<{ id: TrainingModuleId; title: string }> = [
   { id: "schulte", title: "Таблица Шульте" },
-  { id: "sprint_math", title: "Sprint Math" }
+  { id: "sprint_math", title: "Sprint Math" },
+  { id: "reaction", title: "Reaction" }
 ];
 
 function metricTitle(metric: GroupMetric): string {
@@ -85,10 +87,15 @@ export function StatsGroupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const availableModes = useMemo(
-    () => (moduleId === "sprint_math" ? SPRINT_MATH_MODES : SCHULTE_MODES),
-    [moduleId]
-  );
+  const availableModes = useMemo(() => {
+    if (moduleId === "sprint_math") {
+      return SPRINT_MATH_MODES;
+    }
+    if (moduleId === "reaction") {
+      return REACTION_MODES;
+    }
+    return SCHULTE_MODES;
+  }, [moduleId]);
 
   const selectedModeTitle = useMemo(
     () => availableModes.find((entry) => entry.id === modeId)?.title ?? modeId,

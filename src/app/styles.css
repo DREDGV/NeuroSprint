@@ -402,6 +402,60 @@ textarea:focus-visible {
   font-size: 0.94rem;
 }
 
+.leaderboard-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.leaderboard-item {
+  border: 1px solid #cfe4dc;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.leaderboard-item.is-active-user {
+  border-color: #1e7f71;
+  background: #edf8f4;
+}
+
+.leaderboard-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.leaderboard-rank {
+  font-weight: 800;
+  color: #1c5f52;
+}
+
+.leaderboard-name {
+  font-weight: 700;
+}
+
+.leaderboard-metrics {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.leaderboard-score {
+  font-weight: 800;
+}
+
+.leaderboard-sessions {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
 .fixture-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -583,6 +637,148 @@ textarea:focus-visible {
   margin: 0 0 8px;
 }
 
+.challenge-card {
+  margin-top: 14px;
+  border: 1px solid #d3e6de;
+  border-radius: 14px;
+  background: #f6fbf9;
+  padding: 12px;
+}
+
+.challenge-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.challenge-headline h3 {
+  margin: 0;
+}
+
+.challenge-title {
+  margin: 8px 0 4px;
+  font-weight: 800;
+  color: #1c5f52;
+}
+
+.challenge-progress {
+  margin: 8px 0 10px;
+  font-weight: 700;
+  color: #1c5f52;
+}
+
+.challenge-explanation {
+  margin: 10px 0 6px;
+  border: 1px dashed #bddbd1;
+  border-radius: 12px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.challenge-note {
+  margin-top: 0;
+}
+
+.challenge-schedule-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.challenge-schedule-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  border: 1px solid #d5e8e1;
+  background: #f8fcfa;
+  padding: 8px 10px;
+}
+
+.challenge-schedule-item.is-today {
+  border-color: #9ad3c1;
+  background: #ecf8f3;
+}
+
+.challenge-schedule-day {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #1f6659;
+}
+
+.challenge-schedule-mode {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #163f39;
+}
+
+.challenge-history-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.challenge-history-item {
+  border: 1px solid #d5e8e1;
+  border-radius: 10px;
+  background: #f8fcfa;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.challenge-history-main {
+  display: grid;
+  gap: 2px;
+}
+
+.challenge-history-date {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.challenge-history-mode {
+  font-weight: 700;
+  color: #163f39;
+}
+
+.challenge-history-side {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.challenge-history-attempts {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.challenge-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: 1px solid #c7ddd5;
+  color: #1f6659;
+  background: #ffffff;
+}
+
+.challenge-status.is-complete {
+  border-color: #b8e2d1;
+  background: #e9f7f0;
+  color: #1a7155;
+}
+
 .streak-headline {
   display: flex;
   align-items: center;
@@ -714,6 +910,155 @@ textarea:focus-visible {
 
 .setup-block h3 {
   margin-top: 0;
+}
+
+.info-hint {
+  margin-top: 12px;
+  border: 1px solid #cfe4dc;
+  border-radius: 12px;
+  background: #f7fcfa;
+}
+
+.info-hint-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.info-hint-summary::-webkit-details-marker {
+  display: none;
+}
+
+.info-hint-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: #1e7f71;
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.info-hint-body {
+  padding: 0 12px 12px;
+  color: var(--text-muted);
+}
+
+.info-hint-body p {
+  margin: 6px 0 0;
+}
+
+.reaction-arena {
+  margin-top: 14px;
+  border: 1px solid #cfe4dc;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #f7fcfa 0%, #eef7f3 100%);
+  padding: 14px;
+}
+
+.reaction-arena-title {
+  margin: 0;
+}
+
+.reaction-live-timer {
+  margin: 8px 0 0;
+  font-weight: 700;
+  color: #1c5f52;
+}
+
+.reaction-status {
+  margin-top: 6px;
+}
+
+.reaction-pad {
+  margin: 10px auto 0;
+  width: min(92vw, 560px);
+  min-height: 300px;
+  border-radius: 16px;
+  border: 2px solid #c7ddd5;
+  background: linear-gradient(160deg, #f8fcfa 0%, #eff7f3 100%);
+  color: #1c5f52;
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+  display: grid;
+  place-items: center;
+}
+
+.reaction-pad:hover {
+  transform: translateY(-1px);
+}
+
+.reaction-pad.is-waiting {
+  border-color: #d5c18f;
+  background: linear-gradient(160deg, #fff8e8 0%, #f9efd3 100%);
+  color: #715323;
+}
+
+.reaction-pad.is-ready {
+  border-color: #1e7f71;
+  background: linear-gradient(160deg, #e8faf4 0%, #d7f2e9 100%);
+  color: #0e5a4e;
+}
+
+.reaction-variant-row {
+  margin-top: 6px;
+}
+
+.reaction-challenge {
+  margin-top: 10px;
+}
+
+.reaction-challenge-title {
+  margin: 0 0 12px;
+  font-size: 1.06rem;
+}
+
+.reaction-options-grid {
+  width: min(92vw, 560px);
+  max-width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reaction-option-btn {
+  min-height: 120px;
+  border-radius: 16px;
+  border: 2px solid #c8dfd6;
+  background: #ffffff;
+  color: #1c5f52;
+  font-size: 1.25rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 10px;
+}
+
+.reaction-option-btn:hover {
+  transform: translateY(-1px);
+  border-color: #1e7f71;
+}
+
+.reaction-option-main {
+  font-size: clamp(1.15rem, 2.8vw, 1.7rem);
+  line-height: 1.1;
+}
+
+.reaction-option-secondary {
+  font-size: 1.1rem;
+  color: #43635e;
 }
 
 .release-list {

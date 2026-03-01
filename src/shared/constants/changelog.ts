@@ -1,4 +1,4 @@
-﻿export interface ReleaseEntry {
+export interface ReleaseEntry {
   version: string;
   date: string;
   title: string;
@@ -8,16 +8,43 @@
 
 export const RELEASE_HISTORY: ReleaseEntry[] = [
   {
-    version: "0.5.0-dev.2",
-    date: "2026-02-27",
-    title: "Технический срез v0.5.0-dev.2: кодировка, справка, прогресс-статистика",
+    version: "0.5.0-dev.4",
+    date: "2026-03-01",
+    title: "Релиз v0.5.0-dev.4: Daily Challenge в статистике и финализация этапа",
     status: "dev",
     highlights: [
-      "Исправлена битая кодировка в ключевых экранах (Home, TrainingHub, Sprint Math, Stats, Classes, AppShell).",
-      "В /stats добавлен верхний блок «Прогресс за период» с личным рекордом и сравнением периодов.",
-      "Страницы Stats и Classes переведены на единый role-access слой (useRoleAccess).",
-      "Обновлена встроенная справка и история релизов в приложении.",
-      "Синхронизированы версии package.json и package-lock.json до v0.5.0-dev.2."
+      "Закрыт этап v0.6.F: в /stats добавлен блок выполнения Daily Challenge по периоду (7/30/90/all).",
+      "Добавлена история Daily Challenge: режим, статус, прогресс попыток и дата.",
+      "Расширен dailyChallengeRepository: getCompletionSummary(...) и listHistory(...).",
+      "Обновлены контракты домена: DailyChallengeHistoryItem и DailyChallengeCompletionSummary.",
+      "Обновлены интеграционные и unit-тесты для статистики и challenge-потока.",
+      "Синхронизированы версия приложения, справка и changelog."
+    ]
+  },
+  {
+    version: "0.5.0-dev.3",
+    date: "2026-02-28",
+    title: "Технический срез v0.5.0-dev.3: Reaction analytics + mode-aware recommendations",
+    status: "dev",
+    highlights: [
+      "Сессии Reaction включены в статистику: /stats, /stats/individual и /stats/group.",
+      "Pre-session поддерживает module=reaction и быстрый запуск нужного подрежима через query mode.",
+      "Recommendation engine для Reaction переведен в mode-aware режим (signal/stroop/pair).",
+      "Добавлены объяснения рекомендаций по точности, времени реакции и тренду score.",
+      "Проведен регресс и синхронизирована документация roadmap/status/changelog."
+    ]
+  },
+  {
+    version: "0.5.0-dev.2",
+    date: "2026-02-27",
+    title: "Технический срез v0.5.0-dev.2: UX-подсказки, Reaction beta, кодировка",
+    status: "dev",
+    highlights: [
+      "Добавлен модуль Reaction (beta) с запуском из раздела «Тренировки».",
+      "В Reaction добавлены вариации: «Сигнал», «Цвет и слово», «Пара».",
+      "Добавлен единый компонент интерактивных подсказок InfoHint.",
+      "Исправлена битая кодировка в ключевых экранах.",
+      "В /stats добавлен блок «Прогресс за период» и сравнение периодов."
     ]
   },
   {
@@ -27,7 +54,7 @@ export const RELEASE_HISTORY: ReleaseEntry[] = [
     status: "dev",
     highlights: [
       "Добавлены общие контракты прав buildRoleAccess/guardAccess и хук useRoleAccess.",
-      "Страницы Profiles, Settings, StatsIndividual переведены на единый action-level слой прав.",
+      "Страницы Profiles, Settings и StatsIndividual переведены на единый action-level слой прав.",
       "Синхронизированы roadmap/status/help/changelog под завершенный этап v0.5.K."
     ]
   },
@@ -37,10 +64,10 @@ export const RELEASE_HISTORY: ReleaseEntry[] = [
     title: "Sprint Math, роли, pre-session, мотивация и route-level guards",
     status: "dev",
     highlights: [
-      "Активирован Sprint Math в TrainingHub и в аналитике /stats и /stats/individual.",
+      "Активирован Sprint Math в TrainingHub и аналитике /stats и /stats/individual.",
       "Добавлен экран pre-session: цель дня, рекомендация и быстрый переход в setup.",
       "Внедрены роли интерфейса (Учитель/Ученик/Домашний) и role-policy по действиям.",
-      "Добавлен route-level guard для teacher-only разделов (/classes*, /stats/group)."
+      "Добавлен route-level guard для teacher-only разделов."
     ]
   },
   {
@@ -49,9 +76,9 @@ export const RELEASE_HISTORY: ReleaseEntry[] = [
     title: "Visual+, классы, звук и hardening",
     status: "alpha",
     highlights: [
-      "Цветовые темы Шульте, advanced-настройка цветов и детские визуальные пресеты.",
-      "Ручное управление классами и составом учеников, включая bulk-add.",
-      "Аудио-сигналы start/end по умолчанию и дополнительные toggles."
+      "Цветовые темы Шульте и advanced-настройка цветов.",
+      "Ручное управление классами и составом учеников.",
+      "Аудио-сигналы start/end по умолчанию и расширенные audio toggles."
     ]
   },
   {

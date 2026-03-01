@@ -4,15 +4,20 @@ import { describe, expect, it } from "vitest";
 import { TrainingHubPage } from "../../src/pages/TrainingHubPage";
 
 describe("TrainingHubPage", () => {
-  it("renders modules and coming soon cards", () => {
+  it("renders active modules and keeps coming-soon cards", () => {
     render(
       <MemoryRouter>
         <TrainingHubPage />
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Таблица Шульте")).toBeInTheDocument();
-    expect(screen.getAllByText("Скоро").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("training-module-schulte")).toBeInTheDocument();
+    expect(screen.getByTestId("training-module-sprint_math")).toBeInTheDocument();
+    expect(screen.getByTestId("training-module-reaction")).toBeInTheDocument();
+    expect(screen.getByTestId("training-open-reaction")).toBeInTheDocument();
+    expect(screen.getByTestId("training-open-presession-schulte")).toBeInTheDocument();
+    expect(screen.getByTestId("training-open-presession-sprint_math")).toBeInTheDocument();
+    expect(screen.getByTestId("training-open-presession-reaction")).toBeInTheDocument();
+    expect(screen.getByTestId("training-module-n_back")).toHaveClass("is-disabled");
   });
 });
-

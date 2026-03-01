@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -62,6 +62,34 @@ const userRepoMocks = vi.hoisted(() => ({
   list: vi.fn()
 }));
 
+const dbMocks = vi.hoisted(() => ({
+  sessionsToArray: vi.fn(),
+  classGroupsToArray: vi.fn(),
+  groupMembersToArray: vi.fn(),
+  userPreferencesToArray: vi.fn(),
+  userModeProfilesToArray: vi.fn()
+}));
+
+const csvMocks = vi.hoisted(() => ({
+  toCsv: vi.fn(() => "csv"),
+  downloadTextFile: vi.fn()
+}));
+
+vi.mock("../../src/db/database", () => ({
+  db: {
+    sessions: { toArray: dbMocks.sessionsToArray },
+    classGroups: { toArray: dbMocks.classGroupsToArray },
+    groupMembers: { toArray: dbMocks.groupMembersToArray },
+    userPreferences: { toArray: dbMocks.userPreferencesToArray },
+    userModeProfiles: { toArray: dbMocks.userModeProfilesToArray }
+  }
+}));
+
+vi.mock("../../src/shared/lib/export/csv", () => ({
+  toCsv: csvMocks.toCsv,
+  downloadTextFile: csvMocks.downloadTextFile
+}));
+
 vi.mock("../../src/entities/user/userRepository", () => ({
   userRepository: userRepoMocks
 }));
@@ -71,6 +99,14 @@ import { SettingsPage } from "../../src/pages/SettingsPage";
 describe("SettingsPage dev mode", () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.clearAllMocks();
+
+    dbMocks.sessionsToArray.mockResolvedValue([]);
+    dbMocks.classGroupsToArray.mockResolvedValue([]);
+    dbMocks.groupMembersToArray.mockResolvedValue([]);
+    dbMocks.userPreferencesToArray.mockResolvedValue([]);
+    dbMocks.userModeProfilesToArray.mockResolvedValue([]);
+
     userRepoMocks.getById.mockResolvedValue({
       id: "u1",
       name: "Тест",
@@ -179,5 +215,65 @@ describe("SettingsPage dev mode", () => {
     expect(screen.getByLabelText(/Timed: лимит по умолчанию/i)).toBeDisabled();
     expect(screen.getByTestId("app-role-select")).toBeDisabled();
     expect(screen.getByLabelText(/Сигналы старт\/финиш/i)).toBeEnabled();
+  });
+
+  it("exports additional CSV files for preferences and mode profiles", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(APP_ROLE_KEY, "teacher");
+    localStorage.setItem(ACTIVE_USER_KEY, "u1");
+
+    dbMocks.userPreferencesToArray.mockResolvedValue([
+      {
+        id: "pref-1",
+        userId: "u1",
+        schulteThemeId: "classic_bw",
+        schulteCustomTheme: null,
+        audioSettings: {
+          muted: false,
+          volume: 0.5,
+          startEnd: true,
+          click: false,
+          correct: false,
+          error: false
+        },
+        updatedAt: "2026-02-28T00:00:00.000Z"
+      }
+    ]);
+    dbMocks.userModeProfilesToArray.mockResolvedValue([
+      {
+        id: "profile-1",
+        userId: "u1",
+        moduleId: "schulte",
+        modeId: "classic_plus",
+        level: 3,
+        autoAdjust: true,
+        manualLevel: null,
+        lastDecisionReason: null,
+        lastEvaluatedAt: null,
+        updatedAt: "2026-02-28T00:00:00.000Z"
+      }
+    ]);
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <SettingsPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    await user.click(await screen.findByTestId("export-csv-btn"));
+
+    await waitFor(() => {
+      expect(csvMocks.downloadTextFile).toHaveBeenCalledTimes(6);
+    });
+
+    const exportedNames = csvMocks.downloadTextFile.mock.calls.map((call) => call[0] as string);
+    expect(exportedNames.some((name) => name.startsWith("neurosprint_user_preferences_"))).toBe(
+      true
+    );
+    expect(exportedNames.some((name) => name.startsWith("neurosprint_user_mode_profiles_"))).toBe(
+      true
+    );
   });
 });

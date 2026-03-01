@@ -1,6 +1,6 @@
 ﻿import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
 import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
@@ -31,6 +31,11 @@ vi.mock("../../src/entities/user/userRepository", () => ({
 }));
 
 import { PreSessionPage } from "../../src/pages/PreSessionPage";
+
+function ReactionMarker() {
+  const location = useLocation();
+  return <p data-testid="reaction-setup-marker">{location.search}</p>;
+}
 
 describe("PreSessionPage", () => {
   beforeEach(() => {
@@ -85,6 +90,7 @@ describe("PreSessionPage", () => {
               path="/training/schulte"
               element={<p data-testid="schulte-setup-marker">Schulte setup</p>}
             />
+            <Route path="/training/reaction" element={<ReactionMarker />} />
           </Routes>
         </ActiveUserProvider>
       </MemoryRouter>
@@ -113,5 +119,31 @@ describe("PreSessionPage", () => {
 
     expect(await screen.findByTestId("pre-session-page")).toBeInTheDocument();
     expect(screen.getByTestId("pre-session-mode-timed_plus")).toHaveClass("is-active");
+  });
+
+  it("supports reaction module flow and opens reaction mode route", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/training/pre-session?module=reaction"]}>
+        <ActiveUserProvider>
+          <Routes>
+            <Route path="/training/pre-session" element={<PreSessionPage />} />
+            <Route path="/training/reaction" element={<ReactionMarker />} />
+          </Routes>
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("pre-session-page")).toBeInTheDocument();
+    expect(screen.getByTestId("pre-session-mode-reaction_signal")).toBeInTheDocument();
+    expect(screen.queryByTestId("pre-session-mode-classic_plus")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("pre-session-mode-reaction_pair"));
+    expect(screen.getByTestId("pre-session-reaction-mode-tip")).toHaveTextContent("пару");
+    await user.click(screen.getByTestId("pre-session-start-btn"));
+    expect(await screen.findByTestId("reaction-setup-marker")).toHaveTextContent(
+      "?mode=reaction_pair"
+    );
   });
 });

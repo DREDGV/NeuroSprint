@@ -306,11 +306,13 @@ export function SettingsPage() {
     setExportBusy(true);
     setExportMessage(null);
     try {
-      const [users, sessions, groups, members] = await Promise.all([
+      const [users, sessions, groups, members, preferences, modeProfiles] = await Promise.all([
         userRepository.list(),
         db.sessions.toArray(),
         db.classGroups.toArray(),
-        db.groupMembers.toArray()
+        db.groupMembers.toArray(),
+        db.userPreferences.toArray(),
+        db.userModeProfiles.toArray()
       ]);
 
       const stamp = new Date().toISOString().slice(0, 10);
@@ -362,6 +364,60 @@ export function SettingsPage() {
         ["id", "groupId", "userId", "joinedAt"],
         members.map((entry) => [entry.id, entry.groupId, entry.userId, entry.joinedAt])
       );
+      const preferencesCsv = toCsv(
+        [
+          "id",
+          "userId",
+          "schulteThemeId",
+          "schulteCustomTheme",
+          "audioMuted",
+          "audioVolume",
+          "audioStartEnd",
+          "audioClick",
+          "audioCorrect",
+          "audioError",
+          "updatedAt"
+        ],
+        preferences.map((entry) => [
+          entry.id,
+          entry.userId,
+          entry.schulteThemeId,
+          JSON.stringify(entry.schulteCustomTheme ?? {}),
+          entry.audioSettings.muted,
+          entry.audioSettings.volume,
+          entry.audioSettings.startEnd,
+          entry.audioSettings.click,
+          entry.audioSettings.correct,
+          entry.audioSettings.error,
+          entry.updatedAt
+        ])
+      );
+      const modeProfilesCsv = toCsv(
+        [
+          "id",
+          "userId",
+          "moduleId",
+          "modeId",
+          "level",
+          "autoAdjust",
+          "manualLevel",
+          "lastDecisionReason",
+          "lastEvaluatedAt",
+          "updatedAt"
+        ],
+        modeProfiles.map((entry) => [
+          entry.id,
+          entry.userId,
+          entry.moduleId,
+          entry.modeId,
+          entry.level,
+          entry.autoAdjust,
+          entry.manualLevel ?? "",
+          entry.lastDecisionReason ?? "",
+          entry.lastEvaluatedAt ?? "",
+          entry.updatedAt
+        ])
+      );
 
       downloadTextFile(`neurosprint_users_${stamp}.csv`, usersCsv, "text/csv;charset=utf-8");
       downloadTextFile(
@@ -377,6 +433,16 @@ export function SettingsPage() {
       downloadTextFile(
         `neurosprint_group_members_${stamp}.csv`,
         membersCsv,
+        "text/csv;charset=utf-8"
+      );
+      downloadTextFile(
+        `neurosprint_user_preferences_${stamp}.csv`,
+        preferencesCsv,
+        "text/csv;charset=utf-8"
+      );
+      downloadTextFile(
+        `neurosprint_user_mode_profiles_${stamp}.csv`,
+        modeProfilesCsv,
         "text/csv;charset=utf-8"
       );
       setExportMessage("CSV экспортирован. Проверьте папку «Загрузки».");
@@ -611,7 +677,7 @@ export function SettingsPage() {
       <section className="setup-block">
         <h3>Экспорт данных</h3>
         <p className="status-line">
-          Экспортирует users/sessions/classes в CSV файлы на устройство.
+          Экспортирует users/sessions/classes/preferences/mode-profiles в CSV файлы на устройство.
         </p>
         {access.settings.export ? (
           <div className="action-row">

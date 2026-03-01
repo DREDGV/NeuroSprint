@@ -1,8 +1,12 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
+import {
+  dailyChallengeRepository,
+  listUpcomingDailyChallengeModes
+} from "../entities/challenge/dailyChallengeRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
-import { formatSecondsFromMs } from "../shared/lib/date/date";
+import { formatSecondsFromMs, toLocalDateKey } from "../shared/lib/date/date";
 import {
   buildDailyMiniGoals,
   resolveNextStreakBadge,
@@ -10,31 +14,57 @@ import {
 } from "../shared/lib/motivation/motivation";
 import { getSettings } from "../shared/lib/settings/settings";
 import { StatCard } from "../shared/ui/StatCard";
-import type { DailyProgressSummary } from "../shared/types/domain";
+import type { DailyChallengeProgress, DailyProgressSummary } from "../shared/types/domain";
+
+function toShortDateLabel(localDate: string): string {
+  const [year, month, day] = localDate
+    .split("-")
+    .map((value) => Number.parseInt(value, 10));
+  const value = new Date(year, (month || 1) - 1, day || 1);
+  return value.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+}
+
+function toRelativeChallengeDayLabel(localDate: string): string {
+  const today = toLocalDateKey(new Date());
+  const tomorrow = toLocalDateKey(new Date(Date.now() + 86_400_000));
+  if (localDate === today) {
+    return "Сегодня";
+  }
+  if (localDate === tomorrow) {
+    return "Завтра";
+  }
+  return toShortDateLabel(localDate);
+}
 
 export function HomePage() {
   const { activeUserId, activeUserName } = useActiveUserDisplayName();
   const settings = getSettings();
   const dailyGoalSessions = settings.dailyGoalSessions;
   const [dailySummary, setDailySummary] = useState<DailyProgressSummary | null>(null);
+  const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeProgress | null>(null);
   const [streakDays, setStreakDays] = useState(0);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [challengeLoading, setChallengeLoading] = useState(false);
 
   useEffect(() => {
     if (!activeUserId) {
       setDailySummary(null);
+      setDailyChallenge(null);
       setStreakDays(0);
+      setChallengeLoading(false);
       return;
     }
 
     let cancelled = false;
     setSummaryLoading(true);
+    setChallengeLoading(true);
 
     void Promise.allSettled([
       sessionRepository.getDailyProgressSummary(activeUserId),
-      sessionRepository.getIndividualInsights(activeUserId)
+      sessionRepository.getIndividualInsights(activeUserId),
+      dailyChallengeRepository.getOrCreateForToday(activeUserId)
     ])
-      .then(([summaryResult, insightsResult]) => {
+      .then(([summaryResult, insightsResult, challengeResult]) => {
         if (cancelled) {
           return;
         }
@@ -50,10 +80,17 @@ export function HomePage() {
         } else {
           setStreakDays(0);
         }
+
+        if (challengeResult.status === "fulfilled") {
+          setDailyChallenge(challengeResult.value);
+        } else {
+          setDailyChallenge(null);
+        }
       })
       .finally(() => {
         if (!cancelled) {
           setSummaryLoading(false);
+          setChallengeLoading(false);
         }
       });
 
@@ -70,6 +107,12 @@ export function HomePage() {
     () => buildDailyMiniGoals({ streakDays, dailySummary, dailyGoalSessions }),
     [streakDays, dailySummary, dailyGoalSessions]
   );
+  const challengeSchedule = useMemo(() => {
+    if (!dailyChallenge) {
+      return [];
+    }
+    return listUpcomingDailyChallengeModes(dailyChallenge.challenge.localDate, 3);
+  }, [dailyChallenge]);
 
   return (
     <section className="panel" data-testid="home-page">
@@ -164,38 +207,109 @@ export function HomePage() {
         </div>
       </section>
 
-      <div className="action-row">
-        <Link
-          className="btn-primary"
-          to="/training/schulte?mode=classic_plus"
-          data-testid="home-start-classic"
-        >
-          Начать Classic
-        </Link>
-        <Link
-          className="btn-secondary"
-          to="/training/schulte?mode=timed_plus"
-          data-testid="home-start-timed"
-        >
-          Начать Timed
-        </Link>
-        <Link
-          className="btn-ghost"
-          to="/training/schulte?mode=reverse"
-          data-testid="home-start-reverse"
-        >
-          Начать Reverse
-        </Link>
-      </div>
+      <section className="challenge-card" data-testid="home-daily-challenge">
+        <div className="challenge-headline">
+          <h3>Challenge дня</h3>
+          {dailyChallenge ? (
+            <span
+              className={
+                dailyChallenge.completed
+                  ? "challenge-status is-complete"
+                  : "challenge-status"
+              }
+            >
+              {dailyChallenge.completed ? "Выполнено" : "В процессе"}
+            </span>
+          ) : null}
+        </div>
+        {challengeLoading ? (
+          <p className="status-line">Готовим challenge...</p>
+        ) : dailyChallenge ? (
+          <>
+            <p className="challenge-title">{dailyChallenge.challenge.title}</p>
+            <p className="status-line">{dailyChallenge.challenge.description}</p>
+            <p className="challenge-progress">Прогресс: {dailyChallenge.progressLabel}</p>
+            <div className="challenge-explanation" data-testid="home-daily-challenge-explanation">
+              <p className="status-line challenge-note">
+                В challenge дня доступен один режим. Каждый день режим меняется автоматически.
+              </p>
+              <ul className="challenge-schedule-list">
+                {challengeSchedule.map((entry) => (
+                  <li
+                    key={entry.localDate}
+                    className={
+                      entry.localDate === dailyChallenge.challenge.localDate
+                        ? "challenge-schedule-item is-today"
+                        : "challenge-schedule-item"
+                    }
+                  >
+                    <span className="challenge-schedule-day">
+                      {toRelativeChallengeDayLabel(entry.localDate)}
+                    </span>
+                    <span className="challenge-schedule-mode">{entry.modeTitle}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="action-row">
+              <Link
+                className={dailyChallenge.completed ? "btn-secondary" : "btn-primary"}
+                to={dailyChallenge.launchPath}
+                data-testid="home-daily-challenge-start"
+              >
+                {dailyChallenge.completed ? "Повторить challenge" : "Принять challenge"}
+              </Link>
+            </div>
+          </>
+        ) : (
+          <p className="status-line">
+            Выберите активный профиль, чтобы получить challenge дня.
+          </p>
+        )}
+      </section>
 
-      <p className="status-line">
-        Нужен детальный план дня?
-        {" "}
-        <Link to="/training/pre-session?mode=classic_plus">
-          Перейти в pre-session (опционально)
-        </Link>
-        .
-      </p>
+      <section className="setup-block" data-testid="home-quick-start">
+        <h3>Быстрый старт</h3>
+        <p className="status-line">Запуск тренировки сразу в setup, без промежуточных шагов.</p>
+        <div className="action-row">
+          <Link
+            className="btn-primary"
+            to="/training/schulte?mode=classic_plus"
+            data-testid="home-start-classic"
+          >
+            Начать Classic
+          </Link>
+          <Link
+            className="btn-secondary"
+            to="/training/sprint-math?mode=sprint_add_sub"
+            data-testid="home-start-sprint"
+          >
+            Начать Sprint Math
+          </Link>
+          <Link
+            className="btn-ghost"
+            to="/training/reaction?mode=reaction_signal"
+            data-testid="home-start-reaction"
+          >
+            Начать Reaction
+          </Link>
+        </div>
+      </section>
+
+      <section className="setup-block" data-testid="home-planned-start">
+        <h3>План дня</h3>
+        <p className="status-line">
+          Если нужна рекомендация режима и цель на сегодня, откройте предтренировочный экран.
+        </p>
+        <div className="action-row">
+          <Link className="btn-secondary" to="/training/pre-session" data-testid="home-open-pre-session">
+            Открыть план дня
+          </Link>
+          <Link className="btn-ghost" to="/training" data-testid="home-open-training-hub">
+            Выбрать модуль вручную
+          </Link>
+        </div>
+      </section>
     </section>
   );
 }

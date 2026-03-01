@@ -9,6 +9,7 @@ import {
   resetSprintMathSetup,
   saveSprintMathSetup
 } from "../features/sprint-math/setupStorage";
+import { InfoHint } from "../shared/ui/InfoHint";
 import type {
   SprintMathModeId,
   SprintMathSessionSec,
@@ -75,6 +76,11 @@ export function SprintMathSetupPage() {
         Тренировка устного счёта на скорость. Выберите параметры, проверьте пример и
         нажмите «Начать».
       </p>
+      <InfoHint title="Как играть в Sprint Math" testId="sprint-setup-hint">
+        <p>1. Нажмите «Начать Sprint Math».</p>
+        <p>2. Введите ответ и подтвердите кнопкой «Проверить».</p>
+        <p>3. Точность выше 85% заметно повышает итоговый score.</p>
+      </InfoHint>
 
       <section className="setup-block">
         <h3>Настройки сессии</h3>
@@ -156,18 +162,6 @@ export function SprintMathSetupPage() {
           </label>
         </div>
       </section>
-
-      <details className="setup-block">
-        <summary>
-          <strong>Как играть</strong>
-        </summary>
-        <p>1. Нажмите «Начать Sprint Math».</p>
-        <p>
-          2. Введите ответ и подтвердите кнопкой «Проверить» (или авто-проверкой,
-          если она включена).
-        </p>
-        <p>3. Держите точность выше 85%: это заметно влияет на score.</p>
-      </details>
 
       <section className="session-brief">
         <h3>Пример задания</h3>

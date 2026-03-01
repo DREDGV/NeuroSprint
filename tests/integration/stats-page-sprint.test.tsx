@@ -10,13 +10,23 @@ const mocks = vi.hoisted(() => ({
   sessionRepository: {
     aggregateDailyClassic: vi.fn(),
     aggregateDailyTimed: vi.fn(),
+    aggregateDailyReaction: vi.fn(),
     aggregateDailySprintMath: vi.fn(),
-    aggregateDailyByModeId: vi.fn()
+    aggregateDailyByModeId: vi.fn(),
+    aggregateDailyCompareBand: vi.fn()
+  },
+  dailyChallengeRepository: {
+    getCompletionSummary: vi.fn(),
+    listHistory: vi.fn()
   }
 }));
 
 vi.mock("../../src/entities/session/sessionRepository", () => ({
   sessionRepository: mocks.sessionRepository
+}));
+
+vi.mock("../../src/entities/challenge/dailyChallengeRepository", () => ({
+  dailyChallengeRepository: mocks.dailyChallengeRepository
 }));
 
 beforeAll(() => {
@@ -38,6 +48,7 @@ describe("StatsPage sprint filters", () => {
 
     mocks.sessionRepository.aggregateDailyClassic.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailyTimed.mockResolvedValue([]);
+    mocks.sessionRepository.aggregateDailyReaction.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailySprintMath.mockResolvedValue([
       {
         date: "2026-02-25",
@@ -71,6 +82,26 @@ describe("StatsPage sprint filters", () => {
         ];
       }
     );
+    mocks.sessionRepository.aggregateDailyCompareBand.mockResolvedValue([]);
+    mocks.dailyChallengeRepository.getCompletionSummary.mockResolvedValue({
+      period: 30,
+      total: 6,
+      completed: 4,
+      pending: 2,
+      completionRatePct: 66.6667
+    });
+    mocks.dailyChallengeRepository.listHistory.mockResolvedValue([
+      {
+        challengeId: "u1:2026-02-25",
+        localDate: "2026-02-25",
+        modeId: "classic_plus",
+        modeTitle: "Classic+",
+        status: "completed",
+        requiredAttempts: 1,
+        attemptsCount: 1,
+        completedAt: "2026-02-25T10:00:00.000Z"
+      }
+    ]);
   });
 
   it("shows sprint submode filters and updates summary for selected submode", async () => {
@@ -102,6 +133,40 @@ describe("StatsPage sprint filters", () => {
     expect(within(summary).getByText("10.00")).toBeInTheDocument();
   });
 
+  it("renders reaction mode summary with reaction metrics", async () => {
+    const user = userEvent.setup();
+    mocks.sessionRepository.aggregateDailyReaction.mockResolvedValue([
+      {
+        date: "2026-02-25",
+        avgReactionMs: 340,
+        bestReactionMs: 280,
+        accuracy: 0.88,
+        avgScore: 142,
+        count: 2
+      }
+    ]);
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    await user.click(await screen.findByTestId("stats-mode-reaction"));
+
+    const summary = await screen.findByTestId("stats-reaction-summary");
+    expect(within(summary).getByText("Reaction: итоги")).toBeInTheDocument();
+    expect(within(summary).getByText("2")).toBeInTheDocument();
+    expect(within(summary).getByText("340 мс")).toBeInTheDocument();
+    expect(within(summary).getByText("88.0%")).toBeInTheDocument();
+
+    expect(screen.getByTestId("stats-progress-headline")).toHaveTextContent(
+      "Лучший отклик: 280 мс"
+    );
+  });
+
   it("renders sprint submode comparison with best mode and deltas", async () => {
     const user = userEvent.setup();
 
@@ -128,5 +193,88 @@ describe("StatsPage sprint filters", () => {
     expect(within(deltaGrid).getByText("+18.0%")).toBeInTheDocument();
     expect(within(deltaGrid).getByText("+14.00")).toBeInTheDocument();
     expect(within(deltaGrid).getByText("Да")).toBeInTheDocument();
+  });
+
+  it("loads compare mode and renders median/p25/p75 summary", async () => {
+    const user = userEvent.setup();
+    mocks.sessionRepository.aggregateDailyCompareBand.mockResolvedValue([
+      {
+        date: "2026-02-25",
+        p25: 16,
+        median: 20,
+        p75: 24,
+        usersCount: 4,
+        sessionsCount: 8
+      }
+    ]);
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    await user.click(await screen.findByTestId("stats-compare-toggle"));
+
+    expect(mocks.sessionRepository.aggregateDailyCompareBand).toHaveBeenCalledWith(
+      ["classic_plus"],
+      "duration_sec",
+      30
+    );
+
+    const summary = await screen.findByTestId("stats-compare-summary");
+    expect(within(summary).getByText("20.00 сек")).toBeInTheDocument();
+    expect(within(summary).getByText("16.00 сек")).toBeInTheDocument();
+    expect(within(summary).getByText("24.00 сек")).toBeInTheDocument();
+  });
+
+  it("reloads compare mode by selected period", async () => {
+    const user = userEvent.setup();
+    mocks.sessionRepository.aggregateDailyCompareBand.mockResolvedValue([]);
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    await user.click(await screen.findByTestId("stats-compare-toggle"));
+    await user.selectOptions(screen.getByTestId("stats-compare-period"), "7");
+
+    expect(mocks.sessionRepository.aggregateDailyCompareBand).toHaveBeenLastCalledWith(
+      ["classic_plus"],
+      "duration_sec",
+      7
+    );
+  });
+
+  it("renders daily challenge summary and reloads it by period", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    const summary = await screen.findByTestId("stats-daily-challenge-summary");
+    expect(within(summary).getByText("6")).toBeInTheDocument();
+    expect(within(summary).getByText("4")).toBeInTheDocument();
+    expect(within(summary).getByText("2")).toBeInTheDocument();
+    expect(within(summary).getByText("66.7%")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByTestId("stats-challenge-period"), "7");
+
+    expect(mocks.dailyChallengeRepository.getCompletionSummary).toHaveBeenLastCalledWith(
+      "u1",
+      7
+    );
+    expect(mocks.dailyChallengeRepository.listHistory).toHaveBeenLastCalledWith("u1", 7, 10);
   });
 });

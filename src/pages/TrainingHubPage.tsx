@@ -1,14 +1,17 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { TRAINING_MODULES } from "../shared/lib/training/presets";
+import { InfoHint } from "../shared/ui/InfoHint";
 
 const modulePrimaryRouteById: Record<string, string> = {
   schulte: "/training/schulte",
-  sprint_math: "/training/sprint-math"
+  sprint_math: "/training/sprint-math",
+  reaction: "/training/reaction"
 };
 
 const modulePreSessionRouteById: Record<string, string> = {
   schulte: "/training/pre-session?module=schulte",
-  sprint_math: "/training/pre-session?module=sprint_math"
+  sprint_math: "/training/pre-session?module=sprint_math",
+  reaction: "/training/pre-session?module=reaction"
 };
 
 export function TrainingHubPage() {
@@ -20,6 +23,14 @@ export function TrainingHubPage() {
         {" "}
         «Начать тренировку».
       </p>
+
+      <InfoHint title="Подсказка по разделу" testId="training-hub-hint">
+        <p>Если не знаете, с чего начать: выберите «План дня (опция)».</p>
+        <p>
+          Модуль Reaction можно запускать сразу: это короткая тренировка реакции без
+          сложных настроек.
+        </p>
+      </InfoHint>
 
       <div className="module-grid">
         {TRAINING_MODULES.map((module) => (
@@ -39,13 +50,17 @@ export function TrainingHubPage() {
                 >
                   Открыть модуль
                 </Link>
-                <Link
-                  className="btn-ghost"
-                  to={modulePreSessionRouteById[module.id] ?? "/training/pre-session"}
-                  data-testid={`training-open-presession-${module.id}`}
-                >
-                  План дня (опция)
-                </Link>
+                {modulePreSessionRouteById[module.id] ? (
+                  <Link
+                    className="btn-ghost"
+                    to={modulePreSessionRouteById[module.id]}
+                    data-testid={`training-open-presession-${module.id}`}
+                  >
+                    План дня (опция)
+                  </Link>
+                ) : (
+                  <p className="status-line">Быстрый запуск: модуль открывается сразу.</p>
+                )}
               </>
             ) : (
               <span className="coming-soon-badge">Скоро</span>

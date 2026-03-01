@@ -13,15 +13,18 @@ function createSession(
   const mode =
     modeId === "timed_plus"
       ? "timed"
-      : modeId === "sprint_add_sub" || modeId === "sprint_mixed"
-        ? "sprint_math"
-        : "classic";
+      : modeId === "reaction_signal" || modeId === "reaction_stroop" || modeId === "reaction_pair"
+        ? "reaction"
+        : modeId === "sprint_add_sub" || modeId === "sprint_mixed"
+          ? "sprint_math"
+          : "classic";
 
   return {
     id,
     userId: "u1",
-    taskId: mode === "sprint_math" ? "sprint_math" : "schulte",
-    moduleId: mode === "sprint_math" ? "sprint_math" : "schulte",
+    taskId: mode === "sprint_math" ? "sprint_math" : mode === "reaction" ? "reaction" : "schulte",
+    moduleId:
+      mode === "sprint_math" ? "sprint_math" : mode === "reaction" ? "reaction" : "schulte",
     modeId,
     mode,
     level: 3,
@@ -63,7 +66,7 @@ describe("recommendModeByPerformance", () => {
 
     const recommendation = recommendModeByPerformance(sessions);
     expect(recommendation.modeId).toBe("reverse");
-    expect(recommendation.reason).toContain("ещё не тренировался");
+    expect(recommendation.reason).toContain("не тренировался");
   });
 
   it("uses sprint throughput and score trend for recommendation", () => {
@@ -85,5 +88,45 @@ describe("recommendModeByPerformance", () => {
     expect(recommendation.reason).toContain("темп");
     expect(recommendation.confidence).toBeGreaterThanOrEqual(0.55);
     expect(recommendation.confidence).toBeLessThanOrEqual(0.9);
+  });
+
+  it("can recommend reaction when recent reaction sessions are weaker", () => {
+    const sessions: Session[] = [
+      createSession("c1", "classic_plus", 52, 0.95, 28, "2026-02-21T10:00:00.000Z"),
+      createSession("c2", "classic_plus", 53, 0.96, 29, "2026-02-24T10:00:00.000Z"),
+      createSession("t1", "timed_plus", 42, 0.93, 26, "2026-02-21T11:00:00.000Z"),
+      createSession("t2", "timed_plus", 43, 0.94, 26, "2026-02-24T11:00:00.000Z"),
+      createSession("r1", "reverse", 49, 0.92, 27, "2026-02-21T12:00:00.000Z"),
+      createSession("r2", "reverse", 50, 0.93, 27, "2026-02-24T12:00:00.000Z"),
+      createSession("s1", "sprint_add_sub", 35, 0.92, 24, "2026-02-21T13:00:00.000Z"),
+      createSession("s2", "sprint_add_sub", 36, 0.93, 25, "2026-02-24T13:00:00.000Z"),
+      createSession("m1", "sprint_mixed", 32, 0.91, 19, "2026-02-21T14:00:00.000Z"),
+      createSession("m2", "sprint_mixed", 33, 0.92, 20, "2026-02-24T14:00:00.000Z"),
+      createSession("x1", "reaction_pair", 14, 0.68, 8, "2026-02-22T15:00:00.000Z"),
+      createSession("x2", "reaction_stroop", 12, 0.64, 7, "2026-02-25T15:00:00.000Z")
+    ];
+
+    const recommendation = recommendModeByPerformance(sessions);
+    expect(recommendation.modeId).toBe("reaction_stroop");
+    expect(recommendation.reason).toContain("Reaction");
+  });
+
+  it("can recommend baseline reaction signal when reaction has no history", () => {
+    const sessions: Session[] = [
+      createSession("c1", "classic_plus", 55, 0.97, 31, "2026-02-21T10:00:00.000Z"),
+      createSession("c2", "classic_plus", 56, 0.98, 32, "2026-02-24T10:00:00.000Z"),
+      createSession("t1", "timed_plus", 45, 0.95, 27, "2026-02-21T11:00:00.000Z"),
+      createSession("t2", "timed_plus", 46, 0.96, 27, "2026-02-24T11:00:00.000Z"),
+      createSession("r1", "reverse", 51, 0.94, 29, "2026-02-21T12:00:00.000Z"),
+      createSession("r2", "reverse", 52, 0.95, 29, "2026-02-24T12:00:00.000Z"),
+      createSession("s1", "sprint_add_sub", 38, 0.95, 26, "2026-02-21T13:00:00.000Z"),
+      createSession("s2", "sprint_add_sub", 39, 0.95, 26, "2026-02-24T13:00:00.000Z"),
+      createSession("m1", "sprint_mixed", 34, 0.93, 21, "2026-02-21T14:00:00.000Z"),
+      createSession("m2", "sprint_mixed", 35, 0.94, 21, "2026-02-24T14:00:00.000Z")
+    ];
+
+    const recommendation = recommendModeByPerformance(sessions);
+    expect(recommendation.modeId).toBe("reaction_signal");
+    expect(recommendation.reason).toContain("Reaction");
   });
 });

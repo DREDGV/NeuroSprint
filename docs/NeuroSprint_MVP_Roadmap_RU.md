@@ -1,4 +1,4 @@
-# NeuroSprint MVP Roadmap (RU)
+﻿# NeuroSprint MVP Roadmap (RU)
 
 ## Scope
 ### In scope (MVP + v0.4 + v0.4.2 + v0.5.K)
@@ -80,6 +80,11 @@
 | v0.5.I | Fine role-policy + encoding guard | Done | Детализирована матрица прав (`profiles/settings/stats`), добавлены role-specific ограничения в UI, покрытие integration/e2e и `check:encoding` в CI |
 | v0.5.J | Route-level permission guard + role-aware hints | Done | Добавлен единый `RequirePermission` на маршрутах `/classes*` и `/stats/group`, внедрены подсказки доступа по роли и расширено покрытие tests/e2e |
 | v0.5.K | Action-level role-check unification | Done | Добавлены `useRoleAccess` + `buildRoleAccess/guardAccess`, страницы `Profiles/Settings/StatsIndividual` переведены на единый слой прав |
+| v0.5.L | Sprint Math stats readability | Done | В `/stats` добавлены mode-aware сравнения `Add/Sub` vs `Mixed` и улучшена читаемость секции Sprint Math |
+| v0.5.M | Encoding + regression hardening | Done | Исправлены русские тексты/кодировка в ключевых экранах, добавлен блок прогресса периода, подтвержден полный регресс |
+| v0.5.N | Unified result screen | Done | Вынесен общий `SessionResultSummary` и унифицированы пост-сессионные экраны Schulte/Sprint Math |
+| v0.5.O | Interactive hints + Reaction beta | Done | Добавлен `InfoHint`, внедрены подсказки в setup/preview потоки, добавлен новый модуль `Reaction` и e2e smoke |
+| v0.5.P | Reaction persistence + analytics + recommendation | Done | Reaction сохранение/статистика/групповые сравнения, pre-session интеграция, mode-aware рекомендации |
 
 ## Interfaces & Contracts
 ### Routes
@@ -305,3 +310,367 @@
 
 ### Next Session Start
 1. Перейти к `v0.5.O`: добавить в setup единый блок «Как играть» (короткие правила + подсказки на метрики score/accuracy) для Schulte и Sprint Math.
+
+## Incremental Update: v0.5.O (2026-02-27)
+### Status
+- Done.
+
+### Delivered in this session
+- Добавлен единый интерактивный компонент подсказок:
+  - `src/shared/ui/InfoHint.tsx`
+- Подсказки интегрированы в ключевые точки старта:
+  - `src/pages/TrainingHubPage.tsx`
+  - `src/pages/SchulteSetupPage.tsx`
+  - `src/pages/SprintMathSetupPage.tsx`
+  - `src/pages/PreSessionPage.tsx`
+- Добавлен новый модуль тренировки `Reaction` (beta):
+  - `src/pages/ReactionPage.tsx`
+  - маршрут: `/training/reaction`
+  - карточка запуска в `TrainingHub`.
+- Исправлена кодировка новых строк и тестов (убраны кракозябры после интеграции).
+- Обновлено покрытие:
+  - integration: `tests/integration/training-hub.test.tsx`
+  - e2e: `tests/e2e/reaction.spec.ts`.
+
+### Validation
+- `npm run check:encoding` — passed.
+- `npm test` — passed.
+- `npm run build` — passed.
+- `npm run test:e2e` — passed.
+
+### Next Session Start
+1. Перейти к `v0.5.P`: сохранить сессии `Reaction` в IndexedDB и вывести базовую статистику Reaction в `/stats` и `/stats/individual`.
+
+## Incremental Update: v0.5.P.0 (2026-02-27)
+### Status
+- Done.
+
+### Delivered in this session
+- `Reaction` модернизирован до вариативного тренажера:
+  - `signal` — классический клик по сигналу,
+  - `stroop_match` — поиск совпадения цвета и надписи,
+  - `pair_match` — поиск целевой пары по подсказке.
+- Добавлен генератор заданий Reaction:
+  - `src/features/reaction/challenges.ts`
+- Добавлены новые элементы интерфейса в `ReactionPage`:
+  - выбор вариации,
+  - карточки выбора для режимов `Цвет и слово` и `Пара`,
+  - расширенные метрики (прогресс, точность, ошибки выбора, ранние нажатия).
+- Добавлены тесты:
+  - unit: `tests/unit/reaction-challenges.test.ts`
+  - e2e: `tests/e2e/reaction.spec.ts` (проверка вариации `Цвет и слово`).
+
+### Validation
+- `npm run check:encoding` — passed.
+- `npm test -- tests/unit/reaction-challenges.test.ts tests/integration/training-hub.test.tsx` — passed.
+- `npm run build` — passed.
+- `npm run test:e2e -- tests/e2e/reaction.spec.ts` — passed.
+
+### Next Session Start
+1. Перейти к `v0.5.P`: сохранить сессии `Reaction` в IndexedDB и вывести базовую статистику Reaction в `/stats` и `/stats/individual`.
+
+## Incremental Update: v0.5.P.1 (2026-02-27)
+### Status
+- Done.
+
+### Delivered in this session
+- Реализовано сохранение сессий `Reaction` в IndexedDB с новыми modeId:
+  - `reaction_signal`
+  - `reaction_stroop`
+  - `reaction_pair`
+- Расширены доменные контракты:
+  - `Mode += reaction`
+  - `TrainingModuleId += reaction`
+  - `TrainingModeId += reaction_*`
+  - `Session.taskId += reaction`
+  - добавлен `ReactionDailyPoint`.
+- Расширен `sessionRepository`:
+  - `buildReactionDailyPoints(...)`
+  - `aggregateDailyReaction(userId)`
+  - поддержка Reaction в `aggregateDailyByModeId(...)`.
+- Обновлены экраны статистики:
+  - `/stats`: новый переключатель режима `Reaction`, отдельный график и сводка.
+  - `/stats/individual`: добавлены подрежимы Reaction и график динамики.
+- Обновлен `/stats/group`: добавлен модуль `Reaction` и mode-aware фильтр `reaction_signal / reaction_stroop / reaction_pair`.
+- Обновлены тесты:
+  - unit: `session-aggregation.test.ts`
+  - integration: `stats-page-sprint.test.tsx`
+  - e2e: `reaction.spec.ts`.
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm test -- tests/unit/session-aggregation.test.ts tests/integration/stats-page-sprint.test.tsx tests/integration/stats-individual-comparison.test.tsx` - passed.
+- `npm run build` - passed.
+- `npm run test:e2e -- tests/e2e/reaction.spec.ts` - passed.
+
+### Next Session Start
+1. Перейти к `v0.5.P.2`: включить Reaction в сравнительную аналитику `/stats/group` и уточнить рекомендации на базе новых сессий.
+
+## Incremental Update: v0.5.P.2 (2026-02-28)
+### Status
+- Done.
+
+### Delivered in this session
+- Recommendation engine расширен для Reaction:
+  - добавлен recommendation-mode `reaction_signal`,
+  - `reaction_stroop` и `reaction_pair` агрегируются в recommendation-бакет `reaction_signal`,
+  - снижен приоритет «untrained Reaction», чтобы не ломать существующий баланс рекомендаций.
+- `PreSessionPage` расширен под Reaction:
+  - поддержка `module=reaction`,
+  - поддержка mode query: `reaction_signal|reaction_stroop|reaction_pair`,
+  - корректный quick-start роут на `/training/reaction?mode=...`.
+- `ReactionPage` поддерживает входной query `mode` и переключает вариант тренировки при старте.
+- Пресеты и режимы:
+  - добавлен экспорт `REACTION_MODES`,
+  - `TRAINING_MODES` теперь включает Reaction.
+- Добавлен/обновлен тестовый контур:
+  - unit: `tests/unit/recommendation.test.ts`
+  - integration: `tests/integration/pre-session-page.test.tsx`, `tests/integration/training-hub.test.tsx`
+  - integration stats: `tests/integration/stats-individual-comparison.test.tsx`, `tests/integration/stats-group-comparison.test.tsx`, `tests/integration/stats-page-sprint.test.tsx`
+  - e2e: `tests/e2e/reaction.spec.ts`.
+
+### Validation
+- `npm test -- tests/unit/recommendation.test.ts tests/integration/pre-session-page.test.tsx tests/integration/training-hub.test.tsx` - passed.
+- `npm test -- tests/integration/stats-individual-comparison.test.tsx tests/integration/stats-group-comparison.test.tsx tests/integration/stats-page-sprint.test.tsx` - passed.
+- `npm run test:e2e -- tests/e2e/reaction.spec.ts` - passed.
+- `npm run check:encoding` - passed.
+- `npm run build` - passed.
+
+### Next Session Start
+1. Перейти к `v0.5.P.3`: уточнить тексты рекомендаций Reaction по подрежимам и зафиксировать dev-срез версии.
+
+## Incremental Update: v0.5.P.3 (2026-02-28)
+### Status
+- Done.
+
+### Delivered in this session
+- Recommendation engine обновлен до mode-aware Reaction-рекомендаций:
+  - поддержаны отдельные кандидаты `reaction_signal`, `reaction_stroop`, `reaction_pair`,
+  - добавлены причины рекомендации по конкретному подрежиму Reaction,
+  - для Reaction учитывается среднее время реакции в расчете приоритета,
+  - если у пользователя уже есть история Reaction, неигранные подрежимы имеют сниженный приоритет и не перебивают слабый тренируемый подрежим.
+- `PreSessionPage` получил контекстные подсказки по подрежимам Reaction:
+  - подсказка для выбранного режима старта,
+  - подсказка в блоке рекомендации, если рекомендован Reaction-режим.
+- Обновлены тесты:
+  - unit: `tests/unit/recommendation.test.ts`,
+  - integration: `tests/integration/pre-session-page.test.tsx`.
+
+### Validation
+- `npm test -- tests/unit/recommendation.test.ts tests/integration/pre-session-page.test.tsx` - passed.
+- `npm run test:e2e -- tests/e2e/reaction.spec.ts` - passed.
+- `npm run check:encoding` - passed.
+- `npm run build` - passed.
+
+### Next Session Start
+1. Подготовить dev-срез версии после `v0.5.P.3`: синхронизировать `/help` + changelog + версию и выполнить полный регресс (`npm test`, `npm run build`, `npm run test:e2e`).
+
+## Incremental Update: v0.5.P.4 (2026-02-28)
+### Status
+- Done.
+
+### Delivered in this session
+- Подготовлен и зафиксирован dev-срез `0.5.0-dev.3`:
+  - обновлены `package.json` и `package-lock.json`,
+  - синхронизирована встроенная история релизов `src/shared/constants/changelog.ts`,
+  - обновлен `docs/CHANGELOG_RU.md`.
+- Дорожная карта синхронизирована:
+  - milestone `v0.5.P` зафиксирован как полностью закрытый (`Done`).
+- Подтвержден полный регресс перед срезом:
+  - `npm run check:encoding`,
+  - `npm test`,
+  - `npm run build`,
+  - `npm run test:e2e`.
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm test` - passed (27 test files, 86 tests).
+- `npm run build` - passed.
+- `npm run test:e2e` - passed (11/11).
+
+### Next Session Start
+1. Перейти к следующему этапу `NeuroSprint_AGENT_PLAN_RU.md` (Этап 6): локальный лидерборд (Top-10, фильтры период/режим, подсветка активного пользователя).
+
+## Incremental Update: v0.6.A (2026-02-28)
+### Status
+- Done.
+
+### Delivered in this session
+- Реализован dual-entry старт-флоу на Home:
+  - `Быстрый старт`: прямой запуск в активные модули (`Classic`, `Sprint Math`, `Reaction`),
+  - `План дня`: отдельный вход в `Pre-session`.
+- Обновлен `HomePage` под явное разделение двух сценариев запуска.
+- Обновлены тесты:
+  - integration: `tests/integration/training-hub.test.tsx` (контракт pre-session кнопок на активных модулях),
+  - e2e: `tests/e2e/smoke.spec.ts` (добавлен сценарий `home -> pre-session -> setup`).
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm run build` - passed.
+- `npm test -- tests/integration/training-hub.test.tsx` - passed.
+- `npm run test:e2e -- tests/e2e/smoke.spec.ts` - passed.
+
+### Next Session Start
+1. Перейти к `v0.6.B`: реализовать compare mode (`median/p25/p75`) на `/stats` и покрыть тестами.
+
+## Incremental Update: v0.6.B (2026-02-28)
+### Status
+- Done.
+
+### Delivered in this session
+- В `sessionRepository` добавлена агрегация compare-band по дням:
+  - новый контракт `aggregateDailyCompareBand(modeIds, metric, period)`,
+  - расчет `P25 / median / P75` по локальной выборке пользователей устройства,
+  - новые доменные контракты `CompareBandMetric`, `DailyCompareBandPoint`.
+- В `StatsPage` реализован compare-mode:
+  - отдельный блок `Сравнение с пользователями (median / p25 / p75)`,
+  - toggle включения/скрытия compare-mode,
+  - выбор периода `7/30/90/all`,
+  - summary-карточки последнего дня (`Вы`, `P25`, `Медиана`, `P75`),
+  - отдельный график линий `Вы / P25 / Медиана / P75`.
+- Обновлены тесты:
+  - unit: `tests/unit/session-aggregation.test.ts`,
+  - integration: `tests/integration/stats-page-sprint.test.tsx`.
+
+### Validation
+- `npm test -- tests/unit/session-aggregation.test.ts tests/integration/stats-page-sprint.test.tsx` - passed.
+- `npm run build` - passed.
+- `npm run check:encoding` - passed.
+- `npm run test:e2e -- tests/e2e/smoke.spec.ts` - passed.
+
+### Next Session Start
+1. Перейти к `v0.6.C`: расширить CSV-экспорт в `Settings` файлами `userPreferences` и `userModeProfiles`.
+
+## Incremental Update: v0.6.C (2026-02-28)
+### Status
+- Done.
+
+### Delivered in this session
+- В `SettingsPage` расширен экспорт CSV:
+  - добавлен файл `neurosprint_user_preferences_<date>.csv`,
+  - добавлен файл `neurosprint_user_mode_profiles_<date>.csv`.
+- Обновлен текст контракта блока экспорта на странице `Настройки`.
+- Обновлен integration-тест:
+  - `tests/integration/settings-devmode.test.tsx` проверяет наличие новых экспортируемых файлов.
+
+### Validation
+- `npm test -- tests/integration/settings-devmode.test.tsx tests/integration/stats-page-sprint.test.tsx tests/unit/session-aggregation.test.ts` - passed.
+- `npm run build` - passed.
+- `npm run check:encoding` - passed.
+- `npm run test:e2e -- tests/e2e/smoke.spec.ts` - passed.
+
+### Next Session Start
+1. Перейти к `v0.6.D`: реализовать локальный leaderboard Top-10 (режим/период, подсветка активного пользователя).
+
+## Incremental Update: v0.6.D (2026-02-28)
+### Status
+- Done.
+
+### Delivered in this session
+- В `StatsIndividualPage` добавлен блок `Лидерборд Top-10`.
+- Реализованы фильтры leaderboard:
+  - период (`7/30/90/all`),
+  - режим берется из текущего выбранного режима индивидуальной статистики.
+- Добавлена подсветка строки активного пользователя в рейтинге.
+- Обновлены стили leaderboard в `src/app/styles.css`.
+- Обновлены integration-тесты:
+  - `tests/integration/stats-individual-comparison.test.tsx`.
+
+### Validation
+- `npm test -- tests/integration/stats-individual-comparison.test.tsx tests/integration/stats-page-sprint.test.tsx tests/integration/settings-devmode.test.tsx tests/unit/session-aggregation.test.ts` - passed.
+- `npm run build` - passed.
+- `npm run check:encoding` - passed.
+- `npm run test:e2e -- tests/e2e/smoke.spec.ts` - passed.
+
+### Next Session Start
+1. Перейти к `v0.6.E`: реализовать Daily Challenge MVP (локально, без backend).
+
+## Incremental Update: v0.6.E (2026-03-01)
+### Status
+- Done.
+
+### Delivered in this session
+- Добавлена локальная модель `Daily Challenge` в Dexie:
+  - `dailyChallenges` (челлендж дня на пользователя),
+  - `dailyChallengeAttempts` (попытки выполнения через сохранённые сессии).
+- Добавлены доменные контракты:
+  - `DailyChallenge`,
+  - `DailyChallengeAttempt`,
+  - `DailyChallengeProgress`,
+  - `DailyChallengeStatus`.
+- Реализован `dailyChallengeRepository`:
+  - детерминированный режим challenge по дате,
+  - `getOrCreateForToday(userId)`,
+  - backfill попыток по уже сохранённым сессиям за день,
+  - автоматический перевод challenge в `completed` при выполнении.
+- Интеграция с игровыми сессиями:
+  - `sessionRepository.save(...)` регистрирует попытку challenge после сохранения сессии.
+- UI на `Home`:
+  - виджет `Challenge дня`,
+  - статус (`В процессе/Выполнено`),
+  - прогресс (`0 / 1`, `1 / 1`),
+  - кнопка запуска тренировки в целевой режим challenge.
+- Обновлён cleanup при удалении пользователя:
+  - удаляются `dailyChallenges` и `dailyChallengeAttempts` пользователя.
+- Добавлены тесты:
+  - unit: `tests/unit/daily-challenge.test.ts`,
+  - integration: `tests/integration/home-daily-challenge.test.tsx`.
+
+### Validation
+- `npm test -- tests/unit/daily-challenge.test.ts tests/integration/home-daily-challenge.test.tsx` - passed.
+
+### Next Session Start
+1. Перейти к `v0.6.F`: добавить историю `Daily Challenge` и блок в статистике с `% выполненных challenge` по периоду.
+
+## Incremental Update: v0.6.F (2026-03-01)
+### Status
+- Done.
+
+### Delivered in this session
+- Expanded `dailyChallengeRepository`:
+  - `getCompletionSummary(userId, period)` for completion KPI by period.
+  - `listHistory(userId, period, limit)` for per-day challenge history.
+- Added domain contracts:
+  - `DailyChallengeHistoryItem`
+  - `DailyChallengeCompletionSummary`
+- Added new `/stats` block `Daily Challenge: completion`:
+  - period filter (`7/30/90/all`)
+  - summary cards (total/completed/pending/completion %)
+  - recent challenge history list with mode/status/attempt progress
+- Updated Home to use unified challenge rotation helpers from repository.
+- Updated tests:
+  - `tests/integration/stats-page-sprint.test.tsx`,
+  - `tests/unit/daily-challenge.test.ts`,
+  - `tests/integration/home-daily-challenge.test.tsx`.
+
+### Validation
+- `npm test -- tests/integration/stats-page-sprint.test.tsx tests/unit/daily-challenge.test.ts tests/integration/home-daily-challenge.test.tsx` - passed.
+- `npm run build` - passed.
+
+### Next Session Start
+1. Move to post-`v0.6.F` polish: improve challenge UX copy and add extended analytics (challenge streak / long-term trend).
+
+## Incremental Update: v0.6.G (2026-03-01)
+### Status
+- Done.
+
+### Delivered in this session
+- Выпущен dev-срез `0.5.0-dev.4`.
+- Синхронизированы артефакты релиза:
+  - `package.json` и `package-lock.json` (версия),
+  - встроенная история релизов в `src/shared/constants/changelog.ts`,
+  - `docs/CHANGELOG_RU.md`,
+  - `docs/NeuroSprint_Execution_Status_RU.md`.
+- Исправлены проблемы читаемости истории релизов в приложении (`/help`) за счет актуализации контента changelog.
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm run build` - passed.
+- `npm test -- tests/integration/stats-page-sprint.test.tsx tests/unit/daily-challenge.test.ts tests/integration/home-daily-challenge.test.tsx` - passed.
+- `npm test -- tests/unit/reaction-challenges.test.ts tests/integration/reaction-challenge-modes.test.tsx` - passed.
+- `npm run test:e2e -- tests/e2e/reaction.spec.ts` - passed.
+
+### Next Session Start
+1. Перейти к следующему инкременту плана: challenge streak + долгосрочный тренд и подготовка блока новых игр.
+
+

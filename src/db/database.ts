@@ -1,6 +1,8 @@
 import Dexie, { type Table } from "dexie";
 import type {
   ClassGroup,
+  DailyChallenge,
+  DailyChallengeAttempt,
   GroupMember,
   Session,
   AppRole,
@@ -16,6 +18,8 @@ export class NeuroSprintDatabase extends Dexie {
   classGroups!: Table<ClassGroup, string>;
   groupMembers!: Table<GroupMember, string>;
   userPreferences!: Table<UserPreference, string>;
+  dailyChallenges!: Table<DailyChallenge, string>;
+  dailyChallengeAttempts!: Table<DailyChallengeAttempt, string>;
 
   constructor() {
     super("NeuroSprintDB");
@@ -143,6 +147,20 @@ export class NeuroSprintDatabase extends Dexie {
             }
           });
       });
+
+    this.version(8).stores({
+      users: "id, name, role, createdAt",
+      sessions:
+        "id, userId, taskId, mode, timestamp, localDate, score, moduleId, modeId, level, [userId+localDate], [userId+mode+localDate], [userId+moduleId+modeId], [modeId+localDate], [userId+moduleId+modeId+localDate], [userId+moduleId+modeId+timestamp]",
+      userModeProfiles:
+        "id, userId, moduleId, modeId, updatedAt, [userId+moduleId+modeId]",
+      classGroups: "id, name, createdAt",
+      groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]",
+      userPreferences: "id, userId, updatedAt",
+      dailyChallenges: "id, userId, localDate, modeId, status, [userId+localDate]",
+      dailyChallengeAttempts:
+        "id, challengeId, userId, sessionId, localDate, createdAt, [challengeId+sessionId], [challengeId+createdAt], [userId+localDate]"
+    });
   }
 }
 

@@ -1,16 +1,20 @@
 import Dexie from "dexie";
 import { db } from "../../db/database";
+import { dailyChallengeRepository } from "../challenge/dailyChallengeRepository";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import { DEFAULT_AUDIO_SETTINGS } from "../../shared/lib/audio/audioSettings";
 import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
 import { recommendModeByPerformance } from "../../shared/lib/training/recommendation";
 import type {
   ClassicDailyPoint,
+  CompareBandMetric,
   ComparePeriod,
+  DailyCompareBandPoint,
   DailyProgressSummary,
   GroupMetric,
   ModeRecommendation,
   ModeMetricSnapshot,
+  ReactionDailyPoint,
   Session,
   SprintMathDailyPoint,
   TimedDailyPoint,
@@ -127,6 +131,42 @@ export function buildSprintMathDailyPoints(sessions: Session[]): SprintMathDaily
   return points.sort(byDateAsc);
 }
 
+export function buildReactionDailyPoints(sessions: Session[]): ReactionDailyPoint[] {
+  const grouped = new Map<string, Session[]>();
+  for (const session of sessions) {
+    if (session.mode !== "reaction") {
+      continue;
+    }
+
+    const bucket = grouped.get(session.localDate);
+    if (bucket) {
+      bucket.push(session);
+    } else {
+      grouped.set(session.localDate, [session]);
+    }
+  }
+
+  const points: ReactionDailyPoint[] = [];
+  for (const [date, values] of grouped.entries()) {
+    const averageReactionMs =
+      values.reduce((sum, entry) => sum + entry.durationMs, 0) / values.length;
+    const bestReactionMs = Math.min(...values.map((entry) => entry.durationMs));
+    const accuracy = values.reduce((sum, entry) => sum + entry.accuracy, 0) / values.length;
+    const avgScore = values.reduce((sum, entry) => sum + entry.score, 0) / values.length;
+
+    points.push({
+      date,
+      avgReactionMs: averageReactionMs,
+      bestReactionMs,
+      accuracy,
+      avgScore,
+      count: values.length
+    });
+  }
+
+  return points.sort(byDateAsc);
+}
+
 export function buildDailyProgressSummary(
   sessions: Session[],
   date: string
@@ -170,7 +210,11 @@ function normalizeSession(session: Session): Session {
   const resolvedTaskId = session.taskId ?? "schulte";
   const resolvedModuleId =
     session.moduleId ??
-    (resolvedTaskId === "sprint_math" ? "sprint_math" : "schulte");
+    (resolvedTaskId === "sprint_math"
+      ? "sprint_math"
+      : resolvedTaskId === "reaction"
+        ? "reaction"
+        : "schulte");
 
   return {
     ...session,
@@ -184,6 +228,8 @@ function normalizeSession(session: Session): Session {
           ? "reverse"
           : session.mode === "sprint_math"
             ? "sprint_add_sub"
+            : session.mode === "reaction"
+              ? "reaction_signal"
           : "classic_plus"),
     level: session.level ?? 1,
     presetId: session.presetId ?? "legacy",
@@ -241,6 +287,81 @@ function filterByPeriod(sessions: Session[], period: ComparePeriod): Session[] {
     }
     return toLocalDateKey(session.timestamp) >= fromLocalDate;
   });
+}
+
+function compareMetricValue(session: Session, metric: CompareBandMetric): number {
+  if (metric === "duration_sec") {
+    return session.durationMs / 1000;
+  }
+  return session.score;
+}
+
+export function calculatePercentileValue(values: number[], percentile: number): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  if (sorted.length === 1) {
+    return sorted[0];
+  }
+
+  const normalized = Math.max(0, Math.min(1, percentile));
+  const index = (sorted.length - 1) * normalized;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  const lowerValue = sorted[lower] ?? sorted[0];
+  const upperValue = sorted[upper] ?? sorted[sorted.length - 1];
+
+  if (lower === upper) {
+    return lowerValue;
+  }
+
+  const ratio = index - lower;
+  return lowerValue + (upperValue - lowerValue) * ratio;
+}
+
+export function buildDailyCompareBandPoints(
+  sessions: Session[],
+  metric: CompareBandMetric
+): DailyCompareBandPoint[] {
+  const groupedByDateUser = new Map<string, Map<string, { sum: number; count: number }>>();
+
+  sessions.forEach((session) => {
+    const date = session.localDate ?? toLocalDateKey(session.timestamp);
+    const value = compareMetricValue(session, metric);
+    const usersMap = groupedByDateUser.get(date) ?? new Map<string, { sum: number; count: number }>();
+    const userBucket = usersMap.get(session.userId) ?? { sum: 0, count: 0 };
+
+    userBucket.sum += value;
+    userBucket.count += 1;
+    usersMap.set(session.userId, userBucket);
+    groupedByDateUser.set(date, usersMap);
+  });
+
+  const points: DailyCompareBandPoint[] = [];
+  groupedByDateUser.forEach((usersMap, date) => {
+    const userValues = [...usersMap.values()].map((bucket) => bucket.sum / bucket.count);
+    const p25 = calculatePercentileValue(userValues, 0.25);
+    const median = calculatePercentileValue(userValues, 0.5);
+    const p75 = calculatePercentileValue(userValues, 0.75);
+    const sessionsCount = [...usersMap.values()].reduce((sum, bucket) => sum + bucket.count, 0);
+
+    if (p25 == null || median == null || p75 == null) {
+      return;
+    }
+
+    points.push({
+      date,
+      p25,
+      median,
+      p75,
+      usersCount: userValues.length,
+      sessionsCount
+    });
+  });
+
+  return points.sort(byDateAsc);
 }
 
 export function buildModeMetricSnapshot(
@@ -310,6 +431,19 @@ async function loadModeSessions(
     .toArray();
 }
 
+async function loadModeSessionsByIds(
+  modeIds: TrainingModeId[],
+  period: ComparePeriod
+): Promise<Session[]> {
+  const uniqueModeIds = [...new Set(modeIds)];
+  if (uniqueModeIds.length === 0) {
+    return [];
+  }
+
+  const batches = await Promise.all(uniqueModeIds.map((modeId) => loadModeSessions(modeId, period)));
+  return batches.flat();
+}
+
 export function calculateStreak(localDates: string[]): number {
   if (localDates.length === 0) {
     return 0;
@@ -337,7 +471,9 @@ export function recommendModeFromSessions(sessions: Session[]): ModeRecommendati
 
 export const sessionRepository = {
   async save(session: Session): Promise<void> {
-    await db.sessions.put(normalizeSession(session));
+    const normalized = normalizeSession(session);
+    await db.sessions.put(normalized);
+    await dailyChallengeRepository.registerSession(normalized);
   },
 
   async listByUser(userId: string): Promise<Session[]> {
@@ -381,10 +517,21 @@ export const sessionRepository = {
     return buildSprintMathDailyPoints(sessions);
   },
 
+  async aggregateDailyReaction(userId: string): Promise<ReactionDailyPoint[]> {
+    const sessions = await db.sessions
+      .where("userId")
+      .equals(userId)
+      .and((session) => session.mode === "reaction")
+      .toArray();
+    return buildReactionDailyPoints(sessions);
+  },
+
   async aggregateDailyByModeId(
     userId: string,
     modeId: TrainingModeId
-  ): Promise<TimedDailyPoint[] | ClassicDailyPoint[] | SprintMathDailyPoint[]> {
+  ): Promise<
+    TimedDailyPoint[] | ClassicDailyPoint[] | SprintMathDailyPoint[] | ReactionDailyPoint[]
+  > {
     const sessions = await db.sessions
       .where("userId")
       .equals(userId)
@@ -396,6 +543,13 @@ export const sessionRepository = {
     }
     if (modeId === "sprint_add_sub" || modeId === "sprint_mixed") {
       return buildSprintMathDailyPoints(sessions);
+    }
+    if (
+      modeId === "reaction_signal" ||
+      modeId === "reaction_stroop" ||
+      modeId === "reaction_pair"
+    ) {
+      return buildReactionDailyPoints(sessions);
     }
 
     return buildClassicDailyPoints(sessions);
@@ -475,5 +629,16 @@ export const sessionRepository = {
     const sessions = await loadModeSessions(modeId, normalizedPeriod);
     const filtered = filterByPeriod(sessions, normalizedPeriod);
     return buildModeMetricSnapshot(filtered, metric);
+  },
+
+  async aggregateDailyCompareBand(
+    modeIds: TrainingModeId[],
+    metric: CompareBandMetric,
+    period: ComparePeriod
+  ): Promise<DailyCompareBandPoint[]> {
+    const normalizedPeriod = normalizePeriod(period);
+    const sessions = await loadModeSessionsByIds(modeIds, normalizedPeriod);
+    const filtered = filterByPeriod(sessions, normalizedPeriod);
+    return buildDailyCompareBandPoints(filtered, metric);
   }
 };

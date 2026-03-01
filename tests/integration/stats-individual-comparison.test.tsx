@@ -1,4 +1,5 @@
-﻿import { render, screen, waitFor } from "@testing-library/react";
+﻿import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
@@ -80,8 +81,8 @@ describe("StatsIndividual comparison", () => {
     mocks.trainingRepository.listUserModeProfiles.mockResolvedValue([]);
     mocks.trainingRepository.listRecentSessionsByMode.mockResolvedValue([]);
     mocks.userRepository.list.mockResolvedValue([
-      { id: "u1", name: "User 1", createdAt: "2026-02-20T00:00:00.000Z" },
-      { id: "u2", name: "User 2", createdAt: "2026-02-20T00:00:00.000Z" }
+      { id: "u1", name: "User 1", role: "teacher", createdAt: "2026-02-20T00:00:00.000Z" },
+      { id: "u2", name: "User 2", role: "student", createdAt: "2026-02-20T00:00:00.000Z" }
     ]);
     mocks.groupRepository.listGroupsForUser.mockResolvedValue([
       { id: "g1", name: "Group A", createdAt: "2026-02-20T00:00:00.000Z" }
@@ -110,13 +111,17 @@ describe("StatsIndividual comparison", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByTestId("individual-comparison-block")).toBeInTheDocument();
-    expect(screen.getByText("Все пользователи")).toBeInTheDocument();
+    const comparison = await screen.findByTestId("individual-comparison-block");
+    expect(comparison).toBeInTheDocument();
+    expect(within(comparison).getByText("Все пользователи")).toBeInTheDocument();
     expect((await screen.findAllByText("Group A")).length).toBeGreaterThan(0);
 
-    expect(await screen.findByText("60.00")).toBeInTheDocument();
-    expect(await screen.findByText("58.00")).toBeInTheDocument();
-    expect(await screen.findByText("55.00")).toBeInTheDocument();
+    expect(within(comparison).getByText("60.00")).toBeInTheDocument();
+    expect(within(comparison).getByText("55.00")).toBeInTheDocument();
+    expect(await screen.findByTestId("individual-leaderboard-block")).toBeInTheDocument();
+    expect(await screen.findByTestId("individual-leaderboard-active-user")).toBeInTheDocument();
+    expect(screen.getByText("#1")).toBeInTheDocument();
+    expect(screen.getByText("User 1")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(mocks.sessionRepository.getModeMetricSnapshot).toHaveBeenCalledWith(
@@ -129,6 +134,30 @@ describe("StatsIndividual comparison", () => {
         "classic_plus",
         30,
         "score"
+      );
+    });
+  });
+
+  it("reloads leaderboard by selected period", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(ACTIVE_USER_KEY, "u1");
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsIndividualPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId("individual-leaderboard-block");
+    await user.selectOptions(screen.getByTestId("individual-leaderboard-period"), "7");
+
+    await waitFor(() => {
+      expect(mocks.sessionRepository.getModeMetricSnapshot).toHaveBeenCalledWith(
+        "classic_plus",
+        "score" as GroupMetric,
+        7
       );
     });
   });
@@ -148,6 +177,7 @@ describe("StatsIndividual comparison", () => {
     expect(await screen.findByTestId("stats-individual-page")).toBeInTheDocument();
     expect(screen.getByTestId("individual-comparison-restricted-note")).toBeInTheDocument();
     expect(screen.queryByTestId("individual-comparison-block")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("individual-leaderboard-block")).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(mocks.sessionRepository.getModeMetricSnapshot).not.toHaveBeenCalled();
@@ -155,3 +185,6 @@ describe("StatsIndividual comparison", () => {
     });
   });
 });
+
+
+

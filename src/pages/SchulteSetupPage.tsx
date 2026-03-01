@@ -16,6 +16,7 @@ import {
   getTrainingSetup,
   saveTrainingSetup
 } from "../shared/lib/training/setupStorage";
+import { InfoHint } from "../shared/ui/InfoHint";
 import type {
   SchulteThemeConfig,
   TrainingModeId,
@@ -188,6 +189,11 @@ export function SchulteSetupPage() {
     <section className="panel" data-testid="schulte-setup-page">
       <h2>Таблица Шульте</h2>
       <p>Выберите режим и настройте тренировку перед запуском.</p>
+      <InfoHint title="Как играть в Шульте" testId="schulte-setup-hint">
+        <p>1. Выберите режим: Classic+, Timed+ или Reverse.</p>
+        <p>2. Для стабильного роста держите точность выше 85%.</p>
+        <p>3. Сначала точность, потом скорость — это даёт лучший score.</p>
+      </InfoHint>
 
       <div className="segmented-row">
         {SCHULTE_MODES.map((mode) => (

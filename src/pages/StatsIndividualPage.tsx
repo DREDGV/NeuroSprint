@@ -16,14 +16,21 @@ import { trainingRepository } from "../entities/training/trainingRepository";
 import { normalizeUserRole } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
-import { isSprintMathMode, isTimedMode, moduleIdByModeId } from "../shared/lib/training/modeMapping";
+import {
+  isReactionMode,
+  isSprintMathMode,
+  isTimedMode,
+  moduleIdByModeId
+} from "../shared/lib/training/modeMapping";
 import { TRAINING_MODES } from "../shared/lib/training/presets";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   ClassGroup,
   ClassicDailyPoint,
   GroupMetric,
+  ModeMetricSnapshot,
   ModeRecommendation,
+  ReactionDailyPoint,
   Session,
   SprintMathDailyPoint,
   TimedDailyPoint,
@@ -31,6 +38,8 @@ import type {
   User,
   UserModeProfile
 } from "../shared/types/domain";
+
+const STATS_TRAINING_MODES = TRAINING_MODES;
 
 function calculateStability(values: number[]): number | null {
   if (values.length < 2) {
@@ -86,6 +95,7 @@ export function StatsIndividualPage() {
   const [modeId, setModeId] = useState<TrainingModeId>("classic_plus");
   const [dailyClassic, setDailyClassic] = useState<ClassicDailyPoint[]>([]);
   const [dailyTimed, setDailyTimed] = useState<TimedDailyPoint[]>([]);
+  const [dailyReaction, setDailyReaction] = useState<ReactionDailyPoint[]>([]);
   const [dailySprintMath, setDailySprintMath] = useState<SprintMathDailyPoint[]>([]);
   const [recentSessions, setRecentSessions] = useState<Session[]>([]);
   const [profiles, setProfiles] = useState<UserModeProfile[]>([]);
@@ -106,6 +116,9 @@ export function StatsIndividualPage() {
   const [otherUserValue, setOtherUserValue] = useState<number | null>(null);
   const [groupValue, setGroupValue] = useState<number | null>(null);
   const [globalValue, setGlobalValue] = useState<number | null>(null);
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<number | "all">(30);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardSnapshot, setLeaderboardSnapshot] = useState<ModeMetricSnapshot | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [comparisonLoading, setComparisonLoading] = useState(false);
@@ -147,14 +160,22 @@ export function StatsIndividualPage() {
         if (isTimedMode(modeId)) {
           setDailyTimed(daily as TimedDailyPoint[]);
           setDailyClassic([]);
+          setDailyReaction([]);
           setDailySprintMath([]);
         } else if (isSprintMathMode(modeId)) {
           setDailySprintMath(daily as SprintMathDailyPoint[]);
           setDailyTimed([]);
+          setDailyReaction([]);
           setDailyClassic([]);
+        } else if (isReactionMode(modeId)) {
+          setDailyReaction(daily as ReactionDailyPoint[]);
+          setDailyTimed([]);
+          setDailyClassic([]);
+          setDailySprintMath([]);
         } else {
           setDailyClassic(daily as ClassicDailyPoint[]);
           setDailyTimed([]);
+          setDailyReaction([]);
           setDailySprintMath([]);
         }
         setRecentSessions(sessions);
@@ -290,8 +311,41 @@ export function StatsIndividualPage() {
     modeId
   ]);
 
+  useEffect(() => {
+    if (!activeUserId || !canViewComparisonAccess) {
+      setLeaderboardSnapshot(null);
+      setLeaderboardLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLeaderboardLoading(true);
+
+    void sessionRepository
+      .getModeMetricSnapshot(modeId, "score", leaderboardPeriod)
+      .then((snapshot) => {
+        if (!cancelled) {
+          setLeaderboardSnapshot(snapshot);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLeaderboardSnapshot(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLeaderboardLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUserId, canViewComparisonAccess, leaderboardPeriod, modeId]);
+
   const selectedMode = useMemo(
-    () => TRAINING_MODES.find((entry) => entry.id === modeId) ?? TRAINING_MODES[0],
+    () => STATS_TRAINING_MODES.find((entry) => entry.id === modeId) ?? STATS_TRAINING_MODES[0],
     [modeId]
   );
 
@@ -319,6 +373,18 @@ export function StatsIndividualPage() {
     [compareGroupId, groups]
   );
 
+  const leaderboardRows = useMemo(
+    () =>
+      (leaderboardSnapshot?.byUser ?? []).slice(0, 10).map((entry, index) => ({
+        rank: index + 1,
+        userId: entry.userId,
+        name: users.find((user) => user.id === entry.userId)?.name ?? "Пользователь",
+        value: entry.value,
+        sessions: entry.sessions
+      })),
+    [leaderboardSnapshot?.byUser, users]
+  );
+
   const chartData = useMemo(() => {
     if (isTimedMode(modeId)) {
       return dailyTimed.map((entry) => ({
@@ -329,6 +395,17 @@ export function StatsIndividualPage() {
         nameA: "effectiveCorrect / мин",
         nameB: "Средний score",
         nameC: ""
+      }));
+    }
+    if (isReactionMode(modeId)) {
+      return dailyReaction.map((entry) => ({
+        date: entry.date,
+        valueA: Number(entry.bestReactionMs.toFixed(0)),
+        valueB: Number(entry.avgReactionMs.toFixed(0)),
+        valueC: Number((entry.accuracy * 100).toFixed(1)),
+        nameA: "Лучшее время (мс)",
+        nameB: "Среднее время (мс)",
+        nameC: "Точность (%)"
       }));
     }
     if (isSprintMathMode(modeId)) {
@@ -349,9 +426,9 @@ export function StatsIndividualPage() {
       valueC: null,
       nameA: "Лучшее время (сек)",
       nameB: "Среднее время (сек)",
-      nameC: ""
-    }));
-  }, [dailyClassic, dailySprintMath, dailyTimed, modeId]);
+        nameC: ""
+      }));
+  }, [dailyClassic, dailyReaction, dailySprintMath, dailyTimed, modeId]);
 
   const sprintSummary = useMemo(() => {
     if (!isSprintMathMode(modeId) || recentSessions.length === 0) {
@@ -435,7 +512,7 @@ export function StatsIndividualPage() {
       </div>
 
       <div className="segmented-row">
-        {TRAINING_MODES.map((mode) => (
+        {STATS_TRAINING_MODES.map((mode) => (
           <button
             key={mode.id}
             type="button"
@@ -589,6 +666,66 @@ export function StatsIndividualPage() {
         </p>
       )}
 
+      {canViewComparisonAccess ? (
+        <section className="setup-block" data-testid="individual-leaderboard-block">
+          <h3>Лидерборд Top-10</h3>
+          <div className="action-row">
+            <label htmlFor="leaderboard-period">Период</label>
+            <select
+              id="leaderboard-period"
+              value={String(leaderboardPeriod)}
+              onChange={(event) =>
+                setLeaderboardPeriod(
+                  event.target.value === "all" ? "all" : Number(event.target.value)
+                )
+              }
+              data-testid="individual-leaderboard-period"
+            >
+              <option value={7}>7 дней</option>
+              <option value={30}>30 дней</option>
+              <option value={90}>90 дней</option>
+              <option value="all">Все время</option>
+            </select>
+          </div>
+          <p className="comparison-note">
+            Рейтинг строится по среднему score в режиме {selectedMode.title}.
+          </p>
+
+          {leaderboardLoading ? (
+            <p>Загрузка лидерборда...</p>
+          ) : leaderboardRows.length === 0 ? (
+            <p>Недостаточно данных для лидерборда.</p>
+          ) : (
+            <ol className="leaderboard-list" data-testid="individual-leaderboard-list">
+              {leaderboardRows.map((entry) => (
+                <li
+                  key={entry.userId}
+                  className={
+                    entry.userId === activeUserId
+                      ? "leaderboard-item is-active-user"
+                      : "leaderboard-item"
+                  }
+                  data-testid={
+                    entry.userId === activeUserId
+                      ? "individual-leaderboard-active-user"
+                      : undefined
+                  }
+                >
+                  <div className="leaderboard-main">
+                    <span className="leaderboard-rank">#{entry.rank}</span>
+                    <span className="leaderboard-name">{entry.name}</span>
+                  </div>
+                  <div className="leaderboard-metrics">
+                    <span className="leaderboard-score">{entry.value.toFixed(2)}</span>
+                    <span className="leaderboard-sessions">{entry.sessions} сесс.</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      ) : null}
+
       {recommendation ? (
         <p className="status-line">
           Рекомендованный режим:{" "}
@@ -628,7 +765,7 @@ export function StatsIndividualPage() {
                 strokeWidth={3}
                 dot={{ r: 4 }}
               />
-              {isSprintMathMode(modeId) ? (
+              {isSprintMathMode(modeId) || isReactionMode(modeId) ? (
                 <Line
                   type="monotone"
                   dataKey="valueC"

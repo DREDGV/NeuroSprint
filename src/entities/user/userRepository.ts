@@ -70,7 +70,15 @@ export const userRepository = {
   async remove(id: string): Promise<void> {
     await db.transaction(
       "rw",
-      [db.users, db.sessions, db.userModeProfiles, db.userPreferences, db.groupMembers],
+      [
+        db.users,
+        db.sessions,
+        db.userModeProfiles,
+        db.userPreferences,
+        db.groupMembers,
+        db.dailyChallenges,
+        db.dailyChallengeAttempts
+      ],
       async () => {
         const target = await db.users.get(id);
         if (target && isTeacherRole(normalizeUserRole(target.role))) {
@@ -87,6 +95,8 @@ export const userRepository = {
         await db.userModeProfiles.where("userId").equals(id).delete();
         await db.userPreferences.where("userId").equals(id).delete();
         await db.groupMembers.where("userId").equals(id).delete();
+        await db.dailyChallenges.where("userId").equals(id).delete();
+        await db.dailyChallengeAttempts.where("userId").equals(id).delete();
       }
     );
   }

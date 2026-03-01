@@ -23,6 +23,12 @@ export const TRAINING_MODULES: TrainingModule[] = [
     status: "active"
   },
   {
+    id: "reaction",
+    title: "Reaction",
+    description: "Тренировка скорости реакции на визуальный сигнал.",
+    status: "active"
+  },
+  {
     id: "n_back",
     title: "N-back",
     description: "Тренировка рабочей памяти.",
@@ -66,7 +72,32 @@ export const SPRINT_MATH_MODES: TrainingMode[] = [
   }
 ];
 
-export const TRAINING_MODES: TrainingMode[] = [...SCHULTE_MODES, ...SPRINT_MATH_MODES];
+export const REACTION_MODES: TrainingMode[] = [
+  {
+    id: "reaction_signal",
+    moduleId: "reaction",
+    title: "Reaction: Сигнал",
+    description: "Быстрый отклик на визуальный сигнал."
+  },
+  {
+    id: "reaction_stroop",
+    moduleId: "reaction",
+    title: "Reaction: Цвет и слово",
+    description: "Найдите карточку, где цвет текста совпадает с надписью."
+  },
+  {
+    id: "reaction_pair",
+    moduleId: "reaction",
+    title: "Reaction: Пара",
+    description: "Найдите правильную пару по подсказке (символ + число)."
+  }
+];
+
+export const TRAINING_MODES: TrainingMode[] = [
+  ...SCHULTE_MODES,
+  ...SPRINT_MATH_MODES,
+  ...REACTION_MODES
+];
 
 const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
   easy: {

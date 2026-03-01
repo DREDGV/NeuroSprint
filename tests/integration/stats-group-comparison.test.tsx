@@ -183,4 +183,48 @@ describe("StatsGroup comparison", () => {
       );
     });
   });
+
+  it("supports reaction module and mode filters in comparison flow", async () => {
+    render(
+      <MemoryRouter>
+        <StatsGroupPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("group-comparison-block")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("stats-group-module-select"), {
+      target: { value: "reaction" }
+    });
+
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId("stats-group-mode-select") as HTMLSelectElement).value
+      ).toBe("reaction_signal");
+    });
+
+    fireEvent.change(screen.getByTestId("stats-group-mode-select"), {
+      target: { value: "reaction_pair" }
+    });
+
+    await waitFor(() => {
+      expect(mocks.groupRepository.aggregateGroupStats).toHaveBeenCalledWith(
+        "g1",
+        "reaction_pair",
+        30,
+        "score"
+      );
+      expect(mocks.groupRepository.aggregateGroupStats).toHaveBeenCalledWith(
+        "g2",
+        "reaction_pair",
+        30,
+        "score"
+      );
+      expect(mocks.sessionRepository.getModeMetricSnapshot).toHaveBeenCalledWith(
+        "reaction_pair",
+        "score",
+        30
+      );
+    });
+  });
 });

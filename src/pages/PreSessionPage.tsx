@@ -12,6 +12,7 @@ import {
 } from "../shared/lib/motivation/motivation";
 import { moduleIdByModeId } from "../shared/lib/training/modeMapping";
 import { TRAINING_MODES } from "../shared/lib/training/presets";
+import { InfoHint } from "../shared/ui/InfoHint";
 import type {
   DailyProgressSummary,
   ModeRecommendation,
@@ -25,23 +26,49 @@ function isTrainingModeId(value: string | null): value is TrainingModeId {
     value === "timed_plus" ||
     value === "reverse" ||
     value === "sprint_add_sub" ||
-    value === "sprint_mixed"
+    value === "sprint_mixed" ||
+    value === "reaction_signal" ||
+    value === "reaction_stroop" ||
+    value === "reaction_pair"
   );
 }
 
 function isTrainingModuleId(value: string | null): value is TrainingModuleId {
-  return value === "schulte" || value === "sprint_math";
+  return value === "schulte" || value === "sprint_math" || value === "reaction";
 }
 
 function fallbackModeForModule(moduleId: TrainingModuleId): TrainingModeId {
-  return moduleId === "sprint_math" ? "sprint_add_sub" : "classic_plus";
+  if (moduleId === "sprint_math") {
+    return "sprint_add_sub";
+  }
+  if (moduleId === "reaction") {
+    return "reaction_signal";
+  }
+  return "classic_plus";
 }
 
 function setupRouteByMode(modeId: TrainingModeId): string {
-  if (moduleIdByModeId(modeId) === "sprint_math") {
+  const moduleId = moduleIdByModeId(modeId);
+  if (moduleId === "sprint_math") {
     return `/training/sprint-math?mode=${modeId}`;
   }
+  if (moduleId === "reaction") {
+    return `/training/reaction?mode=${modeId}`;
+  }
   return `/training/schulte?mode=${modeId}`;
+}
+
+function getReactionModeTip(modeId: TrainingModeId): string | null {
+  if (modeId === "reaction_signal") {
+    return "Фокус: стабильная реакция на сигнал без ранних нажатий.";
+  }
+  if (modeId === "reaction_stroop") {
+    return "Фокус: сначала совпадение цвета и слова, затем ускорение.";
+  }
+  if (modeId === "reaction_pair") {
+    return "Фокус: быстро находите целевую пару по подсказке в 2x2 сетке.";
+  }
+  return null;
 }
 
 export function PreSessionPage() {
@@ -95,6 +122,14 @@ export function PreSessionPage() {
       recommendation?.modeId ??
       "—",
     [recommendation]
+  );
+  const selectedReactionTip = useMemo(
+    () => getReactionModeTip(selectedMode.id),
+    [selectedMode.id]
+  );
+  const recommendationReactionTip = useMemo(
+    () => getReactionModeTip(recommendation?.modeId ?? "classic_plus"),
+    [recommendation?.modeId]
   );
 
   useEffect(() => {
@@ -192,6 +227,12 @@ export function PreSessionPage() {
         Проверьте цель дня, выберите режим и запустите тренировку для пользователя{" "}
         <strong>{activeUserName}</strong>.
       </p>
+      <InfoHint title="Как проще ориентироваться" testId="pre-session-hint">
+        <p>Сначала выберите рекомендованный режим, затем нажмите «К настройке тренировки».</p>
+        <p>
+          Если времени мало, ориентируйтесь на блок «Цель на сегодня» и выполните минимум сессий.
+        </p>
+      </InfoHint>
 
       <section className="setup-block" data-testid="pre-session-goal">
         <h3>Цель на сегодня</h3>
@@ -254,6 +295,11 @@ export function PreSessionPage() {
             <strong>{recommendationTitle}</strong>
           </p>
           <p>{recommendation.reason}</p>
+          {recommendationReactionTip ? (
+            <p className="status-line" data-testid="pre-session-reaction-recommendation-tip">
+              {recommendationReactionTip}
+            </p>
+          ) : null}
           <p className="status-line">
             Уверенность рекомендации: {Math.round(recommendation.confidence * 100)}%
           </p>
@@ -284,6 +330,11 @@ export function PreSessionPage() {
           ))}
         </div>
         <p className="status-line">{selectedMode.description}</p>
+        {selectedReactionTip ? (
+          <p className="status-line" data-testid="pre-session-reaction-mode-tip">
+            {selectedReactionTip}
+          </p>
+        ) : null}
       </section>
 
       <section className="session-brief">

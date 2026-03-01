@@ -10,15 +10,23 @@ import {
 } from "recharts";
 import { useActiveUser } from "../app/ActiveUserContext";
 import { useRoleAccess } from "../app/useRoleAccess";
+import { dailyChallengeRepository } from "../entities/challenge/dailyChallengeRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   ClassicDailyPoint,
+  CompareBandMetric,
+  ComparePeriod,
+  DailyChallengeCompletionSummary,
+  DailyChallengeHistoryItem,
+  DailyCompareBandPoint,
+  ReactionDailyPoint,
   SprintMathDailyPoint,
-  TimedDailyPoint
+  TimedDailyPoint,
+  TrainingModeId
 } from "../shared/types/domain";
 
-type StatsMode = "classic" | "timed" | "sprint_math";
+type StatsMode = "classic" | "timed" | "sprint_math" | "reaction";
 type SprintModeFilter = "all" | "sprint_add_sub" | "sprint_mixed";
 type SprintSubmode = "sprint_add_sub" | "sprint_mixed";
 
@@ -53,12 +61,36 @@ interface ProgressInsight {
   snapshot: ProgressSnapshot | null;
 }
 
+interface CompareConfig {
+  modeIds: TrainingModeId[];
+  metric: CompareBandMetric;
+  title: string;
+  metricSuffix: string;
+  digits: number;
+}
+
+interface CompareChartPoint {
+  date: string;
+  dateShort: string;
+  me: number | null;
+  p25: number | null;
+  median: number | null;
+  p75: number | null;
+}
+
 function formatDateShort(dateKey: string): string {
   const [year, month, day] = dateKey.split("-");
   if (!year || !month || !day) {
     return dateKey;
   }
   return `${day}.${month}`;
+}
+
+function formatPeriodLabel(period: ComparePeriod): string {
+  if (period === "all") {
+    return "все время";
+  }
+  return `${period} дн.`;
 }
 
 function formatMetric(value: number | null, digits = 2, suffix = ""): string {
@@ -113,6 +145,66 @@ function sprintFilterLabel(filter: SprintModeFilter): string {
     return "Mixed";
   }
   return "Все";
+}
+
+function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): CompareConfig {
+  if (mode === "classic") {
+    return {
+      modeIds: ["classic_plus"],
+      metric: "duration_sec",
+      title: "Сравнение по времени (сек)",
+      metricSuffix: " сек",
+      digits: 2
+    };
+  }
+
+  if (mode === "timed") {
+    return {
+      modeIds: ["timed_plus"],
+      metric: "score",
+      title: "Сравнение по score",
+      metricSuffix: "",
+      digits: 2
+    };
+  }
+
+  if (mode === "reaction") {
+    return {
+      modeIds: ["reaction_signal", "reaction_stroop", "reaction_pair"],
+      metric: "score",
+      title: "Сравнение по score",
+      metricSuffix: "",
+      digits: 2
+    };
+  }
+
+  if (sprintFilter === "sprint_add_sub") {
+    return {
+      modeIds: ["sprint_add_sub"],
+      metric: "score",
+      title: "Сравнение по score (Add/Sub)",
+      metricSuffix: "",
+      digits: 2
+    };
+  }
+
+  if (sprintFilter === "sprint_mixed") {
+    return {
+      modeIds: ["sprint_mixed"],
+      metric: "score",
+      title: "Сравнение по score (Mixed)",
+      metricSuffix: "",
+      digits: 2
+    };
+  }
+
+  return {
+    modeIds: ["sprint_add_sub", "sprint_mixed"],
+    metric: "score",
+    title: "Сравнение по score (Sprint Math: все)",
+    metricSuffix: "",
+    digits: 2
+  };
 }
 
 function buildSprintComparisonSummary(
@@ -213,16 +305,32 @@ export function StatsPage() {
   const [sprintFilter, setSprintFilter] = useState<SprintModeFilter>("all");
   const [classicData, setClassicData] = useState<ClassicDailyPoint[]>([]);
   const [timedData, setTimedData] = useState<TimedDailyPoint[]>([]);
+  const [reactionData, setReactionData] = useState<ReactionDailyPoint[]>([]);
   const [sprintAllData, setSprintAllData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintAddSubData, setSprintAddSubData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintMixedData, setSprintMixedData] = useState<SprintMathDailyPoint[]>([]);
+  const [compareEnabled, setCompareEnabled] = useState(false);
+  const [comparePeriod, setComparePeriod] = useState<ComparePeriod>(30);
+  const [compareBands, setCompareBands] = useState<DailyCompareBandPoint[]>([]);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [challengePeriod, setChallengePeriod] = useState<ComparePeriod>(30);
+  const [challengeSummary, setChallengeSummary] = useState<DailyChallengeCompletionSummary | null>(
+    null
+  );
+  const [challengeHistory, setChallengeHistory] = useState<DailyChallengeHistoryItem[]>([]);
+  const [challengeLoading, setChallengeLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const compareConfig = useMemo(
+    () => resolveCompareConfig(mode, sprintFilter),
+    [mode, sprintFilter]
+  );
 
   useEffect(() => {
     if (!activeUserId) {
       setClassicData([]);
       setTimedData([]);
+      setReactionData([]);
       setSprintAllData([]);
       setSprintAddSubData([]);
       setSprintMixedData([]);
@@ -236,16 +344,18 @@ export function StatsPage() {
     void Promise.all([
       sessionRepository.aggregateDailyClassic(activeUserId),
       sessionRepository.aggregateDailyTimed(activeUserId),
+      sessionRepository.aggregateDailyReaction(activeUserId),
       sessionRepository.aggregateDailySprintMath(activeUserId),
       sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_add_sub"),
       sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_mixed")
     ])
-      .then(([classic, timed, sprintAll, sprintAddSub, sprintMixed]) => {
+      .then(([classic, timed, reaction, sprintAll, sprintAddSub, sprintMixed]) => {
         if (cancelled) {
           return;
         }
         setClassicData(classic);
         setTimedData(timed);
+        setReactionData(reaction);
         setSprintAllData(sprintAll);
         setSprintAddSubData(sprintAddSub as SprintMathDailyPoint[]);
         setSprintMixedData(sprintMixed as SprintMathDailyPoint[]);
@@ -265,6 +375,78 @@ export function StatsPage() {
       cancelled = true;
     };
   }, [activeUserId]);
+
+  useEffect(() => {
+    if (!activeUserId || !compareEnabled) {
+      setCompareBands([]);
+      setCompareLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCompareLoading(true);
+
+    void sessionRepository
+      .aggregateDailyCompareBand(compareConfig.modeIds, compareConfig.metric, comparePeriod)
+      .then((points) => {
+        if (!cancelled) {
+          setCompareBands(points);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCompareBands([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCompareLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUserId, compareConfig.metric, compareConfig.modeIds, compareEnabled, comparePeriod]);
+
+  useEffect(() => {
+    if (!activeUserId) {
+      setChallengeSummary(null);
+      setChallengeHistory([]);
+      setChallengeLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setChallengeLoading(true);
+
+    void Promise.all([
+      dailyChallengeRepository.getCompletionSummary(activeUserId, challengePeriod),
+      dailyChallengeRepository.listHistory(activeUserId, challengePeriod, 10)
+    ])
+      .then(([summary, history]) => {
+        if (cancelled) {
+          return;
+        }
+        setChallengeSummary(summary);
+        setChallengeHistory(history);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChallengeSummary(null);
+          setChallengeHistory([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setChallengeLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUserId, challengePeriod]);
 
   const sprintActiveData = useMemo(() => {
     if (sprintFilter === "sprint_add_sub") {
@@ -298,6 +480,19 @@ export function StatsPage() {
     [timedData]
   );
 
+  const reactionChartData = useMemo(
+    () =>
+      reactionData.map((entry) => ({
+        date: entry.date,
+        dateShort: formatDateShort(entry.date),
+        avgReactionMs: Number(entry.avgReactionMs.toFixed(0)),
+        bestReactionMs: Number(entry.bestReactionMs.toFixed(0)),
+        accuracyPct: Number((entry.accuracy * 100).toFixed(1)),
+        avgScore: Number(entry.avgScore.toFixed(2))
+      })),
+    [reactionData]
+  );
+
   const sprintMathChartData = useMemo(
     () =>
       sprintActiveData.map((entry) => ({
@@ -321,6 +516,50 @@ export function StatsPage() {
   const sprintComparison = useMemo(
     () => buildSprintComparisonSummary(sprintModeSummary.addSub, sprintModeSummary.mixed),
     [sprintModeSummary.addSub, sprintModeSummary.mixed]
+  );
+
+  const userCompareMetricByDate = useMemo(() => {
+    const entries: Array<[string, number]> =
+      mode === "classic"
+        ? classicChartData.map((point) => [point.date, point.avgSec])
+        : mode === "timed"
+          ? timedChartData.map((point) => [point.date, point.avgScore])
+          : mode === "reaction"
+            ? reactionChartData.map((point) => [point.date, point.avgScore])
+            : sprintMathChartData.map((point) => [point.date, point.avgScore]);
+
+    return new Map<string, number>(entries);
+  }, [classicChartData, mode, reactionChartData, sprintMathChartData, timedChartData]);
+
+  const compareChartData = useMemo<CompareChartPoint[]>(() => {
+    if (!compareEnabled) {
+      return [];
+    }
+
+    const bandByDate = new Map(compareBands.map((point) => [point.date, point]));
+    const dateSet = new Set<string>();
+    compareBands.forEach((point) => dateSet.add(point.date));
+    userCompareMetricByDate.forEach((_value, date) => dateSet.add(date));
+
+    return [...dateSet]
+      .sort((a, b) => a.localeCompare(b))
+      .map((date) => {
+        const band = bandByDate.get(date);
+        const me = userCompareMetricByDate.get(date) ?? null;
+        return {
+          date,
+          dateShort: formatDateShort(date),
+          me,
+          p25: band?.p25 ?? null,
+          median: band?.median ?? null,
+          p75: band?.p75 ?? null
+        };
+      });
+  }, [compareBands, compareEnabled, userCompareMetricByDate]);
+
+  const compareLatestPoint = useMemo(
+    () => (compareChartData.length > 0 ? compareChartData[compareChartData.length - 1] : null),
+    [compareChartData]
   );
 
   const progressInsight = useMemo<ProgressInsight>(() => {
@@ -376,6 +615,32 @@ export function StatsPage() {
       };
     }
 
+    if (mode === "reaction") {
+      const values = reactionChartData.map((point) => point.bestReactionMs);
+      const trend = splitForTrend(values);
+      const changePct = computeChangePercent(trend.previous, trend.current, false);
+      const bestPoint =
+        reactionChartData.length > 0
+          ? reactionChartData.reduce((best, point) =>
+              point.bestReactionMs < best.bestReactionMs ? point : best
+            )
+          : null;
+
+      return {
+        headline: buildProgressHeadline(changePct, "времени реакции", reactionChartData.length),
+        previousAvg: trend.previous,
+        currentAvg: trend.current,
+        changePct,
+        snapshot: bestPoint
+          ? {
+              label: `Лучший отклик: ${bestPoint.bestReactionMs.toFixed(0)} мс`,
+              value: bestPoint.bestReactionMs,
+              date: bestPoint.date
+            }
+          : null
+      };
+    }
+
     const values = sprintMathChartData.map((point) => point.avgScore);
     const trend = splitForTrend(values);
     const changePct = computeChangePercent(trend.previous, trend.current, true);
@@ -399,7 +664,7 @@ export function StatsPage() {
           }
         : null
     };
-  }, [classicChartData, mode, sprintMathChartData, timedChartData]);
+  }, [classicChartData, mode, reactionChartData, sprintMathChartData, timedChartData]);
 
   const isEmpty = useMemo(() => {
     if (mode === "classic") {
@@ -408,8 +673,17 @@ export function StatsPage() {
     if (mode === "timed") {
       return timedChartData.length === 0;
     }
+    if (mode === "reaction") {
+      return reactionChartData.length === 0;
+    }
     return sprintMathChartData.length === 0;
-  }, [classicChartData.length, mode, sprintMathChartData.length, timedChartData.length]);
+  }, [
+    classicChartData.length,
+    mode,
+    reactionChartData.length,
+    sprintMathChartData.length,
+    timedChartData.length
+  ]);
 
   return (
     <section className="panel" data-testid="stats-page">
@@ -449,6 +723,14 @@ export function StatsPage() {
           data-testid="stats-mode-timed"
         >
           Timed
+        </button>
+        <button
+          type="button"
+          className={mode === "reaction" ? "btn-secondary is-active" : "btn-secondary"}
+          onClick={() => setMode("reaction")}
+          data-testid="stats-mode-reaction"
+        >
+          Reaction
         </button>
         <button
           type="button"
@@ -516,6 +798,122 @@ export function StatsPage() {
           <p className="status-line">Личный рекорд появится после первых сессий.</p>
         )}
       </section>
+
+      <section className="setup-block" data-testid="stats-daily-challenge-block">
+        <h3>Daily Challenge: выполнение</h3>
+        <div className="action-row">
+          <label htmlFor="stats-challenge-period">Период</label>
+          <select
+            id="stats-challenge-period"
+            value={String(challengePeriod)}
+            onChange={(event) =>
+              setChallengePeriod(
+                event.target.value === "all" ? "all" : Number(event.target.value)
+              )
+            }
+            data-testid="stats-challenge-period"
+          >
+            <option value={7}>7 дней</option>
+            <option value={30}>30 дней</option>
+            <option value={90}>90 дней</option>
+            <option value="all">Все время</option>
+          </select>
+        </div>
+
+        {challengeLoading ? (
+          <p>Загрузка Daily Challenge...</p>
+        ) : challengeSummary ? (
+          <>
+            <div className="stats-grid compact" data-testid="stats-daily-challenge-summary">
+              <StatCard title="Всего challenge" value={String(challengeSummary.total)} />
+              <StatCard title="Выполнено" value={String(challengeSummary.completed)} />
+              <StatCard title="Осталось" value={String(challengeSummary.pending)} />
+              <StatCard
+                title="Выполнение"
+                value={`${challengeSummary.completionRatePct.toFixed(1)}%`}
+              />
+            </div>
+            <p className="comparison-note" data-testid="stats-daily-challenge-note">
+              Период: {formatPeriodLabel(challengeSummary.period)}.
+            </p>
+
+            {challengeHistory.length === 0 ? (
+              <p className="status-line">За выбранный период challenge еще не создавались.</p>
+            ) : (
+              <ol className="challenge-history-list" data-testid="stats-daily-challenge-history">
+                {challengeHistory.map((entry) => (
+                  <li key={entry.challengeId} className="challenge-history-item">
+                    <div className="challenge-history-main">
+                      <span className="challenge-history-date">{entry.localDate}</span>
+                      <span className="challenge-history-mode">{entry.modeTitle}</span>
+                    </div>
+                    <div className="challenge-history-side">
+                      <span
+                        className={
+                          entry.status === "completed"
+                            ? "challenge-status is-complete"
+                            : "challenge-status"
+                        }
+                      >
+                        {entry.status === "completed" ? "Выполнено" : "Не выполнено"}
+                      </span>
+                      <span className="challenge-history-attempts">
+                        {entry.attemptsCount} / {entry.requiredAttempts}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </>
+        ) : (
+          <p className="status-line">Не удалось загрузить блок Daily Challenge.</p>
+        )}
+      </section>
+
+      {mode === "reaction" ? (
+        <section className="setup-block" data-testid="stats-reaction-summary">
+          <h3>Reaction: итоги</h3>
+          <div className="stats-grid compact">
+            <StatCard
+              title="Сессий"
+              value={String(reactionData.reduce((sum, point) => sum + point.count, 0))}
+            />
+            <StatCard
+              title="Среднее время"
+              value={formatMetric(
+                reactionData.length > 0
+                  ? reactionData.reduce((sum, point) => sum + point.avgReactionMs * point.count, 0) /
+                      reactionData.reduce((sum, point) => sum + point.count, 0)
+                  : null,
+                0,
+                " мс"
+              )}
+            />
+            <StatCard
+              title="Точность"
+              value={formatMetric(
+                reactionData.length > 0
+                  ? (reactionData.reduce((sum, point) => sum + point.accuracy * point.count, 0) /
+                      reactionData.reduce((sum, point) => sum + point.count, 0)) *
+                      100
+                  : null,
+                1,
+                "%"
+              )}
+            />
+            <StatCard
+              title="Средний score"
+              value={formatMetric(
+                reactionData.length > 0
+                  ? reactionData.reduce((sum, point) => sum + point.avgScore * point.count, 0) /
+                      reactionData.reduce((sum, point) => sum + point.count, 0)
+                  : null
+              )}
+            />
+          </div>
+        </section>
+      ) : null}
 
       {mode === "sprint_math" ? (
         <section className="setup-block" data-testid="stats-sprint-summary">
@@ -588,6 +986,126 @@ export function StatsPage() {
         </section>
       ) : null}
 
+      <section className="setup-block" data-testid="stats-compare-band">
+        <h3>Сравнение с пользователями (median / p25 / p75)</h3>
+        <div className="action-row">
+          <button
+            type="button"
+            className={compareEnabled ? "btn-secondary is-active" : "btn-secondary"}
+            onClick={() => setCompareEnabled((value) => !value)}
+            data-testid="stats-compare-toggle"
+          >
+            {compareEnabled ? "Скрыть сравнение" : "Показать сравнение"}
+          </button>
+
+          <label htmlFor="stats-compare-period">Период</label>
+          <select
+            id="stats-compare-period"
+            value={String(comparePeriod)}
+            onChange={(event) =>
+              setComparePeriod(
+                event.target.value === "all" ? "all" : Number(event.target.value)
+              )
+            }
+            data-testid="stats-compare-period"
+          >
+            <option value={7}>7 дней</option>
+            <option value={30}>30 дней</option>
+            <option value={90}>90 дней</option>
+            <option value="all">Все время</option>
+          </select>
+        </div>
+
+        <p className="comparison-note">{compareConfig.title}</p>
+
+        {!compareEnabled ? (
+          <p className="status-line">Включите compare-mode, чтобы увидеть диапазон по другим пользователям.</p>
+        ) : compareLoading ? (
+          <p>Загрузка compare-mode...</p>
+        ) : compareChartData.length === 0 ? (
+          <p>Недостаточно данных для сравнения в выбранном режиме.</p>
+        ) : (
+          <>
+            <div className="stats-grid compact" data-testid="stats-compare-summary">
+              <StatCard
+                title="Вы (последний день)"
+                value={formatMetric(
+                  compareLatestPoint?.me ?? null,
+                  compareConfig.digits,
+                  compareConfig.metricSuffix
+                )}
+              />
+              <StatCard
+                title="P25"
+                value={formatMetric(
+                  compareLatestPoint?.p25 ?? null,
+                  compareConfig.digits,
+                  compareConfig.metricSuffix
+                )}
+              />
+              <StatCard
+                title="Медиана"
+                value={formatMetric(
+                  compareLatestPoint?.median ?? null,
+                  compareConfig.digits,
+                  compareConfig.metricSuffix
+                )}
+              />
+              <StatCard
+                title="P75"
+                value={formatMetric(
+                  compareLatestPoint?.p75 ?? null,
+                  compareConfig.digits,
+                  compareConfig.metricSuffix
+                )}
+              />
+            </div>
+
+            <div className="chart-box" data-testid="stats-compare-chart">
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={compareChartData}>
+                  <XAxis dataKey="dateShort" />
+                  <YAxis />
+                  <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
+                  <Line
+                    type="monotone"
+                    dataKey="me"
+                    name="Вы"
+                    stroke="#1e7f71"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="p25"
+                    name="P25"
+                    stroke="#2e62c9"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="median"
+                    name="Медиана"
+                    stroke="#f2a93b"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="p75"
+                    name="P75"
+                    stroke="#b74343"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        )}
+      </section>
+
       {loading ? <p>Загрузка статистики...</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
 
@@ -638,6 +1156,36 @@ export function StatsPage() {
                   stroke="#f2a93b"
                   strokeWidth={3}
                   dot={{ r: 4 }}
+                />
+              </LineChart>
+            ) : mode === "reaction" ? (
+              <LineChart data={reactionChartData}>
+                <XAxis dataKey="dateShort" />
+                <YAxis />
+                <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
+                <Line
+                  type="monotone"
+                  dataKey="bestReactionMs"
+                  name="Лучшее время (мс)"
+                  stroke="#1e7f71"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avgReactionMs"
+                  name="Среднее время (мс)"
+                  stroke="#f2a93b"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="accuracyPct"
+                  name="Точность (%)"
+                  stroke="#2e62c9"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
                 />
               </LineChart>
             ) : (

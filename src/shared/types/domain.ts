@@ -1,12 +1,15 @@
-export type Mode = "classic" | "timed" | "reverse" | "sprint_math";
+export type Mode = "classic" | "timed" | "reverse" | "sprint_math" | "reaction";
 export type AppRole = "teacher" | "student" | "home";
-export type TrainingModuleId = "schulte" | "sprint_math";
+export type TrainingModuleId = "schulte" | "sprint_math" | "reaction";
 export type TrainingModeId =
   | "classic_plus"
   | "timed_plus"
   | "reverse"
   | "sprint_add_sub"
-  | "sprint_mixed";
+  | "sprint_mixed"
+  | "reaction_signal"
+  | "reaction_stroop"
+  | "reaction_pair";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
 export type TrainingPresetId =
   | "easy"
@@ -18,6 +21,7 @@ export type TimeLimitSec = 30 | 45 | 60 | 90;
 export type SpawnStrategy = "same_cell" | "random_cell";
 export type GroupMetric = "score" | "accuracy" | "speed";
 export type ComparePeriod = number | "all";
+export type CompareBandMetric = "score" | "duration_sec";
 export type SchulteThemeId =
   | "classic_bw"
   | "contrast"
@@ -71,7 +75,7 @@ export interface Difficulty {
 export interface Session {
   id: string;
   userId: string;
-  taskId: "schulte" | "sprint_math";
+  taskId: "schulte" | "sprint_math" | "reaction";
   mode: Mode;
   moduleId: TrainingModuleId;
   modeId: TrainingModeId;
@@ -114,6 +118,15 @@ export interface SprintMathDailyPoint {
   count: number;
 }
 
+export interface ReactionDailyPoint {
+  date: string;
+  avgReactionMs: number;
+  bestReactionMs: number;
+  accuracy: number;
+  avgScore: number;
+  count: number;
+}
+
 export interface DailyProgressSummary {
   date: string;
   sessionsTotal: number;
@@ -127,7 +140,7 @@ export interface DailyProgressSummary {
 }
 
 export interface TrainingModule {
-  id: TrainingModuleId | "sprint_math" | "n_back";
+  id: TrainingModuleId | "n_back";
   title: string;
   description: string;
   status: "active" | "coming_soon";
@@ -257,6 +270,70 @@ export interface ModeMetricSummary {
 export interface ModeMetricSnapshot {
   summary: ModeMetricSummary;
   byUser: UserMetricPoint[];
+}
+
+export interface DailyCompareBandPoint {
+  date: string;
+  p25: number;
+  median: number;
+  p75: number;
+  usersCount: number;
+  sessionsCount: number;
+}
+
+export type DailyChallengeStatus = "pending" | "completed";
+
+export interface DailyChallenge {
+  id: string;
+  userId: string;
+  localDate: string;
+  moduleId: TrainingModuleId;
+  modeId: TrainingModeId;
+  status: DailyChallengeStatus;
+  requiredAttempts: number;
+  title: string;
+  description: string;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface DailyChallengeAttempt {
+  id: string;
+  challengeId: string;
+  userId: string;
+  sessionId: string;
+  moduleId: TrainingModuleId;
+  modeId: TrainingModeId;
+  localDate: string;
+  createdAt: string;
+}
+
+export interface DailyChallengeProgress {
+  challenge: DailyChallenge;
+  attemptsCount: number;
+  remainingAttempts: number;
+  completed: boolean;
+  launchPath: string;
+  progressLabel: string;
+}
+
+export interface DailyChallengeHistoryItem {
+  challengeId: string;
+  localDate: string;
+  modeId: TrainingModeId;
+  modeTitle: string;
+  status: DailyChallengeStatus;
+  requiredAttempts: number;
+  attemptsCount: number;
+  completedAt: string | null;
+}
+
+export interface DailyChallengeCompletionSummary {
+  period: ComparePeriod;
+  total: number;
+  completed: number;
+  pending: number;
+  completionRatePct: number;
 }
 
 export interface ModeRecommendation {

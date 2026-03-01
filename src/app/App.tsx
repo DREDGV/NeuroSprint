@@ -43,6 +43,11 @@ const SprintMathSessionPage = lazy(() =>
     default: module.SprintMathSessionPage
   }))
 );
+const ReactionPage = lazy(() =>
+  import("../pages/ReactionPage").then((module) => ({
+    default: module.ReactionPage
+  }))
+);
 const SchulteSessionPage = lazy(() =>
   import("../pages/SchulteSessionPage").then((module) => ({
     default: module.SchulteSessionPage
@@ -146,6 +151,14 @@ export function App() {
                 element={
                   <RequireActiveUser>
                     <SprintMathSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/reaction"
+                element={
+                  <RequireActiveUser>
+                    <ReactionPage />
                   </RequireActiveUser>
                 }
               />
