@@ -58,6 +58,11 @@ const NBackSessionPage = lazy(() =>
     default: module.NBackSessionPage
   }))
 );
+const MemoryGridSetupPage = lazy(() =>
+  import("../pages/MemoryGridSetupPage").then((module) => ({
+    default: module.MemoryGridSetupPage
+  }))
+);
 const DecisionRushSetupPage = lazy(() =>
   import("../pages/DecisionRushSetupPage").then((module) => ({
     default: module.DecisionRushSetupPage
@@ -195,6 +200,14 @@ export function App() {
                 element={
                   <RequireActiveUser>
                     <NBackSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/memory-grid"
+                element={
+                  <RequireActiveUser>
+                    <MemoryGridSetupPage />
                   </RequireActiveUser>
                 }
               />
