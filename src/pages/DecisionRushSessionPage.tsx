@@ -371,6 +371,26 @@ export function DecisionRushSessionPage() {
     setTickMs(nowMs);
   }
 
+  function advanceAfterAnswer(nowMs: number): void {
+    if (!runningRef.current || finishedRef.current) {
+      return;
+    }
+
+    const startedAt = startedAtRef.current;
+    if (startedAt == null) {
+      return;
+    }
+
+    const elapsed = nowMs - startedAt;
+    if (elapsed >= durationMs) {
+      finishSession(nowMs);
+      return;
+    }
+
+    commitCurrentTrial(nowMs);
+    startNextTrial(nowMs);
+  }
+
   function finishSession(nowMs: number): void {
     if (finishedRef.current) {
       return;
@@ -468,9 +488,11 @@ export function DecisionRushSessionPage() {
       return;
     }
     pendingAnswerRef.current = value;
-    pendingAnswerAtRef.current = Date.now();
+    const now = Date.now();
+    pendingAnswerAtRef.current = now;
     setLiveAnswerState("pending");
     setLastAnswerLabel(value === "yes" ? "Ответ: ДА" : "Ответ: НЕТ");
+    advanceAfterAnswer(now);
   }
 
   useEffect(
