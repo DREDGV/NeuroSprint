@@ -45,7 +45,10 @@ describe('PatternGenerator', () => {
       const question = generatePatternQuestion('kids', ['color'], 'visual', 'ABAB');
       
       // Проверяем, что правильный ответ существует в options
-      const correctOption = question.options[question.correctIndex];
+      const correctIndex = Array.isArray(question.correctIndex) 
+        ? question.correctIndex[0] 
+        : question.correctIndex;
+      const correctOption = question.options[correctIndex];
       expect(correctOption).toBeDefined();
     });
   });

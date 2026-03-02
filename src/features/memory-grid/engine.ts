@@ -73,16 +73,25 @@ export function generateMemoryGridSequence(
 ): number[] {
   const sequence: number[] = [];
   const cells = getGridCells(gridSize);
-  
+
   for (let i = 0; i < length; i++) {
     let cell = randomCell(gridSize, random);
-    // Избегаем повторений подряд
-    while (sequence.length > 0 && sequence[sequence.length - 1] === cell) {
+    
+    // Избегаем повторений подряд и через одну клетку
+    let attempts = 0;
+    while (
+      (sequence.length > 0 && sequence[sequence.length - 1] === cell) ||
+      (sequence.length > 1 && sequence[sequence.length - 2] === cell)
+    ) {
       cell = randomCell(gridSize, random);
+      attempts += 1;
+      // Если не можем найти уникальную клетку (мало клеток), берём что есть
+      if (attempts > 10) break;
     }
+    
     sequence.push(cell);
   }
-  
+
   return sequence;
 }
 

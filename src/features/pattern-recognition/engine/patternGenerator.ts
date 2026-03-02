@@ -48,41 +48,63 @@ function elementsEqual(a: PatternElement, b: PatternElement): boolean {
 // ==================== ГЕНЕРАТОРЫ ВИЗУАЛЬНЫХ ПАТТЕРНОВ ====================
 
 // ABAB - Чередование
-function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 'size')[]): PatternQuestion {
+function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 'size')[], gaps: number = 1): PatternQuestion {
   const elementA = randomElement();
   const elementB = randomElement(elementA);
   
+  // Увеличиваем длину последовательности
+  const sequenceLength = level === 'kids' ? 4 : level === 'standard' ? 5 : 6;
   const sequence: PatternElement[] = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < sequenceLength; i++) {
     sequence.push(i % 2 === 0 ? { ...elementA } : { ...elementB });
   }
   
-  const correctAnswer = { ...elementA }; // Следующий = A
+  // Генерируем правильные ответы для пропусков
+  const correctAnswers: PatternElement[] = [];
+  for (let i = 0; i < gaps; i++) {
+    correctAnswers.push((sequenceLength + i) % 2 === 0 ? { ...elementA } : { ...elementB });
+  }
   
   // Генерируем неправильные варианты
   const options: PatternElement[] = [];
-  while (options.length < (level === 'kids' ? 1 : 2)) {
+  const optionsNeeded = gaps + 1; // На один больше, чем нужно выбрать
+  while (options.length < optionsNeeded) {
     const wrong = randomElement();
     if (!options.some(opt => elementsEqual(opt, wrong))) {
       options.push(wrong);
     }
   }
   
-  // Добавляем правильный ответ и перемешиваем
-  options.push(correctAnswer);
+  // Добавляем правильные ответы
+  for (const answer of correctAnswers) {
+    if (!options.some(opt => elementsEqual(opt, answer))) {
+      options.push(answer);
+    }
+  }
+  
   const shuffledOptions = shuffle(options);
-  const correctIndex = shuffledOptions.findIndex(opt => elementsEqual(opt, correctAnswer));
+  const correctIndices: number[] = [];
+  for (const answer of correctAnswers) {
+    const index = shuffledOptions.findIndex(opt => elementsEqual(opt, answer));
+    if (index !== -1 && !correctIndices.includes(index)) {
+      correctIndices.push(index);
+    }
+  }
   
   return {
     id: `abab-${Date.now()}-${Math.random()}`,
     patternType: 'ABAB',
     sequence,
     options: shuffledOptions,
-    correctIndex,
+    correctIndex: correctIndices,
     level,
     contentType: 'visual',
     hint: 'Чередование: A, B, A, B...',
-    explanation: 'Паттерн чередуется между двумя элементами. После B следует A.'
+    explanation: `Паттерн чередуется между двумя элементами. Нужно заполнить ${gaps} пропуска.`,
+    sequenceLength,
+    answersNeeded: gaps,
+    gaps,
+    userAnswers: []
   };
 }
 
@@ -91,12 +113,15 @@ function generateAABB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
   const elementA = randomElement();
   const elementB = randomElement(elementA);
   
-  const sequence: PatternElement[] = [
-    { ...elementA }, { ...elementA },
-    { ...elementB }, { ...elementB }
-  ];
+  // Увеличиваем длину: AABB AABB ...
+  const sequenceLength = level === 'kids' ? 4 : level === 'standard' ? 6 : 8;
+  const sequence: PatternElement[] = [];
+  for (let i = 0; i < sequenceLength; i++) {
+    const pairIndex = Math.floor(i / 2);
+    sequence.push(pairIndex % 2 === 0 ? { ...elementA } : { ...elementB });
+  }
   
-  const correctAnswer = { ...elementA }; // Продолжение паттерна AABBAA...
+  const correctAnswer = sequenceLength % 4 === 0 ? { ...elementA } : { ...elementB };
   
   const options: PatternElement[] = [];
   while (options.length < (level === 'kids' ? 1 : 2)) {
@@ -120,7 +145,9 @@ function generateAABB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
     level,
     contentType: 'visual',
     hint: 'Пары: A, A, B, B...',
-    explanation: 'Каждый элемент повторяется дважды. После пары B начинается новая пара A.'
+    explanation: 'Каждый элемент повторяется дважды. После пары B начинается новая пара A.',
+    sequenceLength,
+    answersNeeded: 1
   };
 }
 
@@ -130,9 +157,10 @@ function generateProgression(level: PatternLevel, elementTypes: ('color' | 'shap
   const baseElement = randomElement();
   const sizes: PatternSize[] = ['small', 'medium', 'large'];
   
-  // Генерируем последовательность с увеличением размера
+  // Увеличиваем длину последовательности
+  const sequenceLength = level === 'kids' ? 3 : level === 'standard' ? 4 : 5;
   const sequence: PatternElement[] = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < sequenceLength; i++) {
     sequence.push({
       ...baseElement,
       size: sizes[Math.min(i, sizes.length - 1)] as PatternSize
@@ -164,7 +192,9 @@ function generateProgression(level: PatternLevel, elementTypes: ('color' | 'shap
     level,
     contentType: 'visual',
     hint: 'Прогрессия: размер увеличивается',
-    explanation: 'Каждый следующий элемент больше предыдущего.'
+    explanation: 'Каждый следующий элемент больше предыдущего.',
+    sequenceLength,
+    answersNeeded: 1
   };
 }
 
@@ -174,12 +204,15 @@ function generateCycle(level: PatternLevel, elementTypes: ('color' | 'shape' | '
   const elementB = randomElement(elementA);
   const elementC = randomElement({ ...elementA, ...elementB });
   
-  const sequence: PatternElement[] = [
-    { ...elementA }, { ...elementB }, { ...elementC },
-    { ...elementA }, { ...elementB }
-  ];
+  // Увеличиваем длину: показываем 1.5-2 цикла
+  const sequenceLength = level === 'kids' ? 5 : level === 'standard' ? 6 : 8;
+  const elements = [elementA, elementB, elementC];
+  const sequence: PatternElement[] = [];
+  for (let i = 0; i < sequenceLength; i++) {
+    sequence.push({ ...elements[i % 3] });
+  }
   
-  const correctAnswer = { ...elementC }; // Продолжение цикла ABCABC...
+  const correctAnswer = { ...elements[sequenceLength % 3] };
   
   const options: PatternElement[] = [];
   while (options.length < (level === 'pro' ? 3 : 2)) {
@@ -203,7 +236,9 @@ function generateCycle(level: PatternLevel, elementTypes: ('color' | 'shape' | '
     level,
     contentType: 'visual',
     hint: 'Цикл из 3 элементов: A, B, C, A, B...',
-    explanation: 'Паттерн повторяется каждые 3 элемента. После A, B следует C.'
+    explanation: 'Паттерн повторяется каждые 3 элемента. После A, B следует C.',
+    sequenceLength,
+    answersNeeded: 1
   };
 }
 
@@ -212,13 +247,20 @@ function generateMirror(level: PatternLevel, elementTypes: ('color' | 'shape' | 
   const elementA = randomElement();
   const elementB = randomElement(elementA);
   
-  const sequence: PatternElement[] = [
-    { ...elementA }, { ...elementB },
-    { ...elementB }, { ...elementA }
-  ];
+  // Увеличиваем длину: ABBA ABBA ...
+  const sequenceLength = level === 'kids' ? 4 : level === 'standard' ? 6 : 8;
+  const sequence: PatternElement[] = [];
+  for (let i = 0; i < sequenceLength; i++) {
+    const mirrorIndex = i % 4;
+    if (mirrorIndex === 0 || mirrorIndex === 3) {
+      sequence.push({ ...elementA });
+    } else {
+      sequence.push({ ...elementB });
+    }
+  }
   
-  // Продолжение зеркального паттерна - начинаем заново с A
-  const correctAnswer = { ...elementA };
+  // Продолжение зеркального паттерна
+  const correctAnswer = sequenceLength % 4 === 0 ? { ...elementA } : { ...elementB };
   
   const options: PatternElement[] = [];
   while (options.length < 2) {
@@ -242,7 +284,9 @@ function generateMirror(level: PatternLevel, elementTypes: ('color' | 'shape' | 
     level,
     contentType: 'visual',
     hint: 'Зеркало: A, B, B, A...',
-    explanation: 'Паттерн зеркально отражается. После завершения зеркала начинается новый цикл.'
+    explanation: 'Паттерн зеркально отражается. После завершения зеркала начинается новый цикл.',
+    sequenceLength,
+    answersNeeded: 1
   };
 }
 
@@ -254,12 +298,14 @@ function generateMathSequence(level: PatternLevel): PatternQuestion {
   const start = randomInt(1, 10);
   const step = randomInt(2, 5);
   
+  // Увеличиваем длину последовательности
+  const sequenceLength = level === 'kids' ? 4 : level === 'standard' ? 5 : 6;
   const sequence: number[] = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < sequenceLength; i++) {
     sequence.push(start + i * step);
   }
   
-  const correctAnswer = start + 4 * step;
+  const correctAnswer = start + sequenceLength * step;
   
   // Генерируем неправильные варианты (близкие числа)
   const wrongValues = [correctAnswer - step, correctAnswer + 1, correctAnswer - 1, correctAnswer + step];
@@ -294,7 +340,9 @@ function generateMathSequence(level: PatternLevel): PatternQuestion {
     contentType: 'numeric',
     mathRule: `+${step}`,
     hint: `Арифметическая прогрессия: каждое число больше предыдущего на ${step}`,
-    explanation: `Последовательность увеличивается на ${step}: ${sequence.join(', ')}, ${correctAnswer}.`
+    explanation: `Последовательность увеличивается на ${step}: ${sequence.join(', ')}, ${correctAnswer}.`,
+    sequenceLength,
+    answersNeeded: 1
   };
 }
 
@@ -303,12 +351,14 @@ function generateMathArithmetic(level: PatternLevel): PatternQuestion {
   const start = randomInt(2, 15);
   const step = level === 'kids' ? randomInt(1, 3) : randomInt(3, 7);
   
+  // Увеличиваем длину последовательности
+  const sequenceLength = level === 'kids' ? 4 : level === 'standard' ? 5 : 6;
   const sequence: number[] = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < sequenceLength; i++) {
     sequence.push(start + i * step);
   }
   
-  const correctAnswer = start + 4 * step;
+  const correctAnswer = start + sequenceLength * step;
   
   const options: number[] = [];
   while (options.length < (level === 'kids' ? 2 : 3)) {
@@ -334,7 +384,9 @@ function generateMathArithmetic(level: PatternLevel): PatternQuestion {
     contentType: 'numeric',
     mathRule: `a₁=${start}, d=${step}`,
     hint: `Каждое следующее число = предыдущее + ${step}`,
-    explanation: `Арифметическая прогрессия: start=${start}, шаг=${step}. Ответ: ${correctAnswer}.`
+    explanation: `Арифметическая прогрессия: start=${start}, шаг=${step}. Ответ: ${correctAnswer}.`,
+    sequenceLength,
+    answersNeeded: 1
   };
 }
 
@@ -344,8 +396,10 @@ function generateMathAlternating(level: PatternLevel): PatternQuestion {
   const add = randomInt(2, 5);
   const sub = randomInt(1, 3);
   
+  // Увеличиваем длину последовательности
+  const sequenceLength = level === 'kids' ? 4 : level === 'standard' ? 5 : 6;
   const sequence: number[] = [start];
-  for (let i = 1; i < 5; i++) {
+  for (let i = 1; i < sequenceLength; i++) {
     const prev = sequence[i - 1];
     sequence.push(i % 2 === 1 ? prev + add : prev - sub);
   }
@@ -377,7 +431,9 @@ function generateMathAlternating(level: PatternLevel): PatternQuestion {
     contentType: 'numeric',
     mathRule: `+${add}, -${sub}`,
     hint: `Чередование: +${add}, -${sub}, +${add}, -${sub}...`,
-    explanation: `Операции чередуются: +${add}, затем -${sub}. Следующее: ${correctAnswer}.`
+    explanation: `Операции чередуются: +${add}, затем -${sub}. Следующее: ${correctAnswer}.`,
+    sequenceLength,
+    answersNeeded: 1
   };
 }
 

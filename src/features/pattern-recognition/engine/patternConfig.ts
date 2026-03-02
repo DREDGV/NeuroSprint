@@ -24,6 +24,11 @@ export const PATTERN_MODES: Array<{
     id: 'pattern_learning',
     title: 'Обучающий',
     description: 'С подсказками и разбором ошибок.'
+  },
+  {
+    id: 'pattern_multi',
+    title: 'Мульти-ответ',
+    description: 'Заполните 2-3 пропуска в конце последовательности.'
   }
 ];
 
@@ -89,7 +94,8 @@ export function normalizePatternSetup(setup: Partial<PatternSetup>): PatternSetu
     questionCount: setup.questionCount ?? 15,
     elementTypes: setup.elementTypes ?? ['color', 'shape'],
     contentType: setup.contentType ?? 'visual',
-    showHints: setup.showHints ?? (setup.modeId === 'pattern_learning')
+    showHints: setup.showHints ?? (setup.modeId === 'pattern_learning'),
+    gaps: setup.modeId === 'pattern_multi' ? (setup.level === 'kids' ? 2 : 3) : 1
   };
 }
 

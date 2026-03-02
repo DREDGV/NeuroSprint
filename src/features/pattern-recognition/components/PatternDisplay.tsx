@@ -200,7 +200,7 @@ function getPatternTypeLabel(type: PatternType): string {
 
 interface PatternOptionsProps {
   options: PatternElement[] | number[];
-  correctIndex: number;
+  correctIndex: number | number[];
   onSelect: (index: number) => void;
   disabled?: boolean;
   selectedAnswer?: number | null;
@@ -216,8 +216,9 @@ export function PatternOptions({
   showResult = false
 }: PatternOptionsProps) {
   const isNumeric = typeof options[0] === 'number';
+  const correctIndices = Array.isArray(correctIndex) ? correctIndex : [correctIndex];
   const isSelected = (index: number) => selectedAnswer === index;
-  const isCorrect = (index: number) => index === correctIndex;
+  const isCorrect = (index: number) => correctIndices.includes(index);
   
   return (
     <div className="pattern-options" data-testid="pattern-options">

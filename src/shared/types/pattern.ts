@@ -29,7 +29,8 @@ export type PatternModeId =
   | 'pattern_classic'    // Контрольный (15 вопросов)
   | 'pattern_timed'      // На время (60 сек)
   | 'pattern_progressive' // Адаптивный
-  | 'pattern_learning';  // Обучающий (с подсказками)
+  | 'pattern_learning'   // Обучающий (с подсказками)
+  | 'pattern_multi';     // Несколько ответов (2-3 пропуска)
 
 // Тип контента в паттерне
 export type PatternContentType = 'visual' | 'numeric' | 'mixed';
@@ -43,6 +44,7 @@ export interface PatternSetup {
   elementTypes: ('color' | 'shape' | 'size')[];
   contentType: PatternContentType; // visual | numeric | mixed
   showHints: boolean; // Показывать подсказки типа паттерна
+  gaps?: number; // Количество пропусков (для pattern_multi)
 }
 
 // Вопрос паттерна
@@ -51,12 +53,16 @@ export interface PatternQuestion {
   patternType: PatternType;
   sequence: PatternElement[] | number[]; // Визуальные или числовые
   options: PatternElement[] | number[];
-  correctIndex: number;
+  correctIndex: number | number[]; // Индекс или массив индексов для нескольких ответов
   level: PatternLevel;
   contentType: PatternContentType;
   hint?: string; // Подсказка для обучающего режима
   explanation?: string; // Объяснение ответа
   mathRule?: string; // Математическое правило (для числовых паттернов)
+  sequenceLength: number; // Длина последовательности
+  answersNeeded: number; // Сколько ответов нужно выбрать (1 или несколько)
+  gaps: number; // Количество пропусков в конце последовательности
+  userAnswers?: number[]; // Выбранные пользователем ответы (индексы)
 }
 
 // Результат ответа

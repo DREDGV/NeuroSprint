@@ -385,31 +385,31 @@ export function MemoryGridSessionPage() {
   useEffect(() => {
     if (phase !== 'recalling' || userResponse.length >= currentLevel) return;
     
-    // Через 3 секунды начинаем показывать намёк
+    // Через 4 секунды начинаем показывать намёк
     const startHintTimer = setTimeout(() => {
       const nextCell = currentSequence[userResponse.length];
       setHintCell(nextCell);
       
-      // Медленное появление подсказки (от 0 до 0.3 за 2 секунды)
-      const fadeDuration = 2000;
-      const fadeSteps = 20;
+      // Очень медленное появление (от 0 до 0.25 за 4 секунды)
+      const fadeDuration = 4000;
+      const fadeSteps = 40;
       const stepDuration = fadeDuration / fadeSteps;
       let currentStep = 0;
       
       const fadeInterval = setInterval(() => {
         currentStep += 1;
-        setHintOpacity(currentStep / fadeSteps * 0.3); // Максимум 0.3 прозрачности
+        setHintOpacity(currentStep / fadeSteps * 0.25); // Максимум 0.25 прозрачности (очень медленно)
         
         if (currentStep >= fadeSteps) {
           clearInterval(fadeInterval);
         }
       }, stepDuration);
       
-      // Тихий звуковой сигнал (едва слышный)
+      // Очень тихий звуковой сигнал
       playSound('hint');
       
       return () => clearInterval(fadeInterval);
-    }, 3000);
+    }, 4000);
     
     return () => {
       clearTimeout(startHintTimer);
@@ -519,9 +519,10 @@ export function MemoryGridSessionPage() {
                 }}
                 style={{
                   backgroundColor: isActive ? cellColor : isSelected ? cellColor + "40" : isWrong ? "rgba(239, 68, 68, 0.3)" : isCorrect ? "rgba(16, 185, 129, 0.3)" : isHint ? `rgba(59, 130, 246, ${hintOpacity})` : "transparent",
-                  borderColor: isActive || isSelected ? cellColor : isWrong ? "#ef4444" : isCorrect ? "#10b981" : isHint ? `rgba(59, 130, 246, ${Math.max(0.3, hintOpacity * 2)})` : "#c8dfd6",
+                  borderColor: isActive || isSelected ? cellColor : isWrong ? "#ef4444" : isCorrect ? "#10b981" : isHint ? `rgba(59, 130, 246, ${Math.max(0.2, hintOpacity * 2)})` : "#c8dfd6",
                   cursor: phase === "recalling" ? "pointer" : "default",
-                  opacity: isHint ? (0.5 + hintOpacity * 1.5) : 1
+                  opacity: isHint ? (0.4 + hintOpacity * 2.4) : 1,
+                  transition: 'opacity 0.1s ease, background-color 0.1s ease, border-color 0.1s ease'
                 }}
                 data-testid={isActive ? "memory-grid-active-cell" : undefined}
               >

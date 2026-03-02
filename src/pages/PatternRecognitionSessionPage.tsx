@@ -163,7 +163,10 @@ export function PatternRecognitionSessionPage() {
     }
 
     const reactionTime = questionStartTime ? Date.now() - questionStartTime : 0;
-    const isCorrect = selectedIndex === currentQuestion.correctIndex;
+    // Поддерживаем как одиночный ответ, так и несколько
+    const isCorrect = Array.isArray(currentQuestion.correctIndex)
+      ? currentQuestion.correctIndex.includes(selectedIndex)
+      : selectedIndex === currentQuestion.correctIndex;
 
     const answer: PatternAnswer = {
       questionId: currentQuestion.id,
