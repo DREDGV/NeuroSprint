@@ -12,6 +12,7 @@ export type TrainingModuleId =
   | "sprint_math"
   | "reaction"
   | "n_back"
+  | "memory_grid"
   | "decision_rush";
 export type TrainingModeId =
   | "classic_plus"
@@ -28,6 +29,10 @@ export type TrainingModeId =
   | "nback_2"
   | "nback_2_4x4"
   | "nback_3"
+  | "memory_grid_classic"
+  | "memory_grid_classic_4x4"
+  | "memory_grid_rush"
+  | "memory_grid_rush_4x4"
   | "decision_kids"
   | "decision_standard"
   | "decision_pro";

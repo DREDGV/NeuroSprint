@@ -30,6 +30,10 @@ const DAILY_CHALLENGE_MODE_ROTATION: TrainingModeId[] = [
   "nback_2",
   "nback_2_4x4",
   "nback_3",
+  "memory_grid_classic",
+  "memory_grid_classic_4x4",
+  "memory_grid_rush",
+  "memory_grid_rush_4x4",
   "decision_kids",
   "decision_standard",
   "decision_pro"
@@ -50,6 +54,10 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   nback_2: "N-Back Lite 2-back",
   nback_2_4x4: "N-Back Lite 2-back 4×4",
   nback_3: "N-Back Lite 3-back",
+  memory_grid_classic: "Memory Grid Classic",
+  memory_grid_classic_4x4: "Memory Grid Classic 4×4",
+  memory_grid_rush: "Memory Grid Rush",
+  memory_grid_rush_4x4: "Memory Grid Rush 4×4",
   decision_kids: "Decision Rush Kids",
   decision_standard: "Decision Rush Standard",
   decision_pro: "Decision Rush Pro"

@@ -6,6 +6,8 @@ import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import {
   adaptDecisionIntervalMs,
+  DECISION_RUSH_INTERVAL_MAX_MS,
+  DECISION_RUSH_INTERVAL_MIN_MS,
   colorLabel,
   createDecisionRushTrial,
   evaluateDecisionRushSession,
@@ -33,6 +35,7 @@ interface DecisionRushSessionNavState {
 }
 
 type LiveAnswerState = "pending" | "correct" | "error" | null;
+type DecisionTempoId = "slow" | "normal" | "fast";
 
 const COLOR_HEX: Record<DecisionRushColor, string> = {
   red: "#cf3f3f",
@@ -40,6 +43,39 @@ const COLOR_HEX: Record<DecisionRushColor, string> = {
   yellow: "#db9e18",
   blue: "#2f73cc"
 };
+
+const DECISION_TEMPO_STORAGE_KEY = "ns.decisionRushTempo";
+const TEMPO_MULTIPLIER: Record<DecisionTempoId, number> = {
+  slow: 1.25,
+  normal: 1,
+  fast: 0.85
+};
+
+function clampDecisionInterval(value: number): number {
+  return Math.max(DECISION_RUSH_INTERVAL_MIN_MS, Math.min(DECISION_RUSH_INTERVAL_MAX_MS, value));
+}
+
+function readTempoPreference(): DecisionTempoId {
+  const raw = localStorage.getItem(DECISION_TEMPO_STORAGE_KEY);
+  if (raw === "slow" || raw === "normal" || raw === "fast") {
+    return raw;
+  }
+  return "normal";
+}
+
+function saveTempoPreference(value: DecisionTempoId): void {
+  localStorage.setItem(DECISION_TEMPO_STORAGE_KEY, value);
+}
+
+function tempoLabel(value: DecisionTempoId): string {
+  if (value === "slow") {
+    return "Медленно";
+  }
+  if (value === "fast") {
+    return "Быстро";
+  }
+  return "Нормально";
+}
 
 function formatSeconds(ms: number): string {
   return `${Math.max(0, Math.round(ms / 1000))} сек`;
@@ -196,6 +232,7 @@ export function DecisionRushSessionPage() {
   );
 
   const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [finished, setFinished] = useState(false);
   const [tickMs, setTickMs] = useState<number>(Date.now());
   const [trialIndex, setTrialIndex] = useState(0);
@@ -212,11 +249,18 @@ export function DecisionRushSessionPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [previousSession, setPreviousSession] = useState<Session | null>(null);
   const [bestSession, setBestSession] = useState<Session | null>(null);
+  const [tempoId, setTempoId] = useState<DecisionTempoId>(() => readTempoPreference());
 
   const loopTimerRef = useRef<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  const pausedAtRef = useRef<number | null>(null);
   const trialStartedAtRef = useRef<number | null>(null);
-  const intervalRef = useRef(initialDecisionIntervalMs(setup.level));
+  const tempoMultiplierRef = useRef<number>(TEMPO_MULTIPLIER[tempoId]);
+  const intervalRef = useRef(
+    clampDecisionInterval(
+      Math.round(initialDecisionIntervalMs(setup.level) * tempoMultiplierRef.current)
+    )
+  );
   const pendingAnswerRef = useRef<DecisionRushAnswer | null>(null);
   const pendingAnswerAtRef = useRef<number | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
@@ -226,11 +270,13 @@ export function DecisionRushSessionPage() {
   const comboRef = useRef(0);
   const finishedRef = useRef(false);
   const runningRef = useRef(false);
+  const pausedRef = useRef(false);
 
   const durationMs = useMemo(() => setup.durationSec * 1000, [setup.durationSec]);
   const startedAtMs = startedAtRef.current;
+  const effectiveTickMs = isPaused && pausedAtRef.current != null ? pausedAtRef.current : tickMs;
   const elapsedMs =
-    startedAtMs == null ? 0 : Math.max(0, Math.min(durationMs, tickMs - startedAtMs));
+    startedAtMs == null ? 0 : Math.max(0, Math.min(durationMs, effectiveTickMs - startedAtMs));
   const remainingMs = Math.max(0, durationMs - elapsedMs);
   const progressPct =
     durationMs > 0 ? Math.min(100, Math.round((elapsedMs / durationMs) * 100)) : 0;
@@ -239,7 +285,9 @@ export function DecisionRushSessionPage() {
   const liveAccuracyPercent =
     liveScoredCount > 0 ? Math.round((liveCorrectCount / liveScoredCount) * 100) : 0;
   const trialElapsedMs =
-    trialStartedAtRef.current == null ? 0 : Math.max(0, tickMs - trialStartedAtRef.current);
+    trialStartedAtRef.current == null
+      ? 0
+      : Math.max(0, effectiveTickMs - trialStartedAtRef.current);
   const trialRemainingMs = Math.max(0, intervalMs - trialElapsedMs);
   const trialRemainingPct =
     intervalMs > 0 ? Math.min(100, Math.round((trialRemainingMs / intervalMs) * 100)) : 0;
@@ -287,6 +335,7 @@ export function DecisionRushSessionPage() {
     clearLoop();
     clearFeedbackTimer();
     startedAtRef.current = null;
+    pausedAtRef.current = null;
     trialStartedAtRef.current = null;
     currentTrialRef.current = null;
     pendingAnswerRef.current = null;
@@ -295,8 +344,13 @@ export function DecisionRushSessionPage() {
     trialIndexRef.current = 0;
     comboRef.current = 0;
     runningRef.current = false;
+    pausedRef.current = false;
     finishedRef.current = false;
-    intervalRef.current = initialDecisionIntervalMs(setup.level);
+    intervalRef.current = clampDecisionInterval(
+      Math.round(initialDecisionIntervalMs(setup.level) * tempoMultiplierRef.current)
+    );
+    setIsPaused(false);
+    setIntervalMs(intervalRef.current);
     setLiveAnswerState(null);
   }
 
@@ -348,7 +402,9 @@ export function DecisionRushSessionPage() {
 
     const scored = resultsRef.current.filter((entry) => entry.phase !== "warmup");
     if (scored.length > 0 && scored.length % 10 === 0) {
-      const next = adaptDecisionIntervalMs(intervalRef.current, scored.slice(-10));
+      const currentBase = Math.round(intervalRef.current / tempoMultiplierRef.current);
+      const nextBase = adaptDecisionIntervalMs(currentBase, scored.slice(-10));
+      const next = clampDecisionInterval(Math.round(nextBase * tempoMultiplierRef.current));
       intervalRef.current = next;
       setIntervalMs(next);
     }
@@ -372,7 +428,7 @@ export function DecisionRushSessionPage() {
   }
 
   function advanceAfterAnswer(nowMs: number): void {
-    if (!runningRef.current || finishedRef.current) {
+    if (!runningRef.current || finishedRef.current || pausedRef.current) {
       return;
     }
 
@@ -389,6 +445,35 @@ export function DecisionRushSessionPage() {
 
     commitCurrentTrial(nowMs);
     startNextTrial(nowMs);
+  }
+
+  function startLoop(): void {
+    clearLoop();
+    loopTimerRef.current = window.setInterval(() => {
+      const now = Date.now();
+      setTickMs(now);
+
+      if (!runningRef.current || finishedRef.current || pausedRef.current) {
+        return;
+      }
+      const startedAt = startedAtRef.current;
+      const trialStartedAt = trialStartedAtRef.current;
+      if (startedAt == null || trialStartedAt == null) {
+        return;
+      }
+
+      const elapsed = now - startedAt;
+      const trialElapsed = now - trialStartedAt;
+      if (elapsed >= durationMs) {
+        finishSession(now);
+        return;
+      }
+
+      if (trialElapsed >= intervalRef.current) {
+        commitCurrentTrial(now);
+        startNextTrial(now);
+      }
+    }, 40);
   }
 
   function finishSession(nowMs: number): void {
@@ -424,40 +509,20 @@ export function DecisionRushSessionPage() {
 
     const nowMs = Date.now();
     startedAtRef.current = nowMs;
+    pausedAtRef.current = null;
     runningRef.current = true;
+    pausedRef.current = false;
     finishedRef.current = false;
-    intervalRef.current = initialDecisionIntervalMs(setup.level);
+    intervalRef.current = clampDecisionInterval(
+      Math.round(initialDecisionIntervalMs(setup.level) * tempoMultiplierRef.current)
+    );
 
     setIsRunning(true);
+    setIsPaused(false);
     setFinished(false);
     setIntervalMs(intervalRef.current);
     startNextTrial(nowMs);
-
-    loopTimerRef.current = window.setInterval(() => {
-      const now = Date.now();
-      setTickMs(now);
-
-      if (!runningRef.current || finishedRef.current) {
-        return;
-      }
-      const startedAt = startedAtRef.current;
-      const trialStartedAt = trialStartedAtRef.current;
-      if (startedAt == null || trialStartedAt == null) {
-        return;
-      }
-
-      const elapsed = now - startedAt;
-      const trialElapsed = now - trialStartedAt;
-      if (elapsed >= durationMs) {
-        finishSession(now);
-        return;
-      }
-
-      if (trialElapsed >= intervalRef.current) {
-        commitCurrentTrial(now);
-        startNextTrial(now);
-      }
-    }, 40);
+    startLoop();
   }
 
   function restartSession(): void {

@@ -39,6 +39,12 @@ export const TRAINING_MODULES: TrainingModule[] = [
     status: "active"
   },
   {
+    id: "memory_grid",
+    title: "Memory Grid Rush",
+    description: "Запомните последовательность и воспроизведите её.",
+    status: "active"
+  },
+  {
     id: "decision_rush",
     title: "Decision Rush",
     description:
@@ -143,6 +149,33 @@ export const NBACK_MODES: TrainingMode[] = [
   }
 ];
 
+export const MEMORY_GRID_MODES: TrainingMode[] = [
+  {
+    id: "memory_grid_classic",
+    moduleId: "memory_grid",
+    title: "Memory Grid Classic",
+    description: "Запомните последовательность и воспроизведите её. Ошибка = конец игры."
+  },
+  {
+    id: "memory_grid_classic_4x4",
+    moduleId: "memory_grid",
+    title: "Memory Grid Classic 4×4",
+    description: "Увеличенная сетка 4×4 для классического режима."
+  },
+  {
+    id: "memory_grid_rush",
+    moduleId: "memory_grid",
+    title: "Memory Grid Rush",
+    description: "60 секунд на прохождение максимального количества уровней."
+  },
+  {
+    id: "memory_grid_rush_4x4",
+    moduleId: "memory_grid",
+    title: "Memory Grid Rush 4×4",
+    description: "Увеличенная сетка 4×4 для режима Rush."
+  }
+];
+
 export const DECISION_RUSH_MODES: TrainingMode[] = [
   {
     id: "decision_kids",
@@ -169,6 +202,7 @@ export const TRAINING_MODES: TrainingMode[] = [
   ...SPRINT_MATH_MODES,
   ...REACTION_MODES,
   ...NBACK_MODES,
+  ...MEMORY_GRID_MODES,
   ...DECISION_RUSH_MODES
 ];
 
