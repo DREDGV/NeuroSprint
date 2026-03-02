@@ -241,7 +241,24 @@ export function DecisionRushSessionPage() {
   const trialElapsedMs =
     trialStartedAtRef.current == null ? 0 : Math.max(0, tickMs - trialStartedAtRef.current);
   const trialRemainingMs = Math.max(0, intervalMs - trialElapsedMs);
-  const trialRemainingPct = intervalMs > 0 ? Math.min(100, Math.round((trialRemainingMs / intervalMs) * 100)) : 0;
+  const trialRemainingPct =
+    intervalMs > 0 ? Math.min(100, Math.round((trialRemainingMs / intervalMs) * 100)) : 0;
+  const lastAnswerClass =
+    liveAnswerState === "correct"
+      ? "decision-last-answer is-correct"
+      : liveAnswerState === "error"
+        ? "decision-last-answer is-error"
+        : liveAnswerState === "pending"
+          ? "decision-last-answer is-pending"
+          : "decision-last-answer";
+  const stimulusCardClass =
+    liveAnswerState === "correct"
+      ? "decision-stimulus-card is-correct"
+      : liveAnswerState === "error"
+        ? "decision-stimulus-card is-error"
+        : liveAnswerState === "pending"
+          ? "decision-stimulus-card is-pending"
+          : "decision-stimulus-card";
 
   function clearLoop(): void {
     if (loopTimerRef.current != null) {
@@ -456,7 +473,13 @@ export function DecisionRushSessionPage() {
     setLastAnswerLabel(value === "yes" ? "Ответ: ДА" : "Ответ: НЕТ");
   }
 
-  useEffect(() => () => clearLoop(), []);
+  useEffect(
+    () => () => {
+      clearLoop();
+      clearFeedbackTimer();
+    },
+    []
+  );
 
   useEffect(() => {
     if (!activeUserId || !result || saved) {
@@ -544,7 +567,7 @@ export function DecisionRushSessionPage() {
           <p className="decision-rule-help">ДА = условие верно, НЕТ = условие неверно.</p>
         </div>
 
-        <div className="decision-stimulus-card" data-testid="decision-stimulus-card">
+        <div className={stimulusCardClass} data-testid="decision-stimulus-card">
           {currentTrial ? (
             <>
               {currentTrial.stimulus.stroopWord ? (
@@ -582,7 +605,16 @@ export function DecisionRushSessionPage() {
 
         <div className="decision-live-meta">
           <p className="reaction-live-timer">Прогресс: {progressPct}%</p>
-          {lastAnswerLabel ? <p className="status-line">{lastAnswerLabel}</p> : null}
+          <div className="decision-step-timer" aria-hidden={!isRunning}>
+            <div className="decision-step-track">
+              <div
+                className="decision-step-fill"
+                style={{ width: `${trialRemainingPct}%` }}
+              />
+            </div>
+            <span className="decision-step-value">{trialRemainingMs} мс на шаг</span>
+          </div>
+          {lastAnswerLabel ? <p className={lastAnswerClass}>{lastAnswerLabel}</p> : null}
         </div>
 
         {isRunning && !finished ? (

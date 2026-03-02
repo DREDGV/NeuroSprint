@@ -370,6 +370,17 @@ export function NBackSessionPage() {
           <span className="nback-stat-label">🔥 Серия</span>
           <span className="nback-stat-value combo">{currentCombo >= 5 ? `🔥${currentCombo}` : currentCombo}</span>
         </div>
+        <div className="nback-stat-card nback-stat-card-action">
+          <button
+            type="button"
+            className="nback-btn nback-btn-start-small"
+            onClick={isRunning ? restartSession : startSession}
+            data-testid="nback-start-session-btn"
+          >
+            <span className="nback-btn-icon">{isRunning ? '↻' : '▶'}</span>
+            <span className="nback-btn-text">{isRunning ? 'Заново' : 'Старт'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Инструкция */}
@@ -430,7 +441,7 @@ export function NBackSessionPage() {
         </div>
       </section>
 
-      {/* Кнопки управления */}
+      {/* Кнопки управления - только ответы */}
       {!finished ? (
         <div className="nback-controls">
           <button
@@ -442,16 +453,6 @@ export function NBackSessionPage() {
           >
             <span className="nback-btn-icon">✕</span>
             <span className="nback-btn-text">Не совпало</span>
-          </button>
-          
-          <button
-            type="button"
-            className="nback-btn nback-btn-start"
-            onClick={isRunning ? restartSession : startSession}
-            data-testid="nback-start-session-btn"
-          >
-            <span className="nback-btn-icon">{isRunning ? '↻' : '▶'}</span>
-            <span className="nback-btn-text">{isRunning ? 'Заново' : 'Старт'}</span>
           </button>
           
           <button

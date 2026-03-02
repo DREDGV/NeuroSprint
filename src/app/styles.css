@@ -1411,7 +1411,7 @@ textarea:focus-visible {
 /* Stats row */
 .nback-stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -1425,6 +1425,42 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.nback-stat-card-action {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.nback-btn-start-small {
+  width: 100%;
+  height: 100%;
+  min-height: 68px;
+  padding: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.nback-btn-start-small:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.nback-btn-start-small:active {
+  transform: translateY(1px);
 }
 
 .nback-stat-label {
@@ -1514,11 +1550,11 @@ textarea:focus-visible {
   display: block;
 }
 
-/* Controls - крупные яркие кнопки */
+/* Controls - только 2 кнопки ответов */
 .nback-controls {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
   margin-top: 24px;
   align-items: center;
 }
@@ -1529,15 +1565,15 @@ textarea:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 16px 20px;
+  padding: 20px 24px;
   border: none;
   border-radius: 16px;
   font-weight: 800;
-  font-size: 1rem;
+  font-size: 1.05rem;
   cursor: pointer;
   transition: all 0.15s ease;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-  min-height: 90px;
+  min-height: 100px;
 }
 
 .nback-btn:disabled {
@@ -1639,27 +1675,30 @@ textarea:focus-visible {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .nback-controls {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+  .nback-stat-card-action {
+    grid-column: span 2;
   }
   
-  .nback-btn-start {
-    grid-column: span 2;
-    min-height: 70px;
+  .nback-btn-start-small {
+    min-height: 60px;
+  }
+  
+  .nback-controls {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
   }
   
   .nback-btn {
-    min-height: 80px;
-    padding: 12px 16px;
+    min-height: 90px;
+    padding: 16px 20px;
   }
   
   .nback-btn-icon {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
   }
   
   .nback-btn-text {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
 }
 
@@ -1715,6 +1754,24 @@ textarea:focus-visible {
   display: grid;
   gap: 12px;
   justify-items: center;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.decision-stimulus-card.is-pending {
+  border-color: #f2a93b;
+  box-shadow: 0 0 0 3px rgba(242, 169, 59, 0.2);
+}
+
+.decision-stimulus-card.is-correct {
+  border-color: #1e7f71;
+  background: #edf8f4;
+  box-shadow: 0 0 0 3px rgba(30, 127, 113, 0.18);
+}
+
+.decision-stimulus-card.is-error {
+  border-color: #b74343;
+  background: #fff2f2;
+  box-shadow: 0 0 0 3px rgba(183, 67, 67, 0.2);
 }
 
 .decision-stimulus-main {
@@ -1760,15 +1817,58 @@ textarea:focus-visible {
 
 .decision-live-meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.decision-live-meta .status-line,
 .decision-live-meta .reaction-live-timer {
   margin: 0;
+}
+
+.decision-step-timer {
+  min-width: min(320px, 100%);
+  display: grid;
+  gap: 4px;
+}
+
+.decision-step-track {
+  width: min(320px, 100%);
+  height: 8px;
+  border-radius: 999px;
+  background: #dbe8e3;
+  overflow: hidden;
+}
+
+.decision-step-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1e7f71 0%, #44a688 65%, #f2a93b 100%);
+  transition: width 0.05s linear;
+}
+
+.decision-step-value {
+  font-size: 0.85rem;
+  color: #43635e;
+  font-weight: 700;
+}
+
+.decision-last-answer {
+  margin: 0;
+  font-weight: 800;
+}
+
+.decision-last-answer.is-correct {
+  color: #1e7f71;
+}
+
+.decision-last-answer.is-error {
+  color: #b74343;
+}
+
+.decision-last-answer.is-pending {
+  color: #8a6525;
 }
 
 .decision-answer-grid {
