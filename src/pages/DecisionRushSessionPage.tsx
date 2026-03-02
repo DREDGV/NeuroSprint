@@ -526,14 +526,80 @@ export function DecisionRushSessionPage() {
     startLoop();
   }
 
+  function pauseSession(): void {
+    if (!runningRef.current || finishedRef.current || pausedRef.current) {
+      return;
+    }
+    const now = Date.now();
+    pausedRef.current = true;
+    pausedAtRef.current = now;
+    setIsPaused(true);
+    setTickMs(now);
+    setLastAnswerLabel("Пауза");
+    clearLoop();
+  }
+
+  function resumeSession(): void {
+    if (!runningRef.current || finishedRef.current || !pausedRef.current) {
+      return;
+    }
+    const now = Date.now();
+    const pausedAt = pausedAtRef.current ?? now;
+    const shiftMs = Math.max(0, now - pausedAt);
+    if (startedAtRef.current != null) {
+      startedAtRef.current += shiftMs;
+    }
+    if (trialStartedAtRef.current != null) {
+      trialStartedAtRef.current += shiftMs;
+    }
+    pausedRef.current = false;
+    pausedAtRef.current = null;
+    setIsPaused(false);
+    setTickMs(now);
+    setLastAnswerLabel("Продолжаем");
+    startLoop();
+  }
+
+  function applyTempo(nextTempo: DecisionTempoId): void {
+    if (nextTempo === tempoId) {
+      return;
+    }
+
+    const previousMultiplier = tempoMultiplierRef.current;
+    const nextMultiplier = TEMPO_MULTIPLIER[nextTempo];
+    tempoMultiplierRef.current = nextMultiplier;
+    setTempoId(nextTempo);
+    saveTempoPreference(nextTempo);
+
+    const previousInterval = intervalRef.current;
+    const baseInterval = Math.round(previousInterval / previousMultiplier);
+    const nextInterval = clampDecisionInterval(Math.round(baseInterval * nextMultiplier));
+
+    const anchorNow = pausedRef.current && pausedAtRef.current != null ? pausedAtRef.current : Date.now();
+    if (trialStartedAtRef.current != null && currentTrialRef.current != null && previousInterval > 0) {
+      const elapsed = Math.max(0, anchorNow - trialStartedAtRef.current);
+      const progress = Math.max(0, Math.min(1, elapsed / previousInterval));
+      trialStartedAtRef.current = anchorNow - Math.round(progress * nextInterval);
+    }
+
+    intervalRef.current = nextInterval;
+    setIntervalMs(nextInterval);
+    setTickMs(anchorNow);
+  }
+
   function restartSession(): void {
     resetRuntimeState();
     setIsRunning(false);
+    setIsPaused(false);
     setFinished(false);
     setTickMs(Date.now());
     setTrialIndex(0);
     setCurrentTrial(null);
-    setIntervalMs(initialDecisionIntervalMs(setup.level));
+    setIntervalMs(
+      clampDecisionInterval(
+        Math.round(initialDecisionIntervalMs(setup.level) * tempoMultiplierRef.current)
+      )
+    );
     setCombo(0);
     setLastAnswerLabel(null);
     setLiveCorrectCount(0);
@@ -547,7 +613,7 @@ export function DecisionRushSessionPage() {
   }
 
   function answer(value: DecisionRushAnswer): void {
-    if (!runningRef.current || finishedRef.current || !currentTrialRef.current) {
+    if (!runningRef.current || finishedRef.current || pausedRef.current || !currentTrialRef.current) {
       return;
     }
     if (pendingAnswerRef.current != null) {
@@ -575,7 +641,14 @@ export function DecisionRushSessionPage() {
     }
 
     let cancelled = false;
-    const session = buildSession(activeUserId, setup, result);
+    const session = buildSession(
+      activeUserId,
+      setup,
+      result,
+      clampDecisionInterval(
+        Math.round(initialDecisionIntervalMs(setup.level) * tempoMultiplierRef.current)
+      )
+    );
     const modeId = modeIdFromDecisionLevel(setup.level);
 
     void sessionRepository
@@ -629,7 +702,7 @@ export function DecisionRushSessionPage() {
         <StatCard title="Уровень" value={levelLabel(setup.level)} />
         <StatCard title="Фаза" value={phaseLabel(currentPhase)} />
         <StatCard title="Шаг" value={String(trialIndex)} />
-        <StatCard title="Темп" value={`${intervalMs} мс`} />
+        <StatCard title="Темп" value={`${tempoLabel(tempoId)} · ${intervalMs} мс`} />
         <StatCard title="Комбо" value={`x${combo}`} />
         <StatCard title="Верно" value={String(liveCorrectCount)} />
         <StatCard title="Ошибки" value={String(liveErrorCount)} />
@@ -647,6 +720,47 @@ export function DecisionRushSessionPage() {
       ) : null}
 
       <section className="decision-arena" data-testid="decision-arena">
+        <div className="decision-control-row">
+          <div className="decision-tempo-group" role="group" aria-label="Темп">
+            <button
+              type="button"
+              className={tempoId === "slow" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => applyTempo("slow")}
+              data-testid="decision-tempo-slow"
+            >
+              Медленно
+            </button>
+            <button
+              type="button"
+              className={tempoId === "normal" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => applyTempo("normal")}
+              data-testid="decision-tempo-normal"
+            >
+              Нормально
+            </button>
+            <button
+              type="button"
+              className={tempoId === "fast" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => applyTempo("fast")}
+              data-testid="decision-tempo-fast"
+            >
+              Быстро
+            </button>
+          </div>
+          {isRunning ? (
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={isPaused ? resumeSession : pauseSession}
+              data-testid="decision-pause-toggle"
+            >
+              {isPaused ? "Продолжить" : "Пауза"}
+            </button>
+          ) : null}
+        </div>
+
+        {isPaused ? <p className="decision-paused-banner">Пауза. Нажмите «Продолжить».</p> : null}
+
         <div className="decision-rule-box">
           <p className="decision-rule-caption">{currentTrial?.prompt.title ?? "Текущее правило"}</p>
           <p className="decision-rule-main">
@@ -715,7 +829,7 @@ export function DecisionRushSessionPage() {
                   : "decision-answer-btn decision-answer-btn-yes"
               }
               onClick={() => answer("yes")}
-              disabled={!isRunning || currentAnswerLocked}
+              disabled={!isRunning || isPaused || currentAnswerLocked}
               data-testid="decision-answer-yes"
             >
               ДА
@@ -728,7 +842,7 @@ export function DecisionRushSessionPage() {
                   : "decision-answer-btn decision-answer-btn-no"
               }
               onClick={() => answer("no")}
-              disabled={!isRunning || currentAnswerLocked}
+              disabled={!isRunning || isPaused || currentAnswerLocked}
               data-testid="decision-answer-no"
             >
               НЕТ
