@@ -1278,11 +1278,18 @@ textarea:focus-visible {
 .hero-icon {
   display: inline-flex;
   animation: pulse-glow 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.4));
 }
 
 @keyframes pulse-glow {
-  0%, 100% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); }
-  50% { filter: drop-shadow(0 0 16px rgba(255,255,255,0.5)); }
+  0%, 100% { 
+    filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
+    transform: scale(1);
+  }
+  50% { 
+    filter: drop-shadow(0 0 18px rgba(255,255,255,0.6));
+    transform: scale(1.05);
+  }
 }
 
 .home-hero-subtitle {
@@ -1379,14 +1386,20 @@ textarea:focus-visible {
 }
 
 .challenge-highlight-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   display: grid;
   place-items: center;
-  font-size: 1.8rem;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.challenge-highlight-icon svg {
+  width: 36px;
+  height: 36px;
 }
 
 .challenge-highlight-info {
@@ -1726,14 +1739,15 @@ textarea:focus-visible {
 }
 
 .streak-badge-large {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
   display: grid;
   place-items: center;
-  font-size: 2rem;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  font-size: 2.2rem;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
 }
 
 .streak-info {

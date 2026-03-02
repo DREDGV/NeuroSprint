@@ -35,64 +35,116 @@ function toRelativeChallengeDayLabel(localDate: string): string {
   return toShortDateLabel(localDate);
 }
 
-// SVG Icons
-const FireIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-    <path d="M12 23c-4.97 0-9-3.58-9-8 0-2.52 1.56-5.12 3.5-6.94.36-.34.92-.32 1.26.04.34.36.32.92-.04 1.26C6.14 10.85 5 12.98 5 15c0 3.31 3.13 6 7 6s7-2.69 7-6c0-2.02-1.14-4.15-2.72-5.64-.36-.34-.38-.9-.04-1.26.34-.36.9-.38 1.26-.04C19.44 9.88 21 12.48 21 15c0 4.42-4.03 8-9 8zm0-10c-.55 0-1 .45-1 1 0 1.66-1.34 3-3 3-.55 0-1-.45-1-1s.45-1 1-1c.55 0 1-.45 1-1 0-2.21 1.79-4 4-4 .55 0 1 .45 1 1s-.45 1-1 1c-.55 0-1 .45-1 1z"/>
+// SVG Icons - современный дизайн в едином стиле
+const FireIcon = ({ size = 24 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
+    <path d="M12 2c0 0-7 4.5-7 11a7 7 0 0014 0c0-6.5-7-11-7-11zm0 19a5 5 0 01-5-5c0-2.5 2.5-5.5 5-8 2.5 2.5 5 5.5 5 8a5 5 0 01-5 5z"/>
+    <path d="M12 6c-1.5 1.5-2.5 3-2.5 4.5a2.5 2.5 0 005 0c0-1.5-1-3-2.5-4.5z" opacity="0.6"/>
   </svg>
 );
 
-const LightningIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-    <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z"/>
+const LightningIcon = ({ size = 24 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
+    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
   </svg>
 );
 
-const TargetIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+const TargetIcon = ({ size = 24 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={size} height={size}>
+    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="6"/>
+    <circle cx="12" cy="12" r="2"/>
   </svg>
 );
 
-const TrophyIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-    <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1l0 0c0 2.21 1.79 4 4 4 .89 0 1.71-.29 2.38-.78C10.08 13.24 11.96 15 14 15v2H8v2h8v-2h-2v-2c2.04 0 3.92-1.76 4.62-3.78.67.49 1.49.78 2.38.78 2.21 0 4-1.79 4-4l0 0V7c0-1.1-.9-2-2-2zM7 12c-1.1 0-2-.9-2-2V7h2v5zm10 0V7h2v3c0 1.1-.9 2-2 2z"/>
+const TrophyIcon = ({ size = 24 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
+    <path d="M12 2l-1 3H6a2 2 0 00-2 2v2c0 2.5 1.5 4.5 3.5 5.5A5 5 0 0011 18v2H8v2h8v-2h-3v-2a5 5 0 003.5-3.5c2-1 3.5-3 3.5-5.5V7a2 2 0 00-2-2h-5L12 2z"/>
+    <path d="M4 7H2v2a4 4 0 004 4V7z"/>
+    <path d="M20 7h2v2a4 4 0 01-4 4V7z"/>
   </svg>
 );
 
-const PlayIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-    <path d="M8 5v14l11-7z"/>
+const PlayIcon = ({ size = 20 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
+    <path d="M8 5v14l11-7L8 5z"/>
   </svg>
 );
 
-const ChartIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-    <path d="M3 13h2v8H3v-8zm4-6h2v14H7V7zm4-4h2v18h-2V3zm4 8h2v10h-2V11zm4-4h2v14h-2V7z"/>
+const ChartIcon = ({ size = 24 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+    <path d="M3 3v18h18"/>
+    <path d="M7 16l4-4 4 4 5-6"/>
   </svg>
 );
 
-const BrainIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
-    <path d="M12 2C9 2 7 3.5 7 5.5c0 .5.1 1 .3 1.4C5.4 7.8 4 9.8 4 12c0 2.8 2 5 5 5.5V19c0 1.1.9 2 2 2s2-.9 2-2v-1.5c3-.5 5-2.7 5-5.5 0-2.2-1.4-4.2-3.3-5.1.2-.4.3-.9.3-1.4C17 3.5 15 2 12 2zm0 2c1.7 0 3 .9 3 2.5S13.7 9 12 9 9 8.1 9 6.5 10.3 4 12 4zm0 15c-.6 0-1-.4-1-1v-1.5c0-.6.4-1 1-1s1 .4 1 1V18c0 .6-.4 1-1 1zm3-4H9c-2.2 0-4-1.8-4-4 0-1.7 1.1-3.2 2.7-3.8.3.9.8 1.7 1.5 2.3-.3.5-.5 1.1-.5 1.7 0 1.7 1.3 3 3 3s3-1.3 3-3c0-.6-.2-1.2-.5-1.7.7-.6 1.2-1.4 1.5-2.3 1.6.6 2.7 2.1 2.7 3.8 0 2.2-1.8 4-4 4z"/>
+const BrainIcon = ({ size = 40 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" width={size} height={size}>
+    {/* Outer brain shape */}
+    <path
+      d="M12 2C9 2 7 4 7 6c0 1 .3 2 .8 2.8C6.2 9.5 5 11.5 5 14c0 3 2.2 5.5 5 6v2a2 2 0 004 0v-2c2.8-.5 5-3 5-6 0-2.5-1.2-4.5-2.8-5.2.5-.8.8-1.8.8-2.8 0-2-2-4-5-4z"
+      fill="currentColor"
+      opacity="0.9"
+    />
+    {/* Left hemisphere detail */}
+    <path
+      d="M9 8c-1 1-1.5 2-1.5 3s.7 2 1.5 2"
+      stroke="rgba(255,255,255,0.6)"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    />
+    {/* Right hemisphere detail */}
+    <path
+      d="M15 8c1 1 1.5 2 1.5 3s-.7 2-1.5 2"
+      stroke="rgba(255,255,255,0.6)"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    />
+    {/* Neural connections */}
+    <circle cx="9" cy="13" r="1" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="15" cy="13" r="1" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="12" cy="15" r="0.8" fill="rgba(255,255,255,0.6)"/>
+    {/* Synapse lines */}
+    <path d="M10 17h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
   </svg>
 );
 
-const GridIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
-    <path d="M4 4h7v7H4V4zm0 9h7v7H4v-7zm9-9h7v7h-7V4zm0 9h7v7h-7v-7z"/>
+const GridIcon = ({ size = 28 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
+    <rect x="3" y="3" width="7" height="7" rx="1"/>
+    <rect x="14" y="3" width="7" height="7" rx="1"/>
+    <rect x="3" y="14" width="7" height="7" rx="1"/>
+    <rect x="14" y="14" width="7" height="7" rx="1"/>
   </svg>
 );
 
-const MathIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
-    <path d="M18 4H6v2l6.5 6L6 18v2h12v-3h-7l5-5-5-5h7z"/>
+const MathIcon = ({ size = 28 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" width={size} height={size}>
+    <path d="M4 8l4 4-4 4"/>
+    <path d="M12 6v12"/>
+    <path d="M8 12h8"/>
+    <path d="M16 8l4 4-4 4"/>
   </svg>
 );
 
-const SpeedIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/>
+const SpeedIcon = ({ size = 28 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+    <path d="M22 12A10 10 0 0012 2v10l8 8"/>
+    <path d="M12 2a10 10 0 0110 10"/>
+    <circle cx="12" cy="12" r="2" fill="currentColor"/>
+  </svg>
+);
+
+const StarIcon = ({ size = 24 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
+    <path d="M12 2l3.5 7.5L23 11l-6 5.5L18.5 25 12 20.5 5.5 25 7 16.5 1 11l7.5-1.5L12 2z"/>
+  </svg>
+);
+
+const CalendarIcon = ({ size = 24 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+    <rect x="3" y="4" width="18" height="18" rx="2"/>
+    <path d="M16 2v4M8 2v4M3 10h18"/>
   </svg>
 );
 
