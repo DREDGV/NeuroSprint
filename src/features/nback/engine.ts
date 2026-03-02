@@ -5,12 +5,15 @@ export const NBACK_STEP_MS = 1500;
 export const NBACK_STIMULUS_MS = 650;
 export const NBACK_PAUSE_MS = 850;
 
-export type NBackLevel = 1 | 2;
-export type NBackDurationSec = 60 | 90;
+export type NBackLevel = 1 | 2 | 3;
+export type NBackGridSize = 3 | 4;
+export type NBackDurationSec = 60 | 90 | 120;
 
 export interface NBackSetup {
   level: NBackLevel;
+  gridSize: NBackGridSize;
   durationSec: NBackDurationSec;
+  tutorialMode?: boolean;
 }
 
 export interface NBackStepEvaluation {
@@ -28,6 +31,8 @@ export interface NBackSessionMetrics extends NBackStepEvaluation {
   accuracy: number;
   speed: number;
   score: number;
+  combo: number;
+  maxCombo: number;
 }
 
 export interface NBackEvaluationInput {
@@ -44,22 +49,27 @@ function randomCell(random: () => number): number {
 }
 
 export function normalizeNBackSetup(input: Partial<NBackSetup> | null | undefined): NBackSetup {
-  const level = input?.level === 2 ? 2 : 1;
-  const durationSec = input?.durationSec === 90 ? 90 : 60;
-  return { level, durationSec };
+  const level = input?.level === 3 ? 3 : input?.level === 2 ? 2 : 1;
+  const gridSize = input?.gridSize === 4 ? 4 : 3;
+  const durationSec = input?.durationSec === 120 ? 120 : input?.durationSec === 90 ? 90 : 60;
+  const tutorialMode = input?.tutorialMode === true;
+  return { level, gridSize, durationSec, tutorialMode };
 }
 
-export function modeIdFromNBackLevel(level: NBackLevel): TrainingModeId {
-  return level === 2 ? "nback_2" : "nback_1";
+export function modeIdFromNBackLevel(level: NBackLevel, gridSize: NBackGridSize = 3): TrainingModeId {
+  if (level === 3) return "nback_3";
+  if (level === 2 && gridSize === 4) return "nback_2_4x4";
+  if (level === 2) return "nback_2";
+  if (gridSize === 4) return "nback_1_4x4";
+  return "nback_1";
 }
 
-export function levelFromModeId(modeId: string | null): NBackLevel | null {
-  if (modeId === "nback_1") {
-    return 1;
-  }
-  if (modeId === "nback_2") {
-    return 2;
-  }
+export function levelFromModeId(modeId: string | null): { level: NBackLevel; gridSize: NBackGridSize } | null {
+  if (modeId === "nback_1") return { level: 1, gridSize: 3 };
+  if (modeId === "nback_1_4x4") return { level: 1, gridSize: 4 };
+  if (modeId === "nback_2") return { level: 2, gridSize: 3 };
+  if (modeId === "nback_2_4x4") return { level: 2, gridSize: 4 };
+  if (modeId === "nback_3") return { level: 3, gridSize: 3 };
   return null;
 }
 
@@ -70,15 +80,17 @@ export function calculateNBackSteps(durationSec: NBackDurationSec): number {
 export function generateNBackSequence(
   totalSteps: number,
   level: NBackLevel,
+  gridSize: NBackGridSize = 3,
   random: () => number = Math.random
 ): number[] {
   const steps = Math.max(level + 1, Math.round(totalSteps));
   const sequence: number[] = [];
   const targetProbability = 0.3;
+  const gridCells = gridSize * gridSize;
 
   for (let index = 0; index < steps; index += 1) {
     if (index < level) {
-      sequence.push(randomCell(random));
+      sequence.push(Math.floor(random() * gridCells));
       continue;
     }
 
@@ -90,14 +102,38 @@ export function generateNBackSequence(
       continue;
     }
 
-    let next = randomCell(random);
+    let next = Math.floor(random() * gridCells);
     while (next === backValue) {
-      next = randomCell(random);
+      next = Math.floor(random() * gridCells);
     }
     sequence.push(next);
   }
 
   return sequence;
+}
+
+// Цвета для клеток (pastel colors)
+export const CELL_COLORS = [
+  "#FFB3BA", // розовый
+  "#BAFFC9", // зелёный
+  "#BAE1FF", // голубой
+  "#FFFFBA", // жёлтый
+  "#FFDFBA", // оранжевый
+  "#E2F0CB", // лайм
+  "#D4A5A5", // пыльная роза
+  "#A8D8EA", // небесный
+  "#AA96DA", // лаванда
+  "#FCBAD3", // светло-розовый
+  "#FFDAC1", // персиковый
+  "#B5EAD7", // мятный
+  "#C7CEEA", // серо-голубой
+  "#F8B195", // коралловый
+  "#6C5B7B", // фиолетовый
+  "#355C7D"  // тёмно-синий
+];
+
+export function getCellColor(index: number, totalCells: number): string {
+  return CELL_COLORS[index % CELL_COLORS.length];
 }
 
 function clamp01(value: number): number {
@@ -107,7 +143,7 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-export function evaluateNBackSession(input: NBackEvaluationInput): NBackSessionMetrics {
+export function evaluateNBackSession(input: NBackEvaluationInput & { gridSize?: NBackGridSize }): NBackSessionMetrics {
   const totalSteps = Math.max(0, Math.min(input.sequence.length, input.responses.length));
   const result: NBackStepEvaluation = {
     hit: 0,
@@ -116,6 +152,9 @@ export function evaluateNBackSession(input: NBackEvaluationInput): NBackSessionM
     correctReject: 0
   };
 
+  let combo = 0;
+  let maxCombo = 0;
+
   for (let index = 0; index < totalSteps; index += 1) {
     const isTarget =
       index >= input.level && input.sequence[index] === input.sequence[index - input.level];
@@ -123,20 +162,26 @@ export function evaluateNBackSession(input: NBackEvaluationInput): NBackSessionM
 
     if (isTarget && answerMatch) {
       result.hit += 1;
+      combo += 1;
+      maxCombo = Math.max(maxCombo, combo);
       continue;
     }
 
     if (isTarget && !answerMatch) {
       result.miss += 1;
+      combo = 0;
       continue;
     }
 
     if (!isTarget && answerMatch) {
       result.falseAlarm += 1;
+      combo = 0;
       continue;
     }
 
     result.correctReject += 1;
+    combo += 1;
+    maxCombo = Math.max(maxCombo, combo);
   }
 
   const correctCount = result.hit + result.correctReject;
@@ -145,7 +190,10 @@ export function evaluateNBackSession(input: NBackEvaluationInput): NBackSessionM
   const durationMs = Math.max(1, Math.round(input.durationMs));
   const accuracy = clamp01(correctCount / Math.max(1, totalSteps));
   const speed = correctCount / (durationMs / 60_000);
-  const score = speed * (0.7 + 0.3 * accuracy);
+  
+  // Бонус за combo влияет на score
+  const comboBonus = 1 + (maxCombo * 0.05);
+  const score = speed * (0.7 + 0.3 * accuracy) * comboBonus;
 
   return {
     ...result,
@@ -155,6 +203,8 @@ export function evaluateNBackSession(input: NBackEvaluationInput): NBackSessionM
     effectiveCorrect,
     accuracy,
     speed,
-    score
+    score,
+    combo,
+    maxCombo
   };
 }

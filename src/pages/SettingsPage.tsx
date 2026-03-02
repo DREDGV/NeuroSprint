@@ -33,7 +33,7 @@ import type {
   TrainingModeId
 } from "../shared/types/domain";
 
-type TimeLimit = 30 | 45 | 60 | 90;
+type TimeLimit = 30 | 45 | 60 | 90 | 120;
 type BenchmarkPeriod = 30 | 90 | "all";
 
 function benchmarkThresholdMs(period: BenchmarkPeriod): number {

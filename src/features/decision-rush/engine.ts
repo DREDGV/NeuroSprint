@@ -77,13 +77,13 @@ const SHAPE_LABELS: Record<DecisionRushShape, string> = {
 };
 
 const INITIAL_INTERVAL_MS: Record<DecisionRushLevel, number> = {
-  kids: 1200,
-  standard: 1100,
-  pro: 1000
+  kids: 1700,
+  standard: 1450,
+  pro: 1250
 };
 
-export const DECISION_RUSH_INTERVAL_MIN_MS = 450;
-export const DECISION_RUSH_INTERVAL_MAX_MS = 1600;
+export const DECISION_RUSH_INTERVAL_MIN_MS = 700;
+export const DECISION_RUSH_INTERVAL_MAX_MS = 2400;
 
 export function modeIdFromDecisionLevel(level: DecisionRushLevel): TrainingModeId {
   if (level === "kids") {
@@ -263,6 +263,44 @@ function buildBossRule(): DecisionRushRule {
   };
 }
 
+function buildBalancedTrial(
+  rule: DecisionRushRule,
+  phase: DecisionRushPhase,
+  level: DecisionRushLevel,
+  random: () => number
+): DecisionRushTrial {
+  const targetAnswer: DecisionRushAnswer = random() < 0.5 ? "yes" : "no";
+  const maxAttempts = 10;
+
+  let fallbackStimulus: DecisionRushStimulus | null = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const stimulus =
+      phase === "boss" ? buildStroopStimulus(level, random) : buildStimulus(random);
+    if (fallbackStimulus == null) {
+      fallbackStimulus = stimulus;
+    }
+
+    const isYes = rule.evaluate(stimulus);
+    const answer: DecisionRushAnswer = isYes ? "yes" : "no";
+    if (answer === targetAnswer) {
+      return {
+        phase,
+        prompt: { title: rule.title, description: rule.description },
+        stimulus,
+        correctAnswer: answer
+      };
+    }
+  }
+
+  const safeFallback = fallbackStimulus ?? buildStimulus(random);
+  return {
+    phase,
+    prompt: { title: rule.title, description: rule.description },
+    stimulus: safeFallback,
+    correctAnswer: rule.evaluate(safeFallback) ? "yes" : "no"
+  };
+}
+
 export function createDecisionRushTrial(
   level: DecisionRushLevel,
   phase: DecisionRushPhase,
@@ -270,24 +308,12 @@ export function createDecisionRushTrial(
 ): DecisionRushTrial {
   if (phase === "boss") {
     const rule = buildBossRule();
-    const stimulus = buildStroopStimulus(level, random);
-    return {
-      phase,
-      prompt: { title: rule.title, description: rule.description },
-      stimulus,
-      correctAnswer: rule.evaluate(stimulus) ? "yes" : "no"
-    };
+    return buildBalancedTrial(rule, phase, level, random);
   }
 
   const rules = phase === "warmup" ? buildWarmupRules(level) : buildCoreRules(level);
   const rule = randomFrom(rules, random);
-  const stimulus = buildStimulus(random);
-  return {
-    phase,
-    prompt: { title: rule.title, description: rule.description },
-    stimulus,
-    correctAnswer: rule.evaluate(stimulus) ? "yes" : "no"
-  };
+  return buildBalancedTrial(rule, phase, level, random);
 }
 
 export function initialDecisionIntervalMs(level: DecisionRushLevel): number {
@@ -336,9 +362,9 @@ export function adaptDecisionIntervalMs(
 
   let next = currentIntervalMs;
   if (accuracy > 0.92 && stable) {
-    next -= 60 + Math.floor(random() * 41);
+    next -= 35 + Math.floor(random() * 21);
   } else if (accuracy < 0.8) {
-    next += 80 + Math.floor(random() * 61);
+    next += 90 + Math.floor(random() * 61);
   }
 
   return Math.max(DECISION_RUSH_INTERVAL_MIN_MS, Math.min(DECISION_RUSH_INTERVAL_MAX_MS, next));

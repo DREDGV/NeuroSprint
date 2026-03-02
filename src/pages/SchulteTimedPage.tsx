@@ -16,10 +16,10 @@ import { SchulteGrid } from "../shared/ui/SchulteGrid";
 import { StatCard } from "../shared/ui/StatCard";
 import type { Session } from "../shared/types/domain";
 
-type TimeLimit = 30 | 45 | 60 | 90;
+type TimeLimit = 30 | 45 | 60 | 90 | 120;
 
 function normalizeLimit(value: number): TimeLimit {
-  if (value === 30 || value === 45 || value === 60 || value === 90) {
+  if (value === 30 || value === 45 || value === 60 || value === 90 || value === 120) {
     return value;
   }
   return DEFAULT_SETTINGS.timedDefaultLimitSec;

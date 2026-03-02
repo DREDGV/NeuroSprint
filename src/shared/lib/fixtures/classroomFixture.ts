@@ -1,4 +1,5 @@
 import { db } from "../../../db/database";
+import { getSchulteLevelDefaults } from "../../../features/schulte/levelConfig";
 import { toLocalDateKey } from "../date/date";
 import { createId } from "../id";
 import { calcClassicMetrics, calcTimedMetrics } from "../scoring/scoring";
@@ -9,7 +10,6 @@ import type {
   GroupMember,
   Mode,
   Session,
-  SpawnStrategy,
   TimeLimitSec,
   TrainingModeId,
   TrainingPresetId,
@@ -73,42 +73,6 @@ function isDemoName(name: string): boolean {
   return name.startsWith(DEMO_PREFIX);
 }
 
-function levelToGridSize(level: number): GridSize {
-  if (level <= 2) {
-    return 3;
-  }
-  if (level <= 4) {
-    return 4;
-  }
-  if (level <= 7) {
-    return 5;
-  }
-  return 6;
-}
-
-function levelToTimedLimit(level: number): TimeLimitSec {
-  if (level >= 9) {
-    return 30;
-  }
-  if (level >= 7) {
-    return 45;
-  }
-  if (level <= 2) {
-    return 90;
-  }
-  return 60;
-}
-
-function levelToPenalty(level: number): number {
-  if (level <= 2) {
-    return 0.25;
-  }
-  if (level <= 6) {
-    return 0.5;
-  }
-  return 0.75;
-}
-
 function levelToPreset(level: number): TrainingPresetId {
   if (level <= 2) {
     return "easy";
@@ -127,16 +91,6 @@ function modeToSessionMode(modeId: TrainingModeId): Mode {
     return "reverse";
   }
   return "classic";
-}
-
-function modeToSpawnStrategy(
-  modeId: TrainingModeId,
-  rand: () => number
-): SpawnStrategy | undefined {
-  if (modeId !== "timed_plus") {
-    return undefined;
-  }
-  return rand() > 0.55 ? "random_cell" : "same_cell";
 }
 
 function getClassicDurationMs(
@@ -291,14 +245,15 @@ export async function generateDemoClassroomFixture(
 
         MODE_IDS.forEach((modeId) => {
           const mode = modeToSessionMode(modeId);
-          const gridSize = levelToGridSize(level);
+          const levelDefaults = getSchulteLevelDefaults(level, modeId);
+          const gridSize = levelDefaults.gridSize;
           const numbersCount = gridSize * gridSize;
           const timestamp = randomLocalTimestamp(dayDate, modeId, rand);
           const localDate = toLocalDateKey(timestamp);
 
           if (modeId === "timed_plus") {
-            const timeLimitSec = levelToTimedLimit(level);
-            const errorPenalty = levelToPenalty(level);
+            const timeLimitSec = levelDefaults.timeLimitSec;
+            const errorPenalty = levelDefaults.errorPenalty;
             const { correctCount, errors } = getTimedValues(level, timeLimitSec, rand);
             const timed = calcTimedMetrics({
               correctCount,
@@ -341,8 +296,12 @@ export async function generateDemoClassroomFixture(
                 mode,
                 timeLimitSec,
                 errorPenalty,
-                hintsEnabled: level <= 2,
-                spawnStrategy: modeToSpawnStrategy(modeId, rand)
+                hintsEnabled: levelDefaults.hintsEnabled,
+                spawnStrategy: levelDefaults.spawnStrategy,
+                shiftEnabled: levelDefaults.shiftEnabled,
+                shiftIntervalSec: levelDefaults.shiftIntervalSec,
+                shiftSwaps: levelDefaults.shiftSwaps,
+                timedBaseClear: levelDefaults.timedBaseClear
               }
             });
             return;
@@ -386,7 +345,10 @@ export async function generateDemoClassroomFixture(
               gridSize,
               numbersCount,
               mode,
-              hintsEnabled: level <= 2
+              hintsEnabled: levelDefaults.hintsEnabled,
+              shiftEnabled: levelDefaults.shiftEnabled,
+              shiftIntervalSec: levelDefaults.shiftIntervalSec,
+              shiftSwaps: levelDefaults.shiftSwaps
             }
           });
         });

@@ -1,14 +1,10 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useActiveUser } from "../app/ActiveUserContext";
 import { getSchulteLevelDefaults } from "../features/schulte/levelConfig";
 import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
-import {
-  SCHULTE_MODES,
-  getPresetSetup,
-  withLevelDefaults
-} from "../shared/lib/training/presets";
+import { SCHULTE_MODES, withLevelDefaults } from "../shared/lib/training/presets";
 import {
   SCHULTE_THEME_OPTIONS,
   resolveSchulteTheme
@@ -21,7 +17,6 @@ import { InfoHint } from "../shared/ui/InfoHint";
 import type {
   SchulteThemeConfig,
   TrainingModeId,
-  TrainingPresetId,
   TrainingSetup,
   UserModeProfile
 } from "../shared/types/domain";
@@ -49,7 +44,6 @@ export function SchulteSetupPage() {
   });
   const [profile, setProfile] = useState<UserModeProfile | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const requestedMode = searchParams.get("mode");
@@ -80,9 +74,7 @@ export function SchulteSetupPage() {
         modeProfile.autoAdjust && modeProfile.manualLevel == null
           ? modeProfile.level
           : modeProfile.manualLevel ?? modeProfile.level;
-      const hydrated = modeProfile.autoAdjust
-        ? withLevelDefaults(storedSetup, effectiveLevel, modeId)
-        : storedSetup;
+      const hydrated = withLevelDefaults(storedSetup, effectiveLevel, modeId);
 
       setProfile(modeProfile);
       setSetup({
@@ -90,7 +82,6 @@ export function SchulteSetupPage() {
         visualThemeId: preference.schulteThemeId,
         customTheme: preference.schulteCustomTheme
       });
-      setMessage(null);
     })();
 
     return () => {
@@ -123,48 +114,45 @@ export function SchulteSetupPage() {
     [effectiveLevel, modeId]
   );
 
-  function applyPreset(presetId: TrainingPresetId) {
-    const preset = getPresetSetup(presetId);
-    const next = profile?.autoAdjust
-      ? withLevelDefaults(preset, effectiveLevel, modeId)
-      : preset;
-    setSetup((current) => ({
-      ...next,
-      visualThemeId: current.visualThemeId,
-      customTheme: current.customTheme
-    }));
-  }
+  const levelRows = useMemo(
+    () =>
+      LEVEL_OPTIONS.map((level) => ({
+        level,
+        profile: getSchulteLevelDefaults(level, modeId)
+      })),
+    [modeId]
+  );
 
   async function handleStart() {
     if (!activeUserId || !profile) {
       return;
     }
 
+    const resolvedLevel =
+      profile.autoAdjust || profile.manualLevel == null
+        ? profile.level
+        : profile.manualLevel;
+    const strictSetup = withLevelDefaults(setup, resolvedLevel, modeId);
+
     const profileToSave: UserModeProfile = {
       ...profile,
-      level:
-        profile.autoAdjust || profile.manualLevel == null
-          ? profile.level
-          : profile.manualLevel
+      level: resolvedLevel
     };
 
     await Promise.all([
       trainingRepository.saveUserModeProfile(profileToSave),
       preferenceRepository.saveSchulteTheme(
         activeUserId,
-        setup.visualThemeId,
-        setup.customTheme
+        strictSetup.visualThemeId,
+        strictSetup.customTheme
       )
     ]);
-    saveTrainingSetup(modeId, setup);
+    saveTrainingSetup(modeId, strictSetup);
 
     navigate(`/training/schulte/${modeId}`, {
       state: {
-        setup,
-        level:
-          profile.autoAdjust || profile.manualLevel == null
-            ? profile.level
-            : profile.manualLevel,
+        setup: strictSetup,
+        level: resolvedLevel,
         adaptiveSource: profile.autoAdjust ? "auto" : "manual"
       }
     });
@@ -194,10 +182,10 @@ export function SchulteSetupPage() {
   return (
     <section className="panel" data-testid="schulte-setup-page">
       <h2>Таблица Шульте</h2>
-      <p>Выберите режим и настройте тренировку перед запуском.</p>
+      <p>Выберите режим и запускайте тренировку. Сложность определяется уровнем.</p>
       <InfoHint title="Как играть в Шульте" testId="schulte-setup-hint">
         <p>1. Выберите режим: Classic+, Timed+ или Reverse.</p>
-        <p>2. Для стабильного роста держите точность выше 85%.</p>
+        <p>2. Уровень автоматически подбирает сложность (или задается вручную).</p>
         <p>3. Сначала точность, потом скорость — это даёт лучший score.</p>
       </InfoHint>
 
@@ -218,214 +206,6 @@ export function SchulteSetupPage() {
       <p className="status-line">{selectedMode.description}</p>
 
       <section className="setup-block">
-        <h3>Пресеты</h3>
-        <div className="segmented-row">
-          <button
-            type="button"
-            className={setup.presetId === "easy" ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => applyPreset("easy")}
-          >
-            Легко
-          </button>
-          <button
-            type="button"
-            className={
-              setup.presetId === "standard" ? "btn-secondary is-active" : "btn-secondary"
-            }
-            onClick={() => applyPreset("standard")}
-          >
-            Стандарт
-          </button>
-          <button
-            type="button"
-            className={setup.presetId === "intense" ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => applyPreset("intense")}
-          >
-            Интенсив
-          </button>
-        </div>
-      </section>
-
-      <section className="setup-block">
-        <h3>Тема оформления</h3>
-        <div className="segmented-row">
-          {SCHULTE_THEME_OPTIONS.map((theme) => (
-            <button
-              key={theme.id}
-              type="button"
-              className={
-                setup.visualThemeId === theme.id ? "btn-secondary is-active" : "btn-secondary"
-              }
-              onClick={() => updateSetup({ visualThemeId: theme.id })}
-              data-testid={`theme-${theme.id}`}
-            >
-              {theme.label}
-            </button>
-          ))}
-        </div>
-
-        <div
-          className="theme-preview"
-          style={{
-            background: previewTheme.boardBg,
-            borderColor: previewTheme.highlightColor
-          }}
-        >
-          <span style={{ color: previewTheme.numberColor }}>1</span>
-          <span style={{ color: previewTheme.numberColor }}>2</span>
-          <span style={{ color: previewTheme.numberColor }}>3</span>
-        </div>
-      </section>
-
-      <div className="action-row">
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={() => setAdvancedOpen((current) => !current)}
-          data-testid="toggle-advanced-btn"
-        >
-          {advancedOpen ? "Скрыть расширенные" : "Расширенные параметры"}
-        </button>
-      </div>
-
-      {advancedOpen ? (
-        <section className="setup-block">
-          <h3>Расширенные параметры</h3>
-          <div className="settings-form">
-            <label htmlFor="grid-size">Размер сетки</label>
-            <select
-              id="grid-size"
-              value={setup.gridSize}
-              onChange={(event) =>
-                updateSetup({ gridSize: Number(event.target.value) as 3 | 4 | 5 | 6 })
-              }
-            >
-              <option value={3}>3x3</option>
-              <option value={4}>4x4</option>
-              <option value={5}>5x5</option>
-              <option value={6}>6x6</option>
-            </select>
-
-            {modeId === "timed_plus" ? (
-              <>
-                <label htmlFor="time-limit">Лимит времени</label>
-                <select
-                  id="time-limit"
-                  value={setup.timeLimitSec}
-                  onChange={(event) =>
-                    updateSetup({
-                      timeLimitSec: Number(event.target.value) as 30 | 45 | 60 | 90
-                    })
-                  }
-                >
-                  <option value={30}>30 сек</option>
-                  <option value={45}>45 сек</option>
-                  <option value={60}>60 сек</option>
-                  <option value={90}>90 сек</option>
-                </select>
-
-                <label htmlFor="spawn-strategy">Стратегия появления</label>
-                <select
-                  id="spawn-strategy"
-                  value={setup.spawnStrategy}
-                  onChange={(event) =>
-                    updateSetup({
-                      spawnStrategy: event.target.value as "same_cell" | "random_cell"
-                    })
-                  }
-                >
-                  <option value="same_cell">В той же клетке</option>
-                  <option value="random_cell">Случайная клетка</option>
-                </select>
-              </>
-            ) : null}
-
-            <label htmlFor="error-penalty">Штраф ошибки</label>
-            <input
-              id="error-penalty"
-              type="number"
-              min={0}
-              max={2}
-              step={0.05}
-              value={setup.errorPenalty}
-              onChange={(event) =>
-                updateSetup({ errorPenalty: Number(event.target.value) || 0 })
-              }
-            />
-
-            <label htmlFor="hints-toggle">
-              <input
-                id="hints-toggle"
-                type="checkbox"
-                checked={setup.hintsEnabled}
-                onChange={(event) => updateSetup({ hintsEnabled: event.target.checked })}
-              />
-              Показывать подсказки
-            </label>
-          </div>
-
-          <h3>Цвета темы (advanced)</h3>
-          <div className="settings-form">
-            <label htmlFor="theme-board-bg">Фон поля</label>
-            <input
-              id="theme-board-bg"
-              type="color"
-              value={previewTheme.boardBg}
-              onChange={(event) => updateCustomTheme({ boardBg: event.target.value })}
-            />
-
-            <label htmlFor="theme-cell-bg">Фон клетки</label>
-            <input
-              id="theme-cell-bg"
-              type="color"
-              value={previewTheme.cellBg}
-              onChange={(event) => updateCustomTheme({ cellBg: event.target.value })}
-            />
-
-            <label htmlFor="theme-number-color">Цвет цифр</label>
-            <input
-              id="theme-number-color"
-              type="color"
-              value={previewTheme.numberColor}
-              onChange={(event) => updateCustomTheme({ numberColor: event.target.value })}
-            />
-
-            <label htmlFor="theme-highlight-color">Цвет подсветки</label>
-            <input
-              id="theme-highlight-color"
-              type="color"
-              value={previewTheme.highlightColor}
-              onChange={(event) => updateCustomTheme({ highlightColor: event.target.value })}
-            />
-
-            <label htmlFor="theme-success-color">Цвет верного клика</label>
-            <input
-              id="theme-success-color"
-              type="color"
-              value={previewTheme.successColor}
-              onChange={(event) => updateCustomTheme({ successColor: event.target.value })}
-            />
-
-            <label htmlFor="theme-error-color">Цвет ошибки</label>
-            <input
-              id="theme-error-color"
-              type="color"
-              value={previewTheme.errorColor}
-              onChange={(event) => updateCustomTheme({ errorColor: event.target.value })}
-            />
-
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => updateSetup({ customTheme: null })}
-            >
-              Сбросить custom-цвета
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="setup-block">
         <h3>Адаптация сложности</h3>
         <div className="settings-form">
           <label htmlFor="auto-adjust-toggle">
@@ -434,17 +214,28 @@ export function SchulteSetupPage() {
               type="checkbox"
               checked={profile?.autoAdjust ?? true}
               onChange={(event) =>
-                setProfile((current) =>
-                  current
-                    ? {
-                        ...current,
-                        autoAdjust: event.target.checked,
-                        manualLevel: event.target.checked
-                          ? null
-                          : current.manualLevel ?? current.level
-                      }
-                    : current
-                )
+                setProfile((current) => {
+                  if (!current) {
+                    return current;
+                  }
+
+                  const nextManualLevel = event.target.checked
+                    ? null
+                    : current.manualLevel ?? current.level;
+                  const nextLevel = event.target.checked
+                    ? current.level
+                    : nextManualLevel ?? current.level;
+
+                  setSetup((setupCurrent) =>
+                    withLevelDefaults(setupCurrent, nextLevel, modeId)
+                  );
+
+                  return {
+                    ...current,
+                    autoAdjust: event.target.checked,
+                    manualLevel: nextManualLevel
+                  };
+                })
               }
             />
             Автоматически менять сложность
@@ -459,11 +250,16 @@ export function SchulteSetupPage() {
                 id="manual-level"
                 value={profile?.manualLevel ?? effectiveLevel}
                 onChange={(event) =>
-                  setProfile((current) =>
-                    current
-                      ? { ...current, manualLevel: Number(event.target.value) }
-                      : current
-                  )
+                  setProfile((current) => {
+                    if (!current) {
+                      return current;
+                    }
+                    const nextManualLevel = Number(event.target.value);
+                    setSetup((setupCurrent) =>
+                      withLevelDefaults(setupCurrent, nextManualLevel, modeId)
+                    );
+                    return { ...current, manualLevel: nextManualLevel };
+                  })
                 }
               >
                 {LEVEL_OPTIONS.map((level) => (
@@ -476,7 +272,7 @@ export function SchulteSetupPage() {
           )}
         </div>
         <p className="status-line">
-          Профиль уровня: {levelDefaults.gridSize}x{levelDefaults.gridSize},{" "}
+          Текущий профиль уровня: {levelDefaults.gridSize}x{levelDefaults.gridSize},{" "}
           {modeId === "timed_plus" ? `${levelDefaults.timeLimitSec} сек, ` : ""}
           штраф {levelDefaults.errorPenalty}.
           {levelDefaults.shiftEnabled
@@ -485,11 +281,144 @@ export function SchulteSetupPage() {
         </p>
       </section>
 
+      <details className="setup-block">
+        <summary><strong>Карта уровней 1–10</strong></summary>
+        {levelRows.map(({ level, profile: row }) => (
+          <p
+            key={level}
+            className={level === effectiveLevel ? "status-line" : undefined}
+          >
+            {level}. {row.gridSize}x{row.gridSize};{" "}
+            {modeId === "timed_plus" ? `${row.timeLimitSec} сек; ` : ""}
+            штраф {row.errorPenalty}; подсказки {row.hintsEnabled ? "on" : "off"};{" "}
+            {row.shiftEnabled
+              ? `shift ${row.shiftSwaps}/${row.shiftIntervalSec}с`
+              : "shift off"}
+            {modeId === "timed_plus"
+              ? row.timedBaseClear
+                ? "; базовый timed: очистка клеток"
+                : ""
+              : ""}
+          </p>
+        ))}
+      </details>
+
+      <section className="setup-block">
+        <h3>Дополнительные настройки</h3>
+        <p className="status-line">Влияют на визуал, но не меняют сложность уровня.</p>
+        <div className="action-row">
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setAdvancedOpen((current) => !current)}
+            data-testid="toggle-advanced-btn"
+          >
+            {advancedOpen ? "Скрыть визуальные настройки" : "Открыть визуальные настройки"}
+          </button>
+        </div>
+
+        {advancedOpen ? (
+          <>
+            <h4>Тема оформления</h4>
+            <div className="segmented-row">
+              {SCHULTE_THEME_OPTIONS.map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  className={
+                    setup.visualThemeId === theme.id ? "btn-secondary is-active" : "btn-secondary"
+                  }
+                  onClick={() => updateSetup({ visualThemeId: theme.id })}
+                  data-testid={`theme-${theme.id}`}
+                >
+                  {theme.label}
+                </button>
+              ))}
+            </div>
+
+            <div
+              className="theme-preview"
+              style={{
+                background: previewTheme.boardBg,
+                borderColor: previewTheme.highlightColor
+              }}
+            >
+              <span style={{ color: previewTheme.numberColor }}>1</span>
+              <span style={{ color: previewTheme.numberColor }}>2</span>
+              <span style={{ color: previewTheme.numberColor }}>3</span>
+            </div>
+
+            <details>
+              <summary><strong>Кастомные цвета</strong></summary>
+              <div className="settings-form">
+                <label htmlFor="theme-board-bg">Фон поля</label>
+                <input
+                  id="theme-board-bg"
+                  type="color"
+                  value={previewTheme.boardBg}
+                  onChange={(event) => updateCustomTheme({ boardBg: event.target.value })}
+                />
+
+                <label htmlFor="theme-cell-bg">Фон клетки</label>
+                <input
+                  id="theme-cell-bg"
+                  type="color"
+                  value={previewTheme.cellBg}
+                  onChange={(event) => updateCustomTheme({ cellBg: event.target.value })}
+                />
+
+                <label htmlFor="theme-number-color">Цвет цифр</label>
+                <input
+                  id="theme-number-color"
+                  type="color"
+                  value={previewTheme.numberColor}
+                  onChange={(event) => updateCustomTheme({ numberColor: event.target.value })}
+                />
+
+                <label htmlFor="theme-highlight-color">Цвет подсветки</label>
+                <input
+                  id="theme-highlight-color"
+                  type="color"
+                  value={previewTheme.highlightColor}
+                  onChange={(event) => updateCustomTheme({ highlightColor: event.target.value })}
+                />
+
+                <label htmlFor="theme-success-color">Цвет верного клика</label>
+                <input
+                  id="theme-success-color"
+                  type="color"
+                  value={previewTheme.successColor}
+                  onChange={(event) => updateCustomTheme({ successColor: event.target.value })}
+                />
+
+                <label htmlFor="theme-error-color">Цвет ошибки</label>
+                <input
+                  id="theme-error-color"
+                  type="color"
+                  value={previewTheme.errorColor}
+                  onChange={(event) => updateCustomTheme({ errorColor: event.target.value })}
+                />
+              </div>
+
+              <div className="action-row">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => updateSetup({ customTheme: null })}
+                >
+                  Сбросить custom-цвета
+                </button>
+              </div>
+            </details>
+          </>
+        ) : null}
+      </section>
+
       <section className="session-brief">
         <h3>Перед стартом</h3>
         <p>Режим: {selectedMode.title}</p>
+        <p>Уровень: {effectiveLevel}</p>
         <p>Сетка: {setup.gridSize}x{setup.gridSize}</p>
-        <p>Тема: {SCHULTE_THEME_OPTIONS.find((theme) => theme.id === setup.visualThemeId)?.label}</p>
         {modeId === "timed_plus" ? <p>Время: {setup.timeLimitSec} сек</p> : null}
         <p>Штраф ошибки: {setup.errorPenalty}</p>
         {setup.shiftEnabled ? (
@@ -514,16 +443,6 @@ export function SchulteSetupPage() {
       <div className="action-row">
         <button
           type="button"
-          className="btn-ghost"
-          onClick={() => {
-            applyPreset("standard");
-            setMessage('Параметры сброшены к пресету "Стандарт".');
-          }}
-        >
-          Сбросить к пресету
-        </button>
-        <button
-          type="button"
           className="btn-primary"
           onClick={() => void handleStart()}
           data-testid="setup-start-btn"
@@ -531,8 +450,7 @@ export function SchulteSetupPage() {
           Начать тренировку
         </button>
       </div>
-
-      {message ? <p className="status-line">{message}</p> : null}
     </section>
   );
 }
+

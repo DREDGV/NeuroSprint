@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { useLocation } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { sessionRepository } from "../entities/session/sessionRepository";
@@ -12,7 +13,6 @@ import {
   modeIdFromDecisionLevel,
   normalizeDecisionRushSetup,
   resolveDecisionPhase,
-  shapeLabel,
   type DecisionRushAnswer,
   type DecisionRushColor,
   type DecisionRushSessionMetrics,
@@ -32,6 +32,8 @@ interface DecisionRushSessionNavState {
   setup?: DecisionRushSetup;
 }
 
+type LiveAnswerState = "pending" | "correct" | "error" | null;
+
 const COLOR_HEX: Record<DecisionRushColor, string> = {
   red: "#cf3f3f",
   green: "#1f9a5a",
@@ -39,13 +41,26 @@ const COLOR_HEX: Record<DecisionRushColor, string> = {
   blue: "#2f73cc"
 };
 
-function formatMs(ms: number): string {
+function formatSeconds(ms: number): string {
   return `${Math.max(0, Math.round(ms / 1000))} сек`;
 }
 
 function formatSigned(value: number, digits = 2): string {
   const sign = value >= 0 ? "+" : "";
   return `${sign}${value.toFixed(digits)}`;
+}
+
+function compactPromptText(description: string): string {
+  const normalized = description
+    .trim()
+    .replace(/^жми\s+да,\s*если\s*/i, "")
+    .replace(/^сейчас\s+/i, "");
+
+  if (normalized.length === 0) {
+    return description;
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
 function phaseLabel(value: DecisionRushTrialResult["phase"] | DecisionRushTrial["phase"]): string {
@@ -78,14 +93,33 @@ function levelNumber(level: DecisionRushSetup["level"]): number {
   return 5;
 }
 
-function shapeSymbol(shape: DecisionRushTrial["stimulus"]["shape"]): string {
+function decisionShapeStyle(
+  shape: DecisionRushTrial["stimulus"]["shape"],
+  color: DecisionRushColor
+): CSSProperties {
+  const style: CSSProperties = {
+    background: COLOR_HEX[color]
+  };
+
   if (shape === "circle") {
-    return "●";
+    style.borderRadius = "50%";
+    return style;
   }
   if (shape === "square") {
-    return "■";
+    style.borderRadius = "12px";
+    return style;
   }
-  return "▲";
+
+  style.borderRadius = "8px";
+  style.clipPath = "polygon(50% 6%, 94% 94%, 6% 94%)";
+  return style;
+}
+
+function decisionShapeClass(shape: DecisionRushTrial["stimulus"]["shape"]): string {
+  if (shape === "triangle") {
+    return "decision-shape decision-shape-triangle";
+  }
+  return "decision-shape";
 }
 
 function pickBestSession(sessions: Session[]): Session | null {
@@ -100,12 +134,12 @@ function buildTip(metrics: DecisionRushSessionMetrics): string {
     return "Сначала стабилизируйте точность: отвечайте чуть спокойнее и без лишних кликов.";
   }
   if (metrics.reactionP90Ms > 1200) {
-    return "Скорость пока нестабильна. Полезно пройти ещё одну серию в том же уровне.";
+    return "Скорость пока нестабильна. Полезно пройти еще одну серию в том же уровне.";
   }
   if (metrics.bestCombo >= 10) {
     return "Отличный контроль серии. Можно пробовать более сложный уровень.";
   }
-  return "Хороший баланс скорости и точности. Закрепите результат ещё одной сессией.";
+  return "Хороший баланс скорости и точности. Закрепите результат еще одной сессией.";
 }
 
 function buildSession(
@@ -160,6 +194,7 @@ export function DecisionRushSessionPage() {
   const [setup] = useState<DecisionRushSetup>(() =>
     normalizeDecisionRushSetup(state?.setup ?? getDecisionRushSetup())
   );
+
   const [isRunning, setIsRunning] = useState(false);
   const [finished, setFinished] = useState(false);
   const [tickMs, setTickMs] = useState<number>(Date.now());
@@ -167,6 +202,10 @@ export function DecisionRushSessionPage() {
   const [currentTrial, setCurrentTrial] = useState<DecisionRushTrial | null>(null);
   const [intervalMs, setIntervalMs] = useState(initialDecisionIntervalMs(setup.level));
   const [combo, setCombo] = useState(0);
+  const [liveCorrectCount, setLiveCorrectCount] = useState(0);
+  const [liveErrorCount, setLiveErrorCount] = useState(0);
+  const [liveScoredCount, setLiveScoredCount] = useState(0);
+  const [liveAnswerState, setLiveAnswerState] = useState<LiveAnswerState>(null);
   const [lastAnswerLabel, setLastAnswerLabel] = useState<string | null>(null);
   const [result, setResult] = useState<DecisionRushSessionMetrics | null>(null);
   const [saved, setSaved] = useState(false);
@@ -180,6 +219,7 @@ export function DecisionRushSessionPage() {
   const intervalRef = useRef(initialDecisionIntervalMs(setup.level));
   const pendingAnswerRef = useRef<DecisionRushAnswer | null>(null);
   const pendingAnswerAtRef = useRef<number | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
   const currentTrialRef = useRef<DecisionRushTrial | null>(null);
   const resultsRef = useRef<DecisionRushTrialResult[]>([]);
   const trialIndexRef = useRef(0);
@@ -192,9 +232,16 @@ export function DecisionRushSessionPage() {
   const elapsedMs =
     startedAtMs == null ? 0 : Math.max(0, Math.min(durationMs, tickMs - startedAtMs));
   const remainingMs = Math.max(0, durationMs - elapsedMs);
-  const progressPct = durationMs > 0 ? Math.min(100, Math.round((elapsedMs / durationMs) * 100)) : 0;
+  const progressPct =
+    durationMs > 0 ? Math.min(100, Math.round((elapsedMs / durationMs) * 100)) : 0;
   const currentPhase = currentTrial?.phase ?? resolveDecisionPhase(elapsedMs, setup.durationSec);
   const currentAnswerLocked = pendingAnswerRef.current != null;
+  const liveAccuracyPercent =
+    liveScoredCount > 0 ? Math.round((liveCorrectCount / liveScoredCount) * 100) : 0;
+  const trialElapsedMs =
+    trialStartedAtRef.current == null ? 0 : Math.max(0, tickMs - trialStartedAtRef.current);
+  const trialRemainingMs = Math.max(0, intervalMs - trialElapsedMs);
+  const trialRemainingPct = intervalMs > 0 ? Math.min(100, Math.round((trialRemainingMs / intervalMs) * 100)) : 0;
 
   function clearLoop(): void {
     if (loopTimerRef.current != null) {
@@ -203,8 +250,25 @@ export function DecisionRushSessionPage() {
     }
   }
 
+  function clearFeedbackTimer(): void {
+    if (feedbackTimerRef.current != null) {
+      window.clearTimeout(feedbackTimerRef.current);
+      feedbackTimerRef.current = null;
+    }
+  }
+
+  function setTransientAnswerState(state: Exclude<LiveAnswerState, "pending" | null>): void {
+    clearFeedbackTimer();
+    setLiveAnswerState(state);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setLiveAnswerState(null);
+      feedbackTimerRef.current = null;
+    }, 360);
+  }
+
   function resetRuntimeState(): void {
     clearLoop();
+    clearFeedbackTimer();
     startedAtRef.current = null;
     trialStartedAtRef.current = null;
     currentTrialRef.current = null;
@@ -216,6 +280,7 @@ export function DecisionRushSessionPage() {
     runningRef.current = false;
     finishedRef.current = false;
     intervalRef.current = initialDecisionIntervalMs(setup.level);
+    setLiveAnswerState(null);
   }
 
   function commitCurrentTrial(nowMs: number): void {
@@ -231,6 +296,7 @@ export function DecisionRushSessionPage() {
         ? Math.max(1, pendingAnswerAtRef.current - trialStartedAt)
         : intervalRef.current;
     const correct = answer === trial.correctAnswer;
+
     const nextEntry: DecisionRushTrialResult = {
       phase: trial.phase,
       correct,
@@ -238,15 +304,28 @@ export function DecisionRushSessionPage() {
       reactionMs,
       intervalMs: intervalRef.current
     };
-
     resultsRef.current = [...resultsRef.current, nextEntry];
 
     if (trial.phase !== "warmup") {
       comboRef.current = correct ? comboRef.current + 1 : 0;
       setCombo(comboRef.current);
+      setLiveScoredCount((value) => value + 1);
+      if (correct) {
+        setLiveCorrectCount((value) => value + 1);
+        setTransientAnswerState("correct");
+      } else {
+        setLiveErrorCount((value) => value + 1);
+        setTransientAnswerState("error");
+      }
+    } else {
+      setTransientAnswerState("correct");
     }
 
-    setLastAnswerLabel(correct ? "Ответ верный" : "Ответ неверный");
+    if (trial.phase !== "warmup") {
+      setLastAnswerLabel(correct ? "Последний ответ: верно" : "Последний ответ: ошибка");
+    } else {
+      setLastAnswerLabel("Разминка: ответ принят");
+    }
     pendingAnswerRef.current = null;
     pendingAnswerAtRef.current = null;
 
@@ -302,6 +381,9 @@ export function DecisionRushSessionPage() {
     setBestSession(null);
     setLastAnswerLabel(null);
     setCombo(0);
+    setLiveCorrectCount(0);
+    setLiveErrorCount(0);
+    setLiveScoredCount(0);
 
     const nowMs = Date.now();
     startedAtRef.current = nowMs;
@@ -351,6 +433,9 @@ export function DecisionRushSessionPage() {
     setIntervalMs(initialDecisionIntervalMs(setup.level));
     setCombo(0);
     setLastAnswerLabel(null);
+    setLiveCorrectCount(0);
+    setLiveErrorCount(0);
+    setLiveScoredCount(0);
     setResult(null);
     setSaved(false);
     setSaveError(null);
@@ -367,6 +452,7 @@ export function DecisionRushSessionPage() {
     }
     pendingAnswerRef.current = value;
     pendingAnswerAtRef.current = Date.now();
+    setLiveAnswerState("pending");
     setLastAnswerLabel(value === "yes" ? "Ответ: ДА" : "Ответ: НЕТ");
   }
 
@@ -421,7 +507,8 @@ export function DecisionRushSessionPage() {
     <section className="panel" data-testid="decision-session-page">
       <h2>Decision Rush</h2>
       <p>
-        Быстрый тренажёр решений по правилам «ДА/НЕТ». Правила меняются по ходу серии.
+        Быстрый тренажер принятия решений по правилам «ДА/НЕТ». Правила меняются по ходу
+        серии.
       </p>
       <p className="active-user-inline" data-testid="session-active-user">
         Активный пользователь: <strong>{activeUserName}</strong>
@@ -433,7 +520,10 @@ export function DecisionRushSessionPage() {
         <StatCard title="Шаг" value={String(trialIndex)} />
         <StatCard title="Темп" value={`${intervalMs} мс`} />
         <StatCard title="Комбо" value={`x${combo}`} />
-        <StatCard title="Осталось" value={formatMs(remainingMs)} />
+        <StatCard title="Верно" value={String(liveCorrectCount)} />
+        <StatCard title="Ошибки" value={String(liveErrorCount)} />
+        <StatCard title="Точность" value={`${liveAccuracyPercent}%`} />
+        <StatCard title="Осталось" value={formatSeconds(remainingMs)} />
       </div>
 
       {!isRunning && !finished ? (
@@ -446,13 +536,12 @@ export function DecisionRushSessionPage() {
       ) : null}
 
       <section className="decision-arena" data-testid="decision-arena">
-        <div className="decision-prompt">
-          <p className="decision-prompt-title">
-            {currentTrial?.prompt.title ?? "Ожидание старта"}
+        <div className="decision-rule-box">
+          <p className="decision-rule-caption">{currentTrial?.prompt.title ?? "Текущее правило"}</p>
+          <p className="decision-rule-main">
+            {currentTrial ? compactPromptText(currentTrial.prompt.description) : "Нажмите «Старт»"}
           </p>
-          <p className="status-line">
-            {currentTrial?.prompt.description ?? "Нажмите «Старт», чтобы запустить раунд."}
-          </p>
+          <p className="decision-rule-help">ДА = условие верно, НЕТ = условие неверно.</p>
         </div>
 
         <div className="decision-stimulus-card" data-testid="decision-stimulus-card">
@@ -468,60 +557,72 @@ export function DecisionRushSessionPage() {
                   {colorLabel(currentTrial.stimulus.stroopWord).toUpperCase()}
                 </p>
               ) : (
-                <p className="decision-stimulus-main">
-                  {shapeSymbol(currentTrial.stimulus.shape)} {currentTrial.stimulus.number}
-                </p>
+                <div className="decision-visual-main">
+                  <div
+                    className={decisionShapeClass(currentTrial.stimulus.shape)}
+                    style={decisionShapeStyle(
+                      currentTrial.stimulus.shape,
+                      currentTrial.stimulus.color
+                    )}
+                  >
+                    <span className="decision-shape-number">
+                      {currentTrial.stimulus.number}
+                    </span>
+                  </div>
+                  <p className="decision-stimulus-note">
+                    Сравните карточку с правилом и выберите «ДА» или «НЕТ».
+                  </p>
+                </div>
               )}
-
-              <div className="decision-pill-row">
-                <span className="decision-pill">
-                  Цвет:{" "}
-                  <strong style={{ color: COLOR_HEX[currentTrial.stimulus.color] }}>
-                    {colorLabel(currentTrial.stimulus.color)}
-                  </strong>
-                </span>
-                <span className="decision-pill">
-                  Форма: <strong>{shapeLabel(currentTrial.stimulus.shape)}</strong>
-                </span>
-                <span className="decision-pill">
-                  Число: <strong>{currentTrial.stimulus.number}</strong>
-                </span>
-              </div>
             </>
           ) : (
             <p className="status-line">Стимул появится после старта.</p>
           )}
         </div>
 
-        <p className="reaction-live-timer">Прогресс: {progressPct}%</p>
-        {lastAnswerLabel ? <p className="status-line">{lastAnswerLabel}</p> : null}
+        <div className="decision-live-meta">
+          <p className="reaction-live-timer">Прогресс: {progressPct}%</p>
+          {lastAnswerLabel ? <p className="status-line">{lastAnswerLabel}</p> : null}
+        </div>
+
+        {isRunning && !finished ? (
+          <div className="decision-answer-grid">
+            <button
+              type="button"
+              className={
+                currentAnswerLocked && pendingAnswerRef.current === "yes"
+                  ? "decision-answer-btn decision-answer-btn-yes is-active"
+                  : "decision-answer-btn decision-answer-btn-yes"
+              }
+              onClick={() => answer("yes")}
+              disabled={!isRunning || currentAnswerLocked}
+              data-testid="decision-answer-yes"
+            >
+              ДА
+            </button>
+            <button
+              type="button"
+              className={
+                currentAnswerLocked && pendingAnswerRef.current === "no"
+                  ? "decision-answer-btn decision-answer-btn-no is-active"
+                  : "decision-answer-btn decision-answer-btn-no"
+              }
+              onClick={() => answer("no")}
+              disabled={!isRunning || currentAnswerLocked}
+              data-testid="decision-answer-no"
+            >
+              НЕТ
+            </button>
+          </div>
+        ) : null}
       </section>
 
-      {!finished ? (
+      {!finished && !isRunning ? (
         <div className="action-row">
           <button
             type="button"
-            className={currentAnswerLocked && pendingAnswerRef.current === "yes" ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => answer("yes")}
-            disabled={!isRunning || currentAnswerLocked}
-            data-testid="decision-answer-yes"
-          >
-            ДА
-          </button>
-          <button
-            type="button"
-            className={currentAnswerLocked && pendingAnswerRef.current === "no" ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => answer("no")}
-            disabled={!isRunning || currentAnswerLocked}
-            data-testid="decision-answer-no"
-          >
-            НЕТ
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
+            className="btn-primary decision-start-btn"
             onClick={startSession}
-            disabled={isRunning}
             data-testid="decision-start-session-btn"
           >
             {startedAtMs == null ? "Старт" : "Новая серия"}
@@ -566,3 +667,4 @@ export function DecisionRushSessionPage() {
     </section>
   );
 }
+

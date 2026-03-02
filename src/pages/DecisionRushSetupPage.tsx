@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  initialDecisionIntervalMs,
   levelFromDecisionModeId,
   modeIdFromDecisionLevel,
   normalizeDecisionRushSetup,
@@ -53,15 +54,12 @@ export function DecisionRushSetupPage() {
   return (
     <section className="panel" data-testid="decision-setup-page">
       <h2>Decision Rush</h2>
-      <p>
-        Тренировка скорости мышления и самоконтроля: быстро принимайте решения
-        по правилам «ДА/НЕТ» при смене условий.
-      </p>
+      <p>Тренировка скорости решения по правилам «ДА / НЕТ».</p>
 
       <InfoHint title="Как играть" testId="decision-setup-hint">
-        <p>1. Выберите уровень и длительность сессии.</p>
-        <p>2. Читайте правило в верхней части экрана.</p>
-        <p>3. Нажимайте «ДА» или «НЕТ» как можно быстрее и точнее.</p>
+        <p>1. Смотрите на правило вверху экрана.</p>
+        <p>2. Оценивайте текущий стимул (фигура/цвет/число).</p>
+        <p>3. Нажимайте «ДА», если правило выполняется, иначе «НЕТ».</p>
       </InfoHint>
 
       <section className="setup-block">
@@ -108,10 +106,14 @@ export function DecisionRushSetupPage() {
       </section>
 
       <section className="session-brief" data-testid="decision-session-brief">
-        <h3>Параметры перед стартом</h3>
+        <h3>Перед стартом</h3>
         <p>Уровень: {setup.level}</p>
         <p>Длительность: {setup.durationSec} сек</p>
-        <p>Mode ID: {modeIdFromDecisionLevel(setup.level)}</p>
+        <p>Базовый темп: ~{initialDecisionIntervalMs(setup.level)} мс на шаг</p>
+        <p>Режим: {modeIdFromDecisionLevel(setup.level)}</p>
+        <p className="status-line">
+          Если пока сложно, выберите уровень Kids и 90 секунд.
+        </p>
       </section>
 
       <div className="action-row">
@@ -130,3 +132,4 @@ export function DecisionRushSetupPage() {
     </section>
   );
 }
+

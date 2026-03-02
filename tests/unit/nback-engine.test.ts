@@ -10,18 +10,32 @@ import {
 
 describe("nback engine", () => {
   it("normalizes setup defaults", () => {
-    expect(normalizeNBackSetup(null)).toEqual({ level: 1, durationSec: 60 });
-    expect(normalizeNBackSetup({ level: 2, durationSec: 90 })).toEqual({
+    expect(normalizeNBackSetup(null)).toEqual({ level: 1, gridSize: 3, durationSec: 60, tutorialMode: false });
+    expect(normalizeNBackSetup({ level: 2, gridSize: 4, durationSec: 90 })).toEqual({
       level: 2,
-      durationSec: 90
+      gridSize: 4,
+      durationSec: 90,
+      tutorialMode: false
+    });
+    expect(normalizeNBackSetup({ level: 3, gridSize: 3, durationSec: 120 })).toEqual({
+      level: 3,
+      gridSize: 3,
+      durationSec: 120,
+      tutorialMode: false
     });
   });
 
   it("maps level and mode ids", () => {
-    expect(modeIdFromNBackLevel(1)).toBe("nback_1");
-    expect(modeIdFromNBackLevel(2)).toBe("nback_2");
-    expect(levelFromModeId("nback_1")).toBe(1);
-    expect(levelFromModeId("nback_2")).toBe(2);
+    expect(modeIdFromNBackLevel(1, 3)).toBe("nback_1");
+    expect(modeIdFromNBackLevel(1, 4)).toBe("nback_1_4x4");
+    expect(modeIdFromNBackLevel(2, 3)).toBe("nback_2");
+    expect(modeIdFromNBackLevel(2, 4)).toBe("nback_2_4x4");
+    expect(modeIdFromNBackLevel(3, 3)).toBe("nback_3");
+    expect(levelFromModeId("nback_1")).toEqual({ level: 1, gridSize: 3 });
+    expect(levelFromModeId("nback_1_4x4")).toEqual({ level: 1, gridSize: 4 });
+    expect(levelFromModeId("nback_2")).toEqual({ level: 2, gridSize: 3 });
+    expect(levelFromModeId("nback_2_4x4")).toEqual({ level: 2, gridSize: 4 });
+    expect(levelFromModeId("nback_3")).toEqual({ level: 3, gridSize: 3 });
     expect(levelFromModeId("classic_plus")).toBeNull();
   });
 
@@ -33,7 +47,7 @@ describe("nback engine", () => {
   it("generates sequence with valid cell indexes", () => {
     const randomValues = [0.12, 0.41, 0.73, 0.26, 0.84];
     let cursor = 0;
-    const sequence = generateNBackSequence(40, 2, () => {
+    const sequence = generateNBackSequence(40, 2, 3, () => {
       const value = randomValues[cursor % randomValues.length] ?? 0.5;
       cursor += 1;
       return value;
@@ -72,6 +86,9 @@ describe("nback engine", () => {
     expect(metrics.errors).toBe(2);
     expect(metrics.accuracy).toBeCloseTo(4 / 6, 6);
     expect(metrics.speed).toBeCloseTo(4, 6);
-    expect(metrics.score).toBeCloseTo(4 * (0.7 + 0.3 * (4 / 6)), 6);
+    // Score includes combo bonus: maxCombo = 3 (indexes 2,3,5), bonus = 1 + 3*0.05 = 1.15
+    const expectedScore = 4 * (0.7 + 0.3 * (4 / 6)) * 1.15;
+    expect(metrics.score).toBeCloseTo(expectedScore, 6);
+    expect(metrics.maxCombo).toBe(3);
   });
 });

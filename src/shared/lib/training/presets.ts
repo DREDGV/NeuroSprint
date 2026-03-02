@@ -118,10 +118,28 @@ export const NBACK_MODES: TrainingMode[] = [
     description: "Жмите «Совпало», если клетка совпала с предыдущим шагом."
   },
   {
+    id: "nback_1_4x4",
+    moduleId: "n_back",
+    title: "N-Back Lite 1-back 4×4",
+    description: "Увеличенная сетка 4×4 для 1-back режима."
+  },
+  {
     id: "nback_2",
     moduleId: "n_back",
     title: "N-Back Lite 2-back",
     description: "Жмите «Совпало», если клетка совпала с позицией два шага назад."
+  },
+  {
+    id: "nback_2_4x4",
+    moduleId: "n_back",
+    title: "N-Back Lite 2-back 4×4",
+    description: "Увеличенная сетка 4×4 для 2-back режима."
+  },
+  {
+    id: "nback_3",
+    moduleId: "n_back",
+    title: "N-Back Lite 3-back",
+    description: "Хардкор: сравнивайте с позицией 3 шага назад."
   }
 ];
 

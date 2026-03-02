@@ -10,9 +10,8 @@ test.describe("NeuroSprint smoke", () => {
 
     await page.goto("/");
     await expect(page.getByTestId("home-open-pre-session")).toBeVisible();
-    await expect(page.getByTestId("home-start-sprint")).toBeVisible();
-    await expect(page.getByTestId("home-start-reaction")).toBeVisible();
-    await page.getByRole("link", { name: "Начать Classic" }).click();
+    await expect(page.getByTestId("home-quick-start")).toBeVisible();
+    await page.getByTestId("home-quick-start").locator("a").first().click();
     await expect(page.getByTestId("schulte-setup-page")).toBeVisible();
     await page.getByTestId("setup-start-btn").click();
 
@@ -48,11 +47,11 @@ test.describe("NeuroSprint smoke", () => {
 
     await page.goto("/training/schulte");
     await page.getByTestId("mode-timed_plus").click();
-    await page.getByTestId("toggle-advanced-btn").click();
-    await page.selectOption("#time-limit", "30");
     await page.getByTestId("setup-start-btn").click();
 
-    await page.getByTestId("cell-0").click();
+    for (let i = 1; i <= 9; i += 1) {
+      await page.getByRole("button", { name: String(i), exact: true }).click();
+    }
     await expect(page.getByTestId("schulte-result")).toBeVisible({ timeout: 45_000 });
   });
 });

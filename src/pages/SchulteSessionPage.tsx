@@ -279,9 +279,7 @@ export function SchulteSessionPage() {
         const effectiveLevel = profile.autoAdjust
           ? profile.level
           : profile.manualLevel ?? profile.level;
-        const hydratedSetup = profile.autoAdjust
-          ? withLevelDefaults(storedSetup, effectiveLevel, modeId)
-          : storedSetup;
+        const hydratedSetup = withLevelDefaults(storedSetup, effectiveLevel, modeId);
         setSetup(hydratedSetup);
         setLevel(effectiveLevel);
         setAdaptiveSource(profile.autoAdjust ? "auto" : "manual");
@@ -408,8 +406,7 @@ export function SchulteSessionPage() {
         timeLimitSec: modeId === "timed_plus" ? setup.timeLimitSec : undefined,
         errorPenalty: setup.errorPenalty,
         hintsEnabled: setup.hintsEnabled,
-        spawnStrategy: setup.spawnStrategy
-        ,
+        spawnStrategy: setup.spawnStrategy,
         shiftEnabled: setup.shiftEnabled,
         shiftIntervalSec: setup.shiftIntervalSec,
         shiftSwaps: setup.shiftSwaps,
@@ -437,9 +434,7 @@ export function SchulteSessionPage() {
           setBestSession(pickBestHistoricalSession(modeId, historicalSessions));
           setAdaptiveDecision(decision);
           setLevel(decision.nextLevel);
-          if (decision.source === "auto") {
-            setSetup((current) => withLevelDefaults(current, decision.nextLevel, modeId));
-          }
+          setSetup((current) => withLevelDefaults(current, decision.nextLevel, modeId));
         }
       })
       .catch(() => {

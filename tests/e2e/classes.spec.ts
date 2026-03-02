@@ -28,6 +28,7 @@ test.describe("NeuroSprint classes and themes", () => {
     await expect(page.getByTestId("profiles-error")).toHaveCount(0);
 
     await page.goto("/training/schulte");
+    await page.getByTestId("toggle-advanced-btn").click();
     await page.getByTestId("theme-rainbow").click();
     await page.getByTestId("setup-start-btn").click();
 

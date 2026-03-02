@@ -23,7 +23,7 @@ describe("training presets", () => {
     const base = getPresetSetup("standard");
     const updated = withLevelDefaults(base, 8, "timed_plus");
     expect(updated.gridSize).toBe(6);
-    expect(updated.errorPenalty).toBe(0.75);
+    expect(updated.errorPenalty).toBe(0.65);
     expect(updated.timeLimitSec).toBe(45);
   });
 });

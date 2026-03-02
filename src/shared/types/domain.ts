@@ -24,7 +24,10 @@ export type TrainingModeId =
   | "reaction_pair"
   | "reaction_number"
   | "nback_1"
+  | "nback_1_4x4"
   | "nback_2"
+  | "nback_2_4x4"
+  | "nback_3"
   | "decision_kids"
   | "decision_standard"
   | "decision_pro";
@@ -35,7 +38,7 @@ export type TrainingPresetId =
   | "intense"
   | "legacy";
 export type GridSize = 3 | 4 | 5 | 6;
-export type TimeLimitSec = 30 | 45 | 60 | 90;
+export type TimeLimitSec = 30 | 45 | 60 | 90 | 120;
 export type SpawnStrategy = "same_cell" | "random_cell";
 export type GroupMetric = "score" | "accuracy" | "speed";
 export type ComparePeriod = number | "all";

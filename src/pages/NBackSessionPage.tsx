@@ -21,7 +21,7 @@ import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
 import { SessionResultSummary } from "../shared/ui/SessionResultSummary";
 import { StatCard } from "../shared/ui/StatCard";
-import type { Session } from "../shared/types/domain";
+import type { Session, TimeLimitSec } from "../shared/types/domain";
 
 interface NBackSessionNavState {
   setup?: NBackSetup;
@@ -88,12 +88,12 @@ function buildSession(
     effectiveCorrect: metrics.effectiveCorrect,
     audioEnabledSnapshot: DEFAULT_AUDIO_SETTINGS,
     difficulty: {
-      gridSize: 3,
+      gridSize: setup.gridSize,
       numbersCount: metrics.totalSteps,
       mode: "n_back",
-      timeLimitSec: setup.durationSec,
+      timeLimitSec: setup.durationSec as TimeLimitSec,
       errorPenalty: 0.5,
-      nBackLevel: setup.level
+      nBackLevel: setup.level as 1 | 2
     }
   };
 }

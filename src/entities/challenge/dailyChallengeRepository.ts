@@ -26,7 +26,10 @@ const DAILY_CHALLENGE_MODE_ROTATION: TrainingModeId[] = [
   "reaction_pair",
   "reaction_number",
   "nback_1",
+  "nback_1_4x4",
   "nback_2",
+  "nback_2_4x4",
+  "nback_3",
   "decision_kids",
   "decision_standard",
   "decision_pro"
@@ -43,7 +46,10 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   reaction_pair: "Reaction: Пара",
   reaction_number: "Reaction: Число-цель",
   nback_1: "N-Back Lite 1-back",
+  nback_1_4x4: "N-Back Lite 1-back 4×4",
   nback_2: "N-Back Lite 2-back",
+  nback_2_4x4: "N-Back Lite 2-back 4×4",
+  nback_3: "N-Back Lite 3-back",
   decision_kids: "Decision Rush Kids",
   decision_standard: "Decision Rush Standard",
   decision_pro: "Decision Rush Pro"

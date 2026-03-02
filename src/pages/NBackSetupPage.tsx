@@ -5,6 +5,7 @@ import {
   modeIdFromNBackLevel,
   normalizeNBackSetup,
   type NBackDurationSec,
+  type NBackGridSize,
   type NBackLevel,
   type NBackSetup
 } from "../features/nback/engine";
@@ -25,18 +26,20 @@ export function NBackSetupPage() {
   const [setup, setSetup] = useState<NBackSetup>(() => getNBackSetup());
 
   useEffect(() => {
-    const requestedLevel = levelFromModeId(searchParams.get("mode"));
-    if (!requestedLevel || requestedLevel === setup.level) {
+    const modeParams = searchParams.get("mode");
+    const config = levelFromModeId(modeParams);
+    if (!config || (config.level === setup.level && config.gridSize === setup.gridSize)) {
       return;
     }
 
     setSetup((current) =>
       normalizeNBackSetup({
         ...current,
-        level: requestedLevel
+        level: config.level,
+        gridSize: config.gridSize
       })
     );
-  }, [searchParams, setup.level]);
+  }, [searchParams, setup.level, setup.gridSize]);
 
   function startSession(): void {
     const normalized = normalizeNBackSetup(setup);
@@ -55,19 +58,20 @@ export function NBackSetupPage() {
       <h2>N-Back Lite</h2>
       <p>
         Тренировка рабочей памяти: запоминайте позицию подсвеченной клетки и
-        отмечайте совпадения.
+        отмечайте совпадения с позицией N шагов назад.
       </p>
 
       <InfoHint title="Как играть" testId="nback-setup-hint">
-        <p>1. Выберите уровень 1-back или 2-back и длительность 60/90 секунд.</p>
-        <p>2. На каждом шаге смотрите на подсвеченную клетку в сетке 3x3.</p>
-        <p>3. Жмите «Совпало», если позиция совпала с N шагов назад, иначе «Не совпало».</p>
+        <p><strong>1.</strong> Выберите уровень сложности и длительность.</p>
+        <p><strong>2.</strong> На каждом шаге смотрите на подсвеченную клетку в сетке.</p>
+        <p><strong>3.</strong> Жмите «Совпало», если позиция совпала с <strong>{setup.level}</strong> шаг{setup.level === 1 ? '' : 'а' + (setup.level === 2 ? '' : 'ов')} назад.</p>
+        <p><strong>4.</strong> Цвета клеток помогают запоминать позиции.</p>
       </InfoHint>
 
       <section className="setup-block">
         <h3>Настройки сессии</h3>
         <div className="settings-form">
-          <label htmlFor="nback-level">Уровень</label>
+          <label htmlFor="nback-level">Уровень сложности</label>
           <select
             id="nback-level"
             value={setup.level}
@@ -81,8 +85,27 @@ export function NBackSetupPage() {
             }
             data-testid="nback-level-select"
           >
-            <option value={1}>1-back</option>
-            <option value={2}>2-back</option>
+            <option value={1}>1-back (Начинающий)</option>
+            <option value={2}>2-back (Средний)</option>
+            <option value={3}>3-back (Продвинутый)</option>
+          </select>
+
+          <label htmlFor="nback-gridsize">Размер сетки</label>
+          <select
+            id="nback-gridsize"
+            value={setup.gridSize}
+            onChange={(event) =>
+              setSetup((current) =>
+                normalizeNBackSetup({
+                  ...current,
+                  gridSize: Number(event.target.value) as NBackGridSize
+                })
+              )
+            }
+            data-testid="nback-gridsize-select"
+          >
+            <option value={3}>3 × 3 (9 клеток)</option>
+            <option value={4}>4 × 4 (16 клеток)</option>
           </select>
 
           <label htmlFor="nback-duration">Длительность</label>
@@ -101,15 +124,35 @@ export function NBackSetupPage() {
           >
             <option value={60}>60 сек</option>
             <option value={90}>90 сек</option>
+            <option value={120}>120 сек</option>
+          </select>
+
+          <label htmlFor="nback-tutorial">Режим обучения</label>
+          <select
+            id="nback-tutorial"
+            value={setup.tutorialMode ? "true" : "false"}
+            onChange={(event) =>
+              setSetup((current) =>
+                normalizeNBackSetup({
+                  ...current,
+                  tutorialMode: event.target.value === "true"
+                })
+              )
+            }
+            data-testid="nback-tutorial-select"
+          >
+            <option value="false">Обычный режим</option>
+            <option value="true">Обучение (с подсказками)</option>
           </select>
         </div>
       </section>
 
       <section className="session-brief" data-testid="nback-session-brief">
         <h3>Параметры перед стартом</h3>
-        <p>Режим: {setup.level}-back</p>
-        <p>Длительность: {setup.durationSec} сек</p>
-        <p>Mode ID: {modeIdFromNBackLevel(setup.level)}</p>
+        <p>Режим: <strong>{setup.level}-back</strong> на сетке <strong>{setup.gridSize}×{setup.gridSize}</strong></p>
+        <p>Длительность: <strong>{setup.durationSec} сек</strong> ({Math.floor(setup.durationSec * 1000 / 1500)} шагов)</p>
+        <p>Mode ID: {modeIdFromNBackLevel(setup.level, setup.gridSize)}</p>
+        {setup.tutorialMode && <p className="status-line" style={{ color: '#1e7f71' }}>🎓 Режим обучения включён</p>}
       </section>
 
       <div className="action-row">
