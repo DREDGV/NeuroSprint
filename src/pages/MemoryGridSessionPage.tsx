@@ -307,7 +307,8 @@ export function MemoryGridSessionPage() {
     return true;
   }
 
-  const showingProgress = phase === "showing" ? (phaseElapsedMs / (MEMORY_GRID_SHOW_MS * currentLevel)) * 100 : 0;
+  const showingTotalMs = currentLevel * MEMORY_GRID_STEP_INTERVAL_MS;
+  const showingProgress = phase === "showing" ? (phaseElapsedMs / showingTotalMs) * 100 : 0;
   const rushProgress = isRush ? Math.min(100, (sessionElapsedMs / rushDurationMs) * 100) : 0;
   const correctCount = sequences.length;
   const currentCombo = sequences.length > 1 ? sequences.reduce((acc, _, i) => {
@@ -338,7 +339,7 @@ export function MemoryGridSessionPage() {
       </header>
 
       {/* Stats Row */}
-      <div className="nback-stats-row">
+      <div className="nback-stats-row" style={{ justifyContent: 'center' }}>
         <div className="nback-stat-card">
           <span className="nback-stat-label">Уровень</span>
           <span className="nback-stat-value">{currentLevel}</span>
@@ -361,7 +362,7 @@ export function MemoryGridSessionPage() {
       <div className={`memory-grid-phase-indicator ${phase}`}>
         {phase === "intro" && "👋 Нажмите Старт для начала"}
         {phase === "showing" && "👀 Запомните последовательность!"}
-        {phase === "recalling" && "👆 Воспроизведите или ↻ Ещё раз"}
+        {phase === "recalling" && "👆 Воспроизведите или ↻ Повторить"}
         {phase === "finished" && "✅ Сессия завершена"}
       </div>
 
@@ -422,7 +423,7 @@ export function MemoryGridSessionPage() {
 
         <p className="status-line" data-testid="memory-grid-status">
           {phase === "showing" && `Запомните ${currentLevel} клеток...`}
-          {phase === "recalling" && `Воспроизведите ${currentLevel} клеток (или нажмите "Ещё раз")`}
+          {phase === "recalling" && `Воспроизведите ${currentLevel} клеток (или нажмите "Повторить")`}
           {phase === "finished" && "Результаты ниже"}
           {phase === "intro" && "Нажмите Старт"}
         </p>
@@ -430,16 +431,17 @@ export function MemoryGridSessionPage() {
 
       {/* Controls - крупные кнопки */}
       {phase !== "finished" ? (
-        <div className="nback-controls">
+        <div className="nback-controls" style={{ justifyContent: 'center' }}>
           {phase === "recalling" && (
             <button
               type="button"
               className="nback-btn nback-btn-no"
               onClick={restartCurrentLevel}
               data-testid="memory-grid-show-again-btn"
+              title="Показать эту же последовательность снова"
             >
               <span className="nback-btn-icon">↻</span>
-              <span className="nback-btn-text">Ещё раз</span>
+              <span className="nback-btn-text">Повторить</span>
             </button>
           )}
           
@@ -449,9 +451,10 @@ export function MemoryGridSessionPage() {
             onClick={phase === "intro" ? startSession : restartSession}
             disabled={phase === "showing"}
             data-testid="memory-grid-start-btn"
+            title={phase === "intro" ? "Начать тренировку" : "Начать с самого начала"}
           >
             <span className="nback-btn-icon">{phase === "intro" ? "▶" : "↻"}</span>
-            <span className="nback-btn-text">{phase === "intro" ? "Старт" : "Заново"}</span>
+            <span className="nback-btn-text">{phase === "intro" ? "Старт" : "Сброс"}</span>
           </button>
         </div>
       ) : null}
