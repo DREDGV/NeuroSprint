@@ -171,7 +171,16 @@ export function MemoryGridSessionPage() {
     setPreviousSession(null);
     setBestSession(null);
     setLastAnswerCorrect(null);
-    startSession();
+    setCurrentLevel(setup.startLevel);
+    startLevel(setup.startLevel);
+  }
+
+  function restartCurrentLevel(): void {
+    // Перезапуск текущего уровня (если не запомнил с первого раза)
+    setUserResponse([]);
+    setSelectedCell(null);
+    setLastAnswerCorrect(null);
+    startLevel(currentLevel);
   }
 
   function startLevel(level: number): void {
@@ -350,9 +359,9 @@ export function MemoryGridSessionPage() {
 
       {/* Phase Indicator */}
       <div className={`memory-grid-phase-indicator ${phase}`}>
-        {phase === "intro" && "Нажмите Старт для начала"}
+        {phase === "intro" && "👋 Нажмите Старт для начала"}
         {phase === "showing" && "👀 Запомните последовательность!"}
-        {phase === "recalling" && "👆 Воспроизведите последовательность"}
+        {phase === "recalling" && "👆 Воспроизведите или ↻ Ещё раз"}
         {phase === "finished" && "✅ Сессия завершена"}
       </div>
 
@@ -413,7 +422,7 @@ export function MemoryGridSessionPage() {
 
         <p className="status-line" data-testid="memory-grid-status">
           {phase === "showing" && `Запомните ${currentLevel} клеток...`}
-          {phase === "recalling" && `Воспроизведите ${currentLevel} клеток`}
+          {phase === "recalling" && `Воспроизведите ${currentLevel} клеток (или нажмите "Ещё раз")`}
           {phase === "finished" && "Результаты ниже"}
           {phase === "intro" && "Нажмите Старт"}
         </p>
@@ -421,12 +430,24 @@ export function MemoryGridSessionPage() {
 
       {/* Controls - крупные кнопки */}
       {phase !== "finished" ? (
-        <div className="nback-controls" style={{ gridTemplateColumns: "1fr" }}>
+        <div className="nback-controls">
+          {phase === "recalling" && (
+            <button
+              type="button"
+              className="nback-btn nback-btn-no"
+              onClick={restartCurrentLevel}
+              data-testid="memory-grid-show-again-btn"
+            >
+              <span className="nback-btn-icon">↻</span>
+              <span className="nback-btn-text">Ещё раз</span>
+            </button>
+          )}
+          
           <button
             type="button"
             className="nback-btn nback-btn-start"
-            onClick={phase === "showing" || phase === "recalling" ? restartSession : startSession}
-            disabled={phase === "showing" || phase === "recalling"}
+            onClick={phase === "intro" ? startSession : restartSession}
+            disabled={phase === "showing"}
             data-testid="memory-grid-start-btn"
           >
             <span className="nback-btn-icon">{phase === "intro" ? "▶" : "↻"}</span>
