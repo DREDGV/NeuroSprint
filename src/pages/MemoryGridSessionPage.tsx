@@ -10,6 +10,7 @@ import {
   getGridCells,
   MEMORY_GRID_PAUSE_MS,
   MEMORY_GRID_SHOW_MS,
+  MEMORY_GRID_STEP_INTERVAL_MS,
   modeIdFromMemoryGridMode,
   normalizeMemoryGridSetup,
   type MemoryGridSessionMetrics,
@@ -48,7 +49,7 @@ function buildSession(
   metrics: MemoryGridSessionMetrics
 ): Session {
   const now = new Date();
-  const modeId = modeIdFromMemoryGridMode(setup.mode, setup.gridSize);
+  const modeId = modeIdFromMemoryGridMode(setup.mode, setup.gridSize) as any;
 
   return {
     id: createId(),
@@ -167,17 +168,18 @@ export function MemoryGridSessionPage() {
     setPhaseElapsedMs(0);
     setPhase("showing");
     
-    // Show sequence
+    // Показ последовательности с комфортной скоростью
     let index = 0;
     const showInterval = window.setInterval(() => {
       if (index < sequence.length) {
         setActiveCell(sequence[index]);
+        // Клетка горит 400мс, потом гаснет
         setTimeout(() => setActiveCell(null), 400);
         index += 1;
       } else {
         window.clearInterval(showInterval);
       }
-    }, MEMORY_GRID_SHOW_MS / level);
+    }, MEMORY_GRID_STEP_INTERVAL_MS); // 1500мс между клетками
   }
 
   function startRecallPhase(): void {
@@ -210,9 +212,9 @@ export function MemoryGridSessionPage() {
     setRecallTimes((prev) => [...prev, recallTime]);
 
     if (isCorrect) {
-      // Next level
+      // Next level (максимум 7)
       setTimeout(() => {
-        const nextLevel = Math.min(9, currentLevel + 1);
+        const nextLevel = Math.min(7, currentLevel + 1);
         startLevel(nextLevel);
       }, 500);
     } else {

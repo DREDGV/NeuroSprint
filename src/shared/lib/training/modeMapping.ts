@@ -13,6 +13,11 @@ const DECISION_RUSH_MODE_IDS: TrainingModeId[] = [
   "decision_standard",
   "decision_pro"
 ];
+const PATTERN_MODE_IDS: TrainingModeId[] = [
+  "pattern_classic",
+  "pattern_timed",
+  "pattern_progressive"
+];
 
 export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
   if (SPRINT_MODE_IDS.includes(modeId)) {
@@ -26,6 +31,9 @@ export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
   }
   if (DECISION_RUSH_MODE_IDS.includes(modeId)) {
     return "decision_rush";
+  }
+  if (PATTERN_MODE_IDS.includes(modeId)) {
+    return "pattern_recognition";
   }
   return "schulte";
 }
@@ -44,6 +52,10 @@ export function isNBackMode(modeId: TrainingModeId): boolean {
 
 export function isDecisionRushMode(modeId: TrainingModeId): boolean {
   return DECISION_RUSH_MODE_IDS.includes(modeId);
+}
+
+export function isPatternMode(modeId: TrainingModeId): boolean {
+  return PATTERN_MODE_IDS.includes(modeId);
 }
 
 export function isTimedMode(modeId: TrainingModeId): boolean {

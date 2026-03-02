@@ -1,8 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
-import type { PatternSessionMetrics } from '../../shared/types/pattern';
-import type { PatternSetup } from '../../shared/types/pattern';
-import { getPatternModeTitle } from '../engine/patternConfig';
+import type { PatternSessionMetrics, PatternSetup } from '../shared/types/pattern';
+import { getPatternModeTitle } from '../features/pattern-recognition/engine/patternConfig';
 
 interface PatternResultNavState {
   metrics: PatternSessionMetrics;

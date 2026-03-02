@@ -112,15 +112,13 @@ export function MemoryGridSetupPage() {
             }
             data-testid="memory-grid-level-select"
           >
-            <option value={1}>1 (очень легко)</option>
-            <option value={2}>2 (легко)</option>
-            <option value={3}>3 (нормально)</option>
-            <option value={4}>4 (средне)</option>
-            <option value={5}>5 (сложно)</option>
-            <option value={6}>6 (очень сложно)</option>
-            <option value={7}>7 (эксперт)</option>
-            <option value={8}>8 (мастер)</option>
-            <option value={9}>9 (невозможно)</option>
+            <option value={1}>1 (2 клетки - очень легко)</option>
+            <option value={2}>2 (3 клетки - легко)</option>
+            <option value={3}>3 (4 клетки - нормально)</option>
+            <option value={4}>4 (5 клеток - средне)</option>
+            <option value={5}>5 (6 клеток - сложно)</option>
+            <option value={6}>6 (7 клеток - очень сложно)</option>
+            <option value={7}>7 (8 клеток - эксперт)</option>
           </select>
 
           {setup.mode === "rush" && (
@@ -152,7 +150,7 @@ export function MemoryGridSetupPage() {
         <h3>Параметры перед стартом</h3>
         <p>Режим: <strong>{setup.mode === "classic" ? "Classic" : "Rush"}</strong></p>
         <p>Сетка: <strong>{setup.gridSize}×{setup.gridSize}</strong></p>
-        <p>Начальный уровень: <strong>{setup.startLevel} клеток</strong></p>
+        <p>Начальный уровень: <strong>{setup.startLevel} ({setup.startLevel + 1} кл.)</strong></p>
         {setup.mode === "rush" && <p>Длительность: <strong>{setup.durationSec} сек</strong></p>}
       </section>
 

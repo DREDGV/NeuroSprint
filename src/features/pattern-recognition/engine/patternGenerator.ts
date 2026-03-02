@@ -5,8 +5,11 @@ import {
   PatternQuestion,
   PATTERN_COLORS,
   PATTERN_SHAPES,
-  PATTERN_SIZES
-} from '../../shared/types/pattern';
+  PATTERN_SIZES,
+  PatternSize,
+  PatternColor,
+  PatternShape
+} from '../../../shared/types/pattern';
 
 // Утилиты
 function randomInt(min: number, max: number): number {

@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PatternSequence, PatternOptions } from '../components/PatternDisplay';
+import { PatternSequence, PatternOptions } from '../features/pattern-recognition/components/PatternDisplay';
 import {
   generatePatternQuestion,
   generatePatternQuestions,
   calculatePatternScore,
   levelToNumber,
   numberToLevel
-} from '../engine/patternGenerator';
-import type { PatternSetup, PatternQuestion, PatternAnswer, PatternLevel } from '../../shared/types/pattern';
-import type { Session } from '../../shared/types/domain';
-import { sessionRepository } from '../../entities/session/sessionRepository';
-import { useActiveUser } from '../../app/ActiveUserContext';
+} from '../features/pattern-recognition/engine/patternGenerator';
+import type { PatternSetup, PatternQuestion, PatternAnswer, PatternLevel } from '../shared/types/pattern';
+import type { Session } from '../shared/types/domain';
+import { sessionRepository } from '../entities/session/sessionRepository';
+import { useActiveUser } from '../app/ActiveUserContext';
 
 interface PatternSessionNavState {
   setup: PatternSetup;

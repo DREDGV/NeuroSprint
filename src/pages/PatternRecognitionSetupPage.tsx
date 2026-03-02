@@ -7,9 +7,9 @@ import {
   normalizePatternSetup,
   type PatternModeId,
   type PatternLevel
-} from '../engine/patternConfig';
-import { getPatternSetup, savePatternSetup, resetPatternSetup } from '../setupStorage';
-import { InfoHint } from '../../shared/ui/InfoHint';
+} from '../features/pattern-recognition/engine/patternConfig';
+import { getPatternSetup, savePatternSetup, resetPatternSetup } from '../features/pattern-recognition/setupStorage';
+import { InfoHint } from '../shared/ui/InfoHint';
 
 interface PatternSessionNavState {
   setup: ReturnType<typeof normalizePatternSetup>;

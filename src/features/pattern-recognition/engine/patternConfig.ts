@@ -1,4 +1,4 @@
-import type { PatternLevel, PatternModeId, PatternSetup } from '../../shared/types/pattern';
+import type { PatternLevel, PatternModeId, PatternSetup } from '../../../shared/types/pattern';
 
 export const PATTERN_MODES: Array<{
   id: PatternModeId;

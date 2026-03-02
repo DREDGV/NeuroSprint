@@ -5,8 +5,8 @@ import {
   calculatePatternScore,
   levelToNumber,
   numberToLevel
-} from '../engine/patternGenerator';
-import type { PatternLevel } from '../../shared/types/pattern';
+} from './patternGenerator';
+import type { PatternLevel } from '../../../shared/types/pattern';
 
 describe('PatternGenerator', () => {
   describe('generatePatternQuestion', () => {

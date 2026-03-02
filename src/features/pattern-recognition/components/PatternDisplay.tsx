@@ -1,6 +1,6 @@
 import React from 'react';
-import type { PatternElement } from '../../shared/types/pattern';
-import { COLOR_TO_CSS, SIZE_TO_CSS } from '../../shared/types/pattern';
+import type { PatternElement } from '../../../shared/types/pattern';
+import { COLOR_TO_CSS, SIZE_TO_CSS } from '../../../shared/types/pattern';
 
 interface PatternElementProps {
   element: PatternElement;

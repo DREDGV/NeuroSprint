@@ -1,10 +1,11 @@
 import type { TrainingModeId } from "../../shared/types/domain";
 
 export const MEMORY_GRID_SIZE = 3;
-export const MEMORY_GRID_SHOW_MS = 800;
-export const MEMORY_GRID_PAUSE_MS = 400;
+export const MEMORY_GRID_SHOW_MS = 1000; // Время показа одной клетки (было 800)
+export const MEMORY_GRID_PAUSE_MS = 500; // Пауза между клетками (было 400)
+export const MEMORY_GRID_STEP_INTERVAL_MS = 1500; // Общий шаг (показ + пауза)
 
-export type MemoryGridLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type MemoryGridLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type MemoryGridSize = 3 | 4;
 export type MemoryGridMode = "classic" | "rush";
 
@@ -110,7 +111,7 @@ export function evaluateMemoryGridSession(input: MemoryGridEvaluationInput): Mem
     if (isCorrect) {
       correct += 1;
       levelsCompleted += 1;
-      spanMax = Math.max(spanMax, sequence.length) as MemoryGridLevel;
+      spanMax = Math.min(7, Math.max(spanMax, sequence.length)) as MemoryGridLevel;
     } else {
       errors += 1;
       // В classic режиме ошибка заканчивает игру
