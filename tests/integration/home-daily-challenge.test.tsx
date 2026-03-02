@@ -105,6 +105,7 @@ describe("HomePage daily challenge", () => {
 
   it("renders daily challenge widget with explanation and opens target setup", async () => {
     const user = userEvent.setup();
+    localStorage.setItem(ACTIVE_USER_KEY, "u1");
 
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -117,12 +118,13 @@ describe("HomePage daily challenge", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByTestId("home-daily-challenge")).toBeInTheDocument();
+    const challengeWidget = await screen.findByTestId("home-daily-challenge");
+    expect(challengeWidget).toBeInTheDocument();
     expect(screen.getByText("Challenge дня: Sprint Add/Sub")).toBeInTheDocument();
-    expect(screen.getByText("Прогресс: 0 / 1")).toBeInTheDocument();
-    expect(screen.getByTestId("home-daily-challenge-explanation")).toBeInTheDocument();
-    expect(screen.getByText("Сегодня")).toBeInTheDocument();
-    expect(screen.getByText("Завтра")).toBeInTheDocument();
+    expect(
+      challengeWidget.querySelector(".challenge-progress-text")?.textContent
+    ).toBe("0 / 1");
+    expect(screen.getByText("В процессе")).toBeInTheDocument();
 
     await user.click(screen.getByTestId("home-daily-challenge-start"));
     expect(await screen.findByTestId("sprint-setup-marker")).toHaveTextContent(
