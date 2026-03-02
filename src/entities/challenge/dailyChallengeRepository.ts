@@ -3,12 +3,14 @@ import { toLocalDateKey } from "../../shared/lib/date/date";
 import { createId } from "../../shared/lib/id";
 import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
 import type {
+  ComparePeriod,
   DailyChallenge,
   DailyChallengeAttempt,
   DailyChallengeCompletionSummary,
   DailyChallengeHistoryItem,
   DailyChallengeProgress,
-  ComparePeriod,
+  DailyChallengeStreakSummary,
+  DailyChallengeTrendPoint,
   Session,
   TrainingModeId
 } from "../../shared/types/domain";
@@ -21,7 +23,13 @@ const DAILY_CHALLENGE_MODE_ROTATION: TrainingModeId[] = [
   "sprint_mixed",
   "reaction_signal",
   "reaction_stroop",
-  "reaction_pair"
+  "reaction_pair",
+  "reaction_number",
+  "nback_1",
+  "nback_2",
+  "decision_kids",
+  "decision_standard",
+  "decision_pro"
 ];
 
 const MODE_TITLES: Record<TrainingModeId, string> = {
@@ -32,7 +40,13 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   sprint_mixed: "Sprint Mixed",
   reaction_signal: "Reaction: Сигнал",
   reaction_stroop: "Reaction: Цвет и слово",
-  reaction_pair: "Reaction: Пара"
+  reaction_pair: "Reaction: Пара",
+  reaction_number: "Reaction: Число-цель",
+  nback_1: "N-Back Lite 1-back",
+  nback_2: "N-Back Lite 2-back",
+  decision_kids: "Decision Rush Kids",
+  decision_standard: "Decision Rush Standard",
+  decision_pro: "Decision Rush Pro"
 };
 
 function addDays(localDate: string, days: number): string {
@@ -42,6 +56,19 @@ function addDays(localDate: string, days: number): string {
   const value = new Date(year, (month || 1) - 1, day || 1);
   value.setDate(value.getDate() + days);
   return toLocalDateKey(value);
+}
+
+function dateDiffDays(leftLocalDate: string, rightLocalDate: string): number {
+  const [leftYear, leftMonth, leftDay] = leftLocalDate
+    .split("-")
+    .map((value) => Number.parseInt(value, 10));
+  const [rightYear, rightMonth, rightDay] = rightLocalDate
+    .split("-")
+    .map((value) => Number.parseInt(value, 10));
+  const leftDate = new Date(leftYear, (leftMonth || 1) - 1, leftDay || 1);
+  const rightDate = new Date(rightYear, (rightMonth || 1) - 1, rightDay || 1);
+  const diffMs = Math.abs(leftDate.getTime() - rightDate.getTime());
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
 function toDayNumber(localDate: string): number {
@@ -70,10 +97,7 @@ async function listChallengesForPeriod(
 ): Promise<DailyChallenge[]> {
   const fromLocalDate = resolvePeriodStartLocalDate(period);
   if (!fromLocalDate) {
-    return db.dailyChallenges
-      .where("userId")
-      .equals(userId)
-      .sortBy("localDate");
+    return db.dailyChallenges.where("userId").equals(userId).sortBy("localDate");
   }
   return db.dailyChallenges
     .where("[userId+localDate]")
@@ -94,6 +118,12 @@ export function getChallengeLaunchPath(modeId: TrainingModeId): string {
   }
   if (moduleId === "reaction") {
     return `/training/reaction?mode=${modeId}`;
+  }
+  if (moduleId === "n_back") {
+    return `/training/nback?mode=${modeId}`;
+  }
+  if (moduleId === "decision_rush") {
+    return `/training/decision-rush?mode=${modeId}`;
   }
   return `/training/schulte?mode=${modeId}`;
 }
@@ -146,6 +176,19 @@ function buildChallengeDraft(userId: string, localDate: string): DailyChallenge 
   };
 }
 
+function buildProgress(challenge: DailyChallenge, attemptsCount: number): DailyChallengeProgress {
+  const completed = challenge.status === "completed" || attemptsCount >= challenge.requiredAttempts;
+  const remainingAttempts = Math.max(0, challenge.requiredAttempts - attemptsCount);
+  return {
+    challenge,
+    attemptsCount,
+    remainingAttempts,
+    completed,
+    launchPath: getChallengeLaunchPath(challenge.modeId),
+    progressLabel: `${Math.min(attemptsCount, challenge.requiredAttempts)} / ${challenge.requiredAttempts}`
+  };
+}
+
 async function markCompletedIfNeeded(
   challenge: DailyChallenge,
   attemptsCount: number
@@ -164,19 +207,6 @@ async function markCompletedIfNeeded(
     ...challenge,
     status: "completed",
     completedAt
-  };
-}
-
-function buildProgress(challenge: DailyChallenge, attemptsCount: number): DailyChallengeProgress {
-  const completed = challenge.status === "completed" || attemptsCount >= challenge.requiredAttempts;
-  const remainingAttempts = Math.max(0, challenge.requiredAttempts - attemptsCount);
-  return {
-    challenge,
-    attemptsCount,
-    remainingAttempts,
-    completed,
-    launchPath: getChallengeLaunchPath(challenge.modeId),
-    progressLabel: `${Math.min(attemptsCount, challenge.requiredAttempts)} / ${challenge.requiredAttempts}`
   };
 }
 
@@ -212,16 +242,74 @@ async function synchronizeAttempts(challenge: DailyChallenge): Promise<number> {
   return existingAttempts.length + missingAttempts.length;
 }
 
+export function buildDailyChallengeStreak(
+  history: Array<Pick<DailyChallengeHistoryItem, "localDate" | "status">>
+): Pick<DailyChallengeStreakSummary, "currentStreakDays" | "bestStreakDays" | "completedDays"> {
+  if (history.length === 0) {
+    return {
+      currentStreakDays: 0,
+      bestStreakDays: 0,
+      completedDays: 0
+    };
+  }
+
+  const desc = [...history].sort((a, b) => b.localDate.localeCompare(a.localDate));
+  const completedDays = desc.filter((entry) => entry.status === "completed").length;
+
+  let currentStreakDays = 0;
+  for (let index = 0; index < desc.length; index += 1) {
+    const current = desc[index];
+    if (current.status !== "completed") {
+      break;
+    }
+    if (index > 0) {
+      const previous = desc[index - 1];
+      if (dateDiffDays(current.localDate, previous.localDate) !== 1) {
+        break;
+      }
+    }
+    currentStreakDays += 1;
+  }
+
+  const asc = [...desc].sort((a, b) => a.localDate.localeCompare(b.localDate));
+  let bestStreakDays = 0;
+  let runningStreak = 0;
+  let previousCompletedDate: string | null = null;
+
+  asc.forEach((entry) => {
+    if (entry.status !== "completed") {
+      runningStreak = 0;
+      previousCompletedDate = null;
+      return;
+    }
+
+    if (!previousCompletedDate) {
+      runningStreak = 1;
+    } else if (dateDiffDays(entry.localDate, previousCompletedDate) === 1) {
+      runningStreak += 1;
+    } else {
+      runningStreak = 1;
+    }
+
+    previousCompletedDate = entry.localDate;
+    bestStreakDays = Math.max(bestStreakDays, runningStreak);
+  });
+
+  return {
+    currentStreakDays,
+    bestStreakDays,
+    completedDays
+  };
+}
+
 export const dailyChallengeRepository = {
   async getOrCreateForToday(
     userId: string,
     localDate = toLocalDateKey(new Date())
   ): Promise<DailyChallengeProgress> {
     let challenge =
-      (await db.dailyChallenges
-        .where("[userId+localDate]")
-        .equals([userId, localDate])
-        .first()) ?? null;
+      (await db.dailyChallenges.where("[userId+localDate]").equals([userId, localDate]).first()) ??
+      null;
 
     if (!challenge) {
       challenge = buildChallengeDraft(userId, localDate);
@@ -235,47 +323,42 @@ export const dailyChallengeRepository = {
 
   async registerSession(session: Session): Promise<void> {
     const localDate = session.localDate || toLocalDateKey(session.timestamp);
-    await db.transaction(
-      "rw",
-      db.dailyChallenges,
-      db.dailyChallengeAttempts,
-      async () => {
-        const challenge = await db.dailyChallenges
-          .where("[userId+localDate]")
-          .equals([session.userId, localDate])
-          .first();
+    await db.transaction("rw", db.dailyChallenges, db.dailyChallengeAttempts, async () => {
+      const challenge = await db.dailyChallenges
+        .where("[userId+localDate]")
+        .equals([session.userId, localDate])
+        .first();
 
-        if (!challenge || challenge.modeId !== session.modeId) {
-          return;
-        }
-
-        const existingAttempt = await db.dailyChallengeAttempts
-          .where("[challengeId+sessionId]")
-          .equals([challenge.id, session.id])
-          .first();
-        if (existingAttempt) {
-          return;
-        }
-
-        await db.dailyChallengeAttempts.put({
-          id: createId(),
-          challengeId: challenge.id,
-          userId: challenge.userId,
-          sessionId: session.id,
-          moduleId: challenge.moduleId,
-          modeId: challenge.modeId,
-          localDate: challenge.localDate,
-          createdAt: session.timestamp
-        });
-
-        const attemptsCount = await db.dailyChallengeAttempts
-          .where("challengeId")
-          .equals(challenge.id)
-          .count();
-
-        await markCompletedIfNeeded(challenge, attemptsCount);
+      if (!challenge || challenge.modeId !== session.modeId) {
+        return;
       }
-    );
+
+      const existingAttempt = await db.dailyChallengeAttempts
+        .where("[challengeId+sessionId]")
+        .equals([challenge.id, session.id])
+        .first();
+      if (existingAttempt) {
+        return;
+      }
+
+      await db.dailyChallengeAttempts.put({
+        id: createId(),
+        challengeId: challenge.id,
+        userId: challenge.userId,
+        sessionId: session.id,
+        moduleId: challenge.moduleId,
+        modeId: challenge.modeId,
+        localDate: challenge.localDate,
+        createdAt: session.timestamp
+      });
+
+      const attemptsCount = await db.dailyChallengeAttempts
+        .where("challengeId")
+        .equals(challenge.id)
+        .count();
+
+      await markCompletedIfNeeded(challenge, attemptsCount);
+    });
   },
 
   async getCompletionSummary(
@@ -304,7 +387,7 @@ export const dailyChallengeRepository = {
   ): Promise<DailyChallengeHistoryItem[]> {
     const challenges = await listChallengesForPeriod(userId, period);
     const sorted = [...challenges].sort((a, b) => b.localDate.localeCompare(a.localDate));
-    const sliced = sorted.slice(0, Math.max(1, Math.min(90, Math.round(limit))));
+    const sliced = sorted.slice(0, Math.max(1, Math.min(365, Math.round(limit))));
 
     const withAttempts = await Promise.all(
       sliced.map(async (challenge) => {
@@ -326,5 +409,35 @@ export const dailyChallengeRepository = {
     );
 
     return withAttempts;
+  },
+
+  async getStreakSummary(
+    userId: string,
+    period: ComparePeriod
+  ): Promise<DailyChallengeStreakSummary> {
+    const history = await this.listHistory(userId, period, 365);
+    const streak = buildDailyChallengeStreak(history);
+    return {
+      period,
+      currentStreakDays: streak.currentStreakDays,
+      bestStreakDays: streak.bestStreakDays,
+      completedDays: streak.completedDays
+    };
+  },
+
+  async listCompletionTrend(
+    userId: string,
+    period: ComparePeriod,
+    limit = 60
+  ): Promise<DailyChallengeTrendPoint[]> {
+    const history = await this.listHistory(userId, period, limit);
+    return [...history]
+      .sort((a, b) => a.localDate.localeCompare(b.localDate))
+      .map((entry) => ({
+        localDate: entry.localDate,
+        completed: entry.status === "completed",
+        completionPct: entry.status === "completed" ? 100 : 0,
+        attemptsCount: entry.attemptsCount
+      }));
   }
 };

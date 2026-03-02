@@ -8,12 +8,16 @@ import type {
   TrainingPresetId,
   TrainingSetup
 } from "../../types/domain";
+import {
+  getSchulteLevelDefaults,
+  withSchulteLevelDefaults
+} from "../../../features/schulte/levelConfig";
 
 export const TRAINING_MODULES: TrainingModule[] = [
   {
     id: "schulte",
     title: "Таблица Шульте",
-    description: "Скорость поиска, внимание, темп обработки информации.",
+    description: "Скорость поиска, внимание и темп обработки информации.",
     status: "active"
   },
   {
@@ -25,14 +29,21 @@ export const TRAINING_MODULES: TrainingModule[] = [
   {
     id: "reaction",
     title: "Reaction",
-    description: "Тренировка скорости реакции на визуальный сигнал.",
+    description: "Тренировка скорости реакции на визуальные сигналы.",
     status: "active"
   },
   {
     id: "n_back",
-    title: "N-back",
-    description: "Тренировка рабочей памяти.",
-    status: "coming_soon"
+    title: "N-Back Lite",
+    description: "Короткая тренировка рабочей памяти 1-back/2-back.",
+    status: "active"
+  },
+  {
+    id: "decision_rush",
+    title: "Decision Rush",
+    description:
+      "Быстрый тренажер правил ДА/НЕТ со сменой правил и фокусом на точность.",
+    status: "active"
   }
 ];
 
@@ -90,13 +101,57 @@ export const REACTION_MODES: TrainingMode[] = [
     moduleId: "reaction",
     title: "Reaction: Пара",
     description: "Найдите правильную пару по подсказке (символ + число)."
+  },
+  {
+    id: "reaction_number",
+    moduleId: "reaction",
+    title: "Reaction: Число-цель",
+    description: "Найдите и нажмите карточку с нужным числом в сетке 2x2."
+  }
+];
+
+export const NBACK_MODES: TrainingMode[] = [
+  {
+    id: "nback_1",
+    moduleId: "n_back",
+    title: "N-Back Lite 1-back",
+    description: "Жмите «Совпало», если клетка совпала с предыдущим шагом."
+  },
+  {
+    id: "nback_2",
+    moduleId: "n_back",
+    title: "N-Back Lite 2-back",
+    description: "Жмите «Совпало», если клетка совпала с позицией два шага назад."
+  }
+];
+
+export const DECISION_RUSH_MODES: TrainingMode[] = [
+  {
+    id: "decision_kids",
+    moduleId: "decision_rush",
+    title: "Decision Rush Kids",
+    description: "Мягкий темп: правила по цвету и форме без отрицаний."
+  },
+  {
+    id: "decision_standard",
+    moduleId: "decision_rush",
+    title: "Decision Rush Standard",
+    description: "Базовый поток: цвет, форма, число и короткий boss-раунд."
+  },
+  {
+    id: "decision_pro",
+    moduleId: "decision_rush",
+    title: "Decision Rush Pro",
+    description: "Ускоренный поток с отрицаниями и более плотным темпом."
   }
 ];
 
 export const TRAINING_MODES: TrainingMode[] = [
   ...SCHULTE_MODES,
   ...SPRINT_MATH_MODES,
-  ...REACTION_MODES
+  ...REACTION_MODES,
+  ...NBACK_MODES,
+  ...DECISION_RUSH_MODES
 ];
 
 const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
@@ -110,7 +165,11 @@ const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
     visualThemeId: "classic_bw",
     customTheme: null,
     autoAdjust: true,
-    manualLevel: null
+    manualLevel: null,
+    shiftEnabled: false,
+    shiftIntervalSec: 0,
+    shiftSwaps: 0,
+    timedBaseClear: true
   },
   standard: {
     presetId: "standard",
@@ -122,7 +181,11 @@ const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
     visualThemeId: "classic_bw",
     customTheme: null,
     autoAdjust: true,
-    manualLevel: null
+    manualLevel: null,
+    shiftEnabled: false,
+    shiftIntervalSec: 0,
+    shiftSwaps: 0,
+    timedBaseClear: false
   },
   intense: {
     presetId: "intense",
@@ -134,7 +197,11 @@ const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
     visualThemeId: "classic_bw",
     customTheme: null,
     autoAdjust: true,
-    manualLevel: null
+    manualLevel: null,
+    shiftEnabled: true,
+    shiftIntervalSec: 5,
+    shiftSwaps: 1,
+    timedBaseClear: false
   },
   legacy: {
     presetId: "legacy",
@@ -146,7 +213,11 @@ const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {
     visualThemeId: "classic_bw",
     customTheme: null,
     autoAdjust: true,
-    manualLevel: null
+    manualLevel: null,
+    shiftEnabled: false,
+    shiftIntervalSec: 0,
+    shiftSwaps: 0,
+    timedBaseClear: false
   }
 };
 
@@ -157,38 +228,19 @@ export function getPresetSetup(presetId: TrainingPresetId): TrainingSetup {
 export function mapLevelToDefaults(
   level: number,
   modeId: TrainingModeId
-): Pick<TrainingSetup, "gridSize" | "errorPenalty" | "timeLimitSec"> {
-  const clampedLevel = Math.max(1, Math.min(10, Math.round(level)));
-
-  if (clampedLevel <= 2) {
-    return {
-      gridSize: 3,
-      errorPenalty: 0.25,
-      timeLimitSec: 90
-    };
-  }
-
-  if (clampedLevel <= 4) {
-    return {
-      gridSize: 4,
-      errorPenalty: 0.35,
-      timeLimitSec: 60
-    };
-  }
-
-  if (clampedLevel <= 7) {
-    return {
-      gridSize: 5,
-      errorPenalty: 0.5,
-      timeLimitSec: 60
-    };
-  }
-
-  return {
-    gridSize: 6,
-    errorPenalty: 0.75,
-    timeLimitSec: modeId === "reverse" ? 45 : 45
-  };
+): Pick<
+  TrainingSetup,
+  | "gridSize"
+  | "errorPenalty"
+  | "timeLimitSec"
+  | "hintsEnabled"
+  | "spawnStrategy"
+  | "shiftEnabled"
+  | "shiftIntervalSec"
+  | "shiftSwaps"
+  | "timedBaseClear"
+> {
+  return getSchulteLevelDefaults(level, modeId);
 }
 
 export function withLevelDefaults(
@@ -196,13 +248,7 @@ export function withLevelDefaults(
   level: number,
   modeId: TrainingModeId
 ): TrainingSetup {
-  const defaults = mapLevelToDefaults(level, modeId);
-  return {
-    ...setup,
-    gridSize: defaults.gridSize,
-    errorPenalty: defaults.errorPenalty,
-    timeLimitSec: defaults.timeLimitSec
-  };
+  return withSchulteLevelDefaults(setup, level, modeId);
 }
 
 export function gridSizeToNumbersCount(gridSize: GridSize): number {

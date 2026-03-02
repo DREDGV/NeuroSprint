@@ -4,7 +4,14 @@ const SPRINT_MODE_IDS: TrainingModeId[] = ["sprint_add_sub", "sprint_mixed"];
 const REACTION_MODE_IDS: TrainingModeId[] = [
   "reaction_signal",
   "reaction_stroop",
-  "reaction_pair"
+  "reaction_pair",
+  "reaction_number"
+];
+const NBACK_MODE_IDS: TrainingModeId[] = ["nback_1", "nback_2"];
+const DECISION_RUSH_MODE_IDS: TrainingModeId[] = [
+  "decision_kids",
+  "decision_standard",
+  "decision_pro"
 ];
 
 export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
@@ -13,6 +20,12 @@ export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
   }
   if (REACTION_MODE_IDS.includes(modeId)) {
     return "reaction";
+  }
+  if (NBACK_MODE_IDS.includes(modeId)) {
+    return "n_back";
+  }
+  if (DECISION_RUSH_MODE_IDS.includes(modeId)) {
+    return "decision_rush";
   }
   return "schulte";
 }
@@ -23,6 +36,14 @@ export function isSprintMathMode(modeId: TrainingModeId): boolean {
 
 export function isReactionMode(modeId: TrainingModeId): boolean {
   return REACTION_MODE_IDS.includes(modeId);
+}
+
+export function isNBackMode(modeId: TrainingModeId): boolean {
+  return NBACK_MODE_IDS.includes(modeId);
+}
+
+export function isDecisionRushMode(modeId: TrainingModeId): boolean {
+  return DECISION_RUSH_MODE_IDS.includes(modeId);
 }
 
 export function isTimedMode(modeId: TrainingModeId): boolean {

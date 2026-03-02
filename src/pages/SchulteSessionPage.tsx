@@ -111,6 +111,68 @@ function buildSchulteTip(
   return "Отличный результат. Попробуйте пройти сетку быстрее без потери точности.";
 }
 
+function collectShiftableIndexes(
+  values: number[],
+  modeId: TrainingModeId,
+  expected: number,
+  timedBaseClear: boolean
+): number[] {
+  if (modeId === "reverse") {
+    return values.reduce<number[]>((acc, value, index) => {
+      if (value > 0 && value <= expected) {
+        acc.push(index);
+      }
+      return acc;
+    }, []);
+  }
+
+  if (modeId === "timed_plus" && !timedBaseClear) {
+    return values.reduce<number[]>((acc, value, index) => {
+      if (value > 0) {
+        acc.push(index);
+      }
+      return acc;
+    }, []);
+  }
+
+  return values.reduce<number[]>((acc, value, index) => {
+    if (value > 0 && value >= expected) {
+      acc.push(index);
+    }
+    return acc;
+  }, []);
+}
+
+function applyGridShift(
+  values: number[],
+  modeId: TrainingModeId,
+  expected: number,
+  timedBaseClear: boolean,
+  swapCount: number
+): number[] {
+  const source = collectShiftableIndexes(values, modeId, expected, timedBaseClear);
+  if (source.length < 2 || swapCount <= 0) {
+    return values;
+  }
+
+  const next = [...values];
+  const pool = [...source];
+  const maxSwaps = Math.min(swapCount, Math.floor(pool.length / 2));
+
+  for (let step = 0; step < maxSwaps; step += 1) {
+    if (pool.length < 2) {
+      break;
+    }
+    const firstPick = Math.floor(Math.random() * pool.length);
+    const firstIndex = pool.splice(firstPick, 1)[0];
+    const secondPick = Math.floor(Math.random() * pool.length);
+    const secondIndex = pool.splice(secondPick, 1)[0];
+    [next[firstIndex], next[secondIndex]] = [next[secondIndex], next[firstIndex]];
+  }
+
+  return next;
+}
+
 export function SchulteSessionPage() {
   const { activeUserId, activeUserName } = useActiveUserDisplayName();
   const { mode } = useParams<{ mode: string }>();
@@ -158,6 +220,11 @@ export function SchulteSessionPage() {
   const [previousSession, setPreviousSession] = useState<Session | null>(null);
   const [bestSession, setBestSession] = useState<Session | null>(null);
   const [flash, setFlash] = useState<{ index: number; type: "correct" | "error" } | null>(null);
+  const timedBaseCycleMode =
+    modeId === "timed_plus" && (setup.timedBaseClear ?? level <= 1);
+  const shiftEnabled = Boolean(setup.shiftEnabled);
+  const shiftIntervalSec = Math.max(0, setup.shiftIntervalSec ?? 0);
+  const shiftSwaps = Math.max(0, setup.shiftSwaps ?? 0);
 
   const flashTimerRef = useRef<number | null>(null);
   const finishSoundPlayedRef = useRef(false);
@@ -283,6 +350,29 @@ export function SchulteSessionPage() {
   }, [finished, isRunning, modeId]);
 
   useEffect(() => {
+    if (!shiftEnabled || shiftIntervalSec <= 0 || shiftSwaps <= 0 || !isRunning || finished) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setGrid((current) =>
+        applyGridShift(current, modeId, expected, timedBaseCycleMode, shiftSwaps)
+      );
+    }, shiftIntervalSec * 1000);
+
+    return () => window.clearInterval(timer);
+  }, [
+    expected,
+    finished,
+    isRunning,
+    modeId,
+    shiftEnabled,
+    shiftIntervalSec,
+    shiftSwaps,
+    timedBaseCycleMode
+  ]);
+
+  useEffect(() => {
     if (!activeUserId || !finished || !result || saved) {
       return;
     }
@@ -319,6 +409,11 @@ export function SchulteSessionPage() {
         errorPenalty: setup.errorPenalty,
         hintsEnabled: setup.hintsEnabled,
         spawnStrategy: setup.spawnStrategy
+        ,
+        shiftEnabled: setup.shiftEnabled,
+        shiftIntervalSec: setup.shiftIntervalSec,
+        shiftSwaps: setup.shiftSwaps,
+        timedBaseClear: setup.timedBaseClear
       }
     };
 
@@ -372,7 +467,11 @@ export function SchulteSessionPage() {
     setup.gridSize,
     setup.hintsEnabled,
     setup.presetId,
+    setup.shiftEnabled,
+    setup.shiftIntervalSec,
+    setup.shiftSwaps,
     setup.spawnStrategy,
+    setup.timedBaseClear,
     setup.timeLimitSec,
     setup.visualThemeId
   ]);
@@ -470,6 +569,42 @@ export function SchulteSessionPage() {
 
     if (modeId === "timed_plus") {
       setCorrectCount((current) => current + 1);
+
+      if (timedBaseCycleMode) {
+        setGrid((current) => {
+          const next = [...current];
+          next[index] = 0;
+          return next;
+        });
+
+        if (expected >= numbersCount) {
+          const now = Date.now();
+          const elapsed =
+            effectiveStartedAt == null ? 0 : Math.max(0, now - effectiveStartedAt);
+          const left = Math.max(0, setup.timeLimitSec * 1000 - elapsed);
+
+          setRemainingMs(left);
+          setIsRunning(false);
+          setFinished(true);
+          const metrics = calcTimedMetrics({
+            correctCount: correctCount + 1,
+            errors,
+            timeLimitSec: setup.timeLimitSec,
+            errorPenalty: setup.errorPenalty
+          });
+          setResult({
+            durationMs: setup.timeLimitSec * 1000,
+            score: metrics.score,
+            accuracy: metrics.accuracy,
+            speed: metrics.speed,
+            effectiveCorrect: metrics.effectiveCorrect
+          });
+        } else {
+          setExpected((current) => current + 1);
+        }
+        return;
+      }
+
       setGrid((current) => {
         const next = [...current];
         next[index] = nextSpawn;
@@ -546,6 +681,17 @@ export function SchulteSessionPage() {
           <p>Сетка: {setup.gridSize}x{setup.gridSize}</p>
           <p>Штраф: {setup.errorPenalty}</p>
           {modeId === "timed_plus" ? <p>Время: {setup.timeLimitSec} сек</p> : null}
+          {timedBaseCycleMode ? (
+            <p>
+              Базовый уровень Timed: правильные клетки исчезают, сессия завершается
+              после очистки поля или по таймеру.
+            </p>
+          ) : null}
+          {shiftEnabled && shiftIntervalSec > 0 ? (
+            <p>
+              Динамика поля: {shiftSwaps} перестановк(и) каждые {shiftIntervalSec} сек.
+            </p>
+          ) : null}
           <p>Старт автоматически при первом клике по клетке.</p>
         </section>
       ) : null}

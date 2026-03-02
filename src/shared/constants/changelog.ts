@@ -13,6 +13,7 @@ export const RELEASE_HISTORY: ReleaseEntry[] = [
     title: "Релиз v0.5.0-dev.4: Daily Challenge в статистике и финализация этапа",
     status: "dev",
     highlights: [
+      "Пост-релизное обновление v0.7.B: добавлен новый модуль N-Back Lite (1-back/2-back, 60/90 сек) с маршрутом setup -> session.",
       "Закрыт этап v0.6.F: в /stats добавлен блок выполнения Daily Challenge по периоду (7/30/90/all).",
       "Добавлена история Daily Challenge: режим, статус, прогресс попыток и дата.",
       "Расширен dailyChallengeRepository: getCompletionSummary(...) и listHistory(...).",

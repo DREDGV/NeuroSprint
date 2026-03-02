@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDailyChallengeStreak,
   getChallengeLaunchPath,
   listUpcomingDailyChallengeModes,
   resolveDailyChallengeModeId
@@ -21,6 +22,7 @@ describe("daily challenge helpers", () => {
       "/training/sprint-math?mode=sprint_add_sub"
     );
     expect(getChallengeLaunchPath("reaction_pair")).toBe("/training/reaction?mode=reaction_pair");
+    expect(getChallengeLaunchPath("nback_2")).toBe("/training/nback?mode=nback_2");
   });
 
   it("builds upcoming challenge preview based on deterministic rotation", () => {
@@ -31,5 +33,20 @@ describe("daily challenge helpers", () => {
     expect(preview[2]?.localDate).toBe("2026-03-03");
     expect(preview[0]?.modeId).toBe(resolveDailyChallengeModeId("2026-03-01"));
     expect(preview[1]?.modeId).toBe(resolveDailyChallengeModeId("2026-03-02"));
+  });
+
+  it("computes current and best challenge streak", () => {
+    const streak = buildDailyChallengeStreak([
+      { localDate: "2026-03-10", status: "completed" },
+      { localDate: "2026-03-09", status: "completed" },
+      { localDate: "2026-03-08", status: "pending" },
+      { localDate: "2026-03-07", status: "completed" },
+      { localDate: "2026-03-06", status: "completed" },
+      { localDate: "2026-03-05", status: "completed" }
+    ]);
+
+    expect(streak.currentStreakDays).toBe(2);
+    expect(streak.bestStreakDays).toBe(3);
+    expect(streak.completedDays).toBe(5);
   });
 });

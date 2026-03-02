@@ -4,6 +4,8 @@ import {
   buildDailyCompareBandPoints,
   buildDailyProgressSummary,
   buildClassicDailyPoints,
+  buildDecisionRushDailyPoints,
+  buildNBackDailyPoints,
   buildReactionDailyPoints,
   buildTimedDailyPoints
 } from "../../src/entities/session/sessionRepository";
@@ -183,6 +185,139 @@ describe("session aggregation", () => {
     expect(points[0].avgReactionMs).toBe(360);
     expect(points[0].accuracy).toBeCloseTo(0.9, 6);
     expect(points[0].avgScore).toBeCloseTo(102.5, 6);
+  });
+
+  it("builds nback daily points", () => {
+    const sessions: Session[] = [
+      {
+        id: "n1",
+        userId: "u1",
+        taskId: "n_back",
+        moduleId: "n_back",
+        modeId: "nback_1",
+        mode: "n_back",
+        level: 1,
+        presetId: "legacy",
+        adaptiveSource: "manual",
+        timestamp: "2026-02-21T12:00:00.000Z",
+        localDate: "2026-02-21",
+        durationMs: 60_000,
+        score: 34,
+        accuracy: 0.8,
+        speed: 24,
+        errors: 4,
+        correctCount: 32,
+        effectiveCorrect: 30,
+        difficulty: {
+          gridSize: 3,
+          numbersCount: 40,
+          mode: "n_back"
+        }
+      },
+      {
+        id: "n2",
+        userId: "u1",
+        taskId: "n_back",
+        moduleId: "n_back",
+        modeId: "nback_2",
+        mode: "n_back",
+        level: 2,
+        presetId: "legacy",
+        adaptiveSource: "manual",
+        timestamp: "2026-02-21T13:00:00.000Z",
+        localDate: "2026-02-21",
+        durationMs: 60_000,
+        score: 38,
+        accuracy: 0.85,
+        speed: 26,
+        errors: 3,
+        correctCount: 34,
+        effectiveCorrect: 32.5,
+        difficulty: {
+          gridSize: 3,
+          numbersCount: 40,
+          mode: "n_back"
+        }
+      }
+    ];
+
+    const points = buildNBackDailyPoints(sessions);
+    expect(points).toHaveLength(1);
+    expect(points[0].accuracy).toBeCloseTo(0.825, 6);
+    expect(points[0].avgScore).toBeCloseTo(36, 6);
+    expect(points[0].speed).toBeCloseTo(25, 6);
+    expect(points[0].count).toBe(2);
+  });
+
+  it("builds decision rush daily points", () => {
+    const sessions: Session[] = [
+      {
+        id: "d1",
+        userId: "u1",
+        taskId: "decision_rush",
+        moduleId: "decision_rush",
+        modeId: "decision_standard",
+        mode: "decision_rush",
+        level: 5,
+        presetId: "legacy",
+        adaptiveSource: "manual",
+        timestamp: "2026-02-21T12:00:00.000Z",
+        localDate: "2026-02-21",
+        durationMs: 60_000,
+        score: 120,
+        accuracy: 0.84,
+        speed: 40,
+        errors: 5,
+        correctCount: 21,
+        reactionAvgMs: 680,
+        reactionP90Ms: 920,
+        trialsTotal: 25,
+        bestCombo: 7,
+        points: 250,
+        difficulty: {
+          gridSize: 3,
+          numbersCount: 25,
+          mode: "decision_rush"
+        }
+      },
+      {
+        id: "d2",
+        userId: "u1",
+        taskId: "decision_rush",
+        moduleId: "decision_rush",
+        modeId: "decision_pro",
+        mode: "decision_rush",
+        level: 8,
+        presetId: "legacy",
+        adaptiveSource: "manual",
+        timestamp: "2026-02-21T13:00:00.000Z",
+        localDate: "2026-02-21",
+        durationMs: 60_000,
+        score: 135,
+        accuracy: 0.88,
+        speed: 42,
+        errors: 4,
+        correctCount: 22,
+        reactionAvgMs: 640,
+        reactionP90Ms: 860,
+        trialsTotal: 25,
+        bestCombo: 9,
+        points: 290,
+        difficulty: {
+          gridSize: 3,
+          numbersCount: 25,
+          mode: "decision_rush"
+        }
+      }
+    ];
+
+    const points = buildDecisionRushDailyPoints(sessions);
+    expect(points).toHaveLength(1);
+    expect(points[0].accuracy).toBeCloseTo(0.86, 6);
+    expect(points[0].avgScore).toBeCloseTo(127.5, 6);
+    expect(points[0].reactionP90Ms).toBeCloseTo(890, 6);
+    expect(points[0].bestComboAvg).toBeCloseTo(8, 6);
+    expect(points[0].count).toBe(2);
   });
 
   it("builds daily progress summary", () => {

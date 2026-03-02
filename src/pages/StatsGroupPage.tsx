@@ -21,6 +21,8 @@ import {
 import { userRepository } from "../entities/user/userRepository";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import {
+  DECISION_RUSH_MODES,
+  NBACK_MODES,
   REACTION_MODES,
   SCHULTE_MODES,
   SPRINT_MATH_MODES
@@ -40,7 +42,9 @@ import type {
 const GROUP_MODULES: Array<{ id: TrainingModuleId; title: string }> = [
   { id: "schulte", title: "Таблица Шульте" },
   { id: "sprint_math", title: "Sprint Math" },
-  { id: "reaction", title: "Reaction" }
+  { id: "reaction", title: "Reaction" },
+  { id: "n_back", title: "N-Back Lite" },
+  { id: "decision_rush", title: "Decision Rush" }
 ];
 
 function metricTitle(metric: GroupMetric): string {
@@ -93,6 +97,12 @@ export function StatsGroupPage() {
     }
     if (moduleId === "reaction") {
       return REACTION_MODES;
+    }
+    if (moduleId === "n_back") {
+      return NBACK_MODES;
+    }
+    if (moduleId === "decision_rush") {
+      return DECISION_RUSH_MODES;
     }
     return SCHULTE_MODES;
   }, [moduleId]);

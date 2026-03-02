@@ -11,13 +11,17 @@ const mocks = vi.hoisted(() => ({
     aggregateDailyClassic: vi.fn(),
     aggregateDailyTimed: vi.fn(),
     aggregateDailyReaction: vi.fn(),
+    aggregateDailyNBack: vi.fn(),
+    aggregateDailyDecisionRush: vi.fn(),
     aggregateDailySprintMath: vi.fn(),
     aggregateDailyByModeId: vi.fn(),
     aggregateDailyCompareBand: vi.fn()
   },
   dailyChallengeRepository: {
     getCompletionSummary: vi.fn(),
-    listHistory: vi.fn()
+    listHistory: vi.fn(),
+    getStreakSummary: vi.fn(),
+    listCompletionTrend: vi.fn()
   }
 }));
 
@@ -49,6 +53,8 @@ describe("StatsPage sprint filters", () => {
     mocks.sessionRepository.aggregateDailyClassic.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailyTimed.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailyReaction.mockResolvedValue([]);
+    mocks.sessionRepository.aggregateDailyNBack.mockResolvedValue([]);
+    mocks.sessionRepository.aggregateDailyDecisionRush.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailySprintMath.mockResolvedValue([
       {
         date: "2026-02-25",
@@ -100,6 +106,26 @@ describe("StatsPage sprint filters", () => {
         requiredAttempts: 1,
         attemptsCount: 1,
         completedAt: "2026-02-25T10:00:00.000Z"
+      }
+    ]);
+    mocks.dailyChallengeRepository.getStreakSummary.mockResolvedValue({
+      period: 30,
+      currentStreakDays: 2,
+      bestStreakDays: 5,
+      completedDays: 4
+    });
+    mocks.dailyChallengeRepository.listCompletionTrend.mockResolvedValue([
+      {
+        localDate: "2026-02-24",
+        completed: false,
+        completionPct: 0,
+        attemptsCount: 0
+      },
+      {
+        localDate: "2026-02-25",
+        completed: true,
+        completionPct: 100,
+        attemptsCount: 1
       }
     ]);
   });
@@ -165,6 +191,34 @@ describe("StatsPage sprint filters", () => {
     expect(screen.getByTestId("stats-progress-headline")).toHaveTextContent(
       "Лучший отклик: 280 мс"
     );
+  });
+
+  it("renders nback mode summary and chart data", async () => {
+    const user = userEvent.setup();
+    mocks.sessionRepository.aggregateDailyNBack.mockResolvedValue([
+      {
+        date: "2026-02-25",
+        accuracy: 0.82,
+        avgScore: 36,
+        speed: 26,
+        count: 2
+      }
+    ]);
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    await user.click(await screen.findByTestId("stats-mode-nback"));
+    const summary = await screen.findByTestId("stats-nback-summary");
+    expect(within(summary).getByText("N-Back Lite: итоги")).toBeInTheDocument();
+    expect(within(summary).getByText("2")).toBeInTheDocument();
+    expect(within(summary).getByText("82.0%")).toBeInTheDocument();
+    expect(within(summary).getByText("36.00")).toBeInTheDocument();
   });
 
   it("renders sprint submode comparison with best mode and deltas", async () => {
@@ -268,6 +322,9 @@ describe("StatsPage sprint filters", () => {
     expect(within(summary).getByText("4")).toBeInTheDocument();
     expect(within(summary).getByText("2")).toBeInTheDocument();
     expect(within(summary).getByText("66.7%")).toBeInTheDocument();
+    expect(await screen.findByTestId("stats-daily-challenge-streak")).toHaveTextContent("2 дн.");
+    expect(screen.getByTestId("stats-daily-challenge-streak")).toHaveTextContent("5 дн.");
+    expect(screen.getByTestId("stats-daily-challenge-trend")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByTestId("stats-challenge-period"), "7");
 
@@ -276,5 +333,11 @@ describe("StatsPage sprint filters", () => {
       7
     );
     expect(mocks.dailyChallengeRepository.listHistory).toHaveBeenLastCalledWith("u1", 7, 10);
+    expect(mocks.dailyChallengeRepository.getStreakSummary).toHaveBeenLastCalledWith("u1", 7);
+    expect(mocks.dailyChallengeRepository.listCompletionTrend).toHaveBeenLastCalledWith(
+      "u1",
+      7,
+      60
+    );
   });
 });

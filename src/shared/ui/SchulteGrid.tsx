@@ -47,9 +47,13 @@ export function SchulteGrid({
       data-theme-id={themeId}
     >
       {values.map((value, index) => {
+        const isEmpty = value <= 0;
         const classNames = ["grid-cell"];
-        if (highlightValue !== null && value === highlightValue) {
+        if (!isEmpty && highlightValue !== null && value === highlightValue) {
           classNames.push("highlighted");
+        }
+        if (isEmpty) {
+          classNames.push("is-empty");
         }
         if (flash && flash.index === index) {
           classNames.push(flash.type === "correct" ? "flash-correct" : "flash-error");
@@ -60,11 +64,15 @@ export function SchulteGrid({
             key={`${index}-${value}`}
             type="button"
             className={classNames.join(" ")}
-            disabled={disabled}
-            onClick={() => onCellClick(value, index)}
+            disabled={disabled || isEmpty}
+            onClick={() => {
+              if (!isEmpty) {
+                onCellClick(value, index);
+              }
+            }}
             data-testid={`cell-${index}`}
           >
-            {value}
+            {isEmpty ? "" : value}
           </button>
         );
       })}

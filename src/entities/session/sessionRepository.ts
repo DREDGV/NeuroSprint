@@ -11,8 +11,10 @@ import type {
   ComparePeriod,
   DailyCompareBandPoint,
   DailyProgressSummary,
+  DecisionRushDailyPoint,
   GroupMetric,
   ModeRecommendation,
+  NBackDailyPoint,
   ModeMetricSnapshot,
   ReactionDailyPoint,
   Session,
@@ -167,6 +169,77 @@ export function buildReactionDailyPoints(sessions: Session[]): ReactionDailyPoin
   return points.sort(byDateAsc);
 }
 
+export function buildNBackDailyPoints(sessions: Session[]): NBackDailyPoint[] {
+  const grouped = new Map<string, Session[]>();
+  for (const session of sessions) {
+    if (session.mode !== "n_back") {
+      continue;
+    }
+
+    const bucket = grouped.get(session.localDate);
+    if (bucket) {
+      bucket.push(session);
+    } else {
+      grouped.set(session.localDate, [session]);
+    }
+  }
+
+  const points: NBackDailyPoint[] = [];
+  for (const [date, values] of grouped.entries()) {
+    const accuracy = values.reduce((sum, entry) => sum + entry.accuracy, 0) / values.length;
+    const avgScore = values.reduce((sum, entry) => sum + entry.score, 0) / values.length;
+    const speed = values.reduce((sum, entry) => sum + entry.speed, 0) / values.length;
+
+    points.push({
+      date,
+      accuracy,
+      avgScore,
+      speed,
+      count: values.length
+    });
+  }
+
+  return points.sort(byDateAsc);
+}
+
+export function buildDecisionRushDailyPoints(sessions: Session[]): DecisionRushDailyPoint[] {
+  const grouped = new Map<string, Session[]>();
+  for (const session of sessions) {
+    if (session.mode !== "decision_rush") {
+      continue;
+    }
+
+    const bucket = grouped.get(session.localDate);
+    if (bucket) {
+      bucket.push(session);
+    } else {
+      grouped.set(session.localDate, [session]);
+    }
+  }
+
+  const points: DecisionRushDailyPoint[] = [];
+  for (const [date, values] of grouped.entries()) {
+    const accuracy = values.reduce((sum, entry) => sum + entry.accuracy, 0) / values.length;
+    const avgScore = values.reduce((sum, entry) => sum + entry.score, 0) / values.length;
+    const reactionP90Ms =
+      values.reduce((sum, entry) => sum + (entry.reactionP90Ms ?? entry.durationMs), 0) /
+      values.length;
+    const bestComboAvg =
+      values.reduce((sum, entry) => sum + (entry.bestCombo ?? 0), 0) / values.length;
+
+    points.push({
+      date,
+      accuracy,
+      avgScore,
+      reactionP90Ms,
+      bestComboAvg,
+      count: values.length
+    });
+  }
+
+  return points.sort(byDateAsc);
+}
+
 export function buildDailyProgressSummary(
   sessions: Session[],
   date: string
@@ -214,6 +287,10 @@ function normalizeSession(session: Session): Session {
       ? "sprint_math"
       : resolvedTaskId === "reaction"
         ? "reaction"
+        : resolvedTaskId === "n_back"
+        ? "n_back"
+        : resolvedTaskId === "decision_rush"
+        ? "decision_rush"
         : "schulte");
 
   return {
@@ -230,7 +307,11 @@ function normalizeSession(session: Session): Session {
             ? "sprint_add_sub"
             : session.mode === "reaction"
               ? "reaction_signal"
-          : "classic_plus"),
+              : session.mode === "n_back"
+              ? "nback_1"
+              : session.mode === "decision_rush"
+              ? "decision_standard"
+              : "classic_plus"),
     level: session.level ?? 1,
     presetId: session.presetId ?? "legacy",
     adaptiveSource: session.adaptiveSource ?? "legacy",
@@ -526,11 +607,34 @@ export const sessionRepository = {
     return buildReactionDailyPoints(sessions);
   },
 
+  async aggregateDailyNBack(userId: string): Promise<NBackDailyPoint[]> {
+    const sessions = await db.sessions
+      .where("userId")
+      .equals(userId)
+      .and((session) => session.mode === "n_back")
+      .toArray();
+    return buildNBackDailyPoints(sessions);
+  },
+
+  async aggregateDailyDecisionRush(userId: string): Promise<DecisionRushDailyPoint[]> {
+    const sessions = await db.sessions
+      .where("userId")
+      .equals(userId)
+      .and((session) => session.mode === "decision_rush")
+      .toArray();
+    return buildDecisionRushDailyPoints(sessions);
+  },
+
   async aggregateDailyByModeId(
     userId: string,
     modeId: TrainingModeId
   ): Promise<
-    TimedDailyPoint[] | ClassicDailyPoint[] | SprintMathDailyPoint[] | ReactionDailyPoint[]
+    | TimedDailyPoint[]
+    | ClassicDailyPoint[]
+    | SprintMathDailyPoint[]
+    | ReactionDailyPoint[]
+    | NBackDailyPoint[]
+    | DecisionRushDailyPoint[]
   > {
     const sessions = await db.sessions
       .where("userId")
@@ -547,9 +651,20 @@ export const sessionRepository = {
     if (
       modeId === "reaction_signal" ||
       modeId === "reaction_stroop" ||
-      modeId === "reaction_pair"
+      modeId === "reaction_pair" ||
+      modeId === "reaction_number"
     ) {
       return buildReactionDailyPoints(sessions);
+    }
+    if (modeId === "nback_1" || modeId === "nback_2") {
+      return buildNBackDailyPoints(sessions);
+    }
+    if (
+      modeId === "decision_kids" ||
+      modeId === "decision_standard" ||
+      modeId === "decision_pro"
+    ) {
+      return buildDecisionRushDailyPoints(sessions);
     }
 
     return buildClassicDailyPoints(sessions);

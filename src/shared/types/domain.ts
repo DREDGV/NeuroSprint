@@ -1,6 +1,18 @@
-export type Mode = "classic" | "timed" | "reverse" | "sprint_math" | "reaction";
+export type Mode =
+  | "classic"
+  | "timed"
+  | "reverse"
+  | "sprint_math"
+  | "reaction"
+  | "n_back"
+  | "decision_rush";
 export type AppRole = "teacher" | "student" | "home";
-export type TrainingModuleId = "schulte" | "sprint_math" | "reaction";
+export type TrainingModuleId =
+  | "schulte"
+  | "sprint_math"
+  | "reaction"
+  | "n_back"
+  | "decision_rush";
 export type TrainingModeId =
   | "classic_plus"
   | "timed_plus"
@@ -9,7 +21,13 @@ export type TrainingModeId =
   | "sprint_mixed"
   | "reaction_signal"
   | "reaction_stroop"
-  | "reaction_pair";
+  | "reaction_pair"
+  | "reaction_number"
+  | "nback_1"
+  | "nback_2"
+  | "decision_kids"
+  | "decision_standard"
+  | "decision_pro";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
 export type TrainingPresetId =
   | "easy"
@@ -70,12 +88,19 @@ export interface Difficulty {
   sprintAllowNegative?: boolean;
   sprintAllowDivision?: boolean;
   sprintAutoEnter?: boolean;
+  nBackLevel?: 1 | 2;
+  decisionLevel?: "kids" | "standard" | "pro";
+  decisionStimulusIntervalMs?: number;
+  shiftEnabled?: boolean;
+  shiftIntervalSec?: number;
+  shiftSwaps?: number;
+  timedBaseClear?: boolean;
 }
 
 export interface Session {
   id: string;
   userId: string;
-  taskId: "schulte" | "sprint_math" | "reaction";
+  taskId: "schulte" | "sprint_math" | "reaction" | "n_back" | "decision_rush";
   mode: Mode;
   moduleId: TrainingModuleId;
   modeId: TrainingModeId;
@@ -91,6 +116,11 @@ export interface Session {
   errors: number;
   correctCount?: number;
   effectiveCorrect?: number;
+  reactionAvgMs?: number;
+  reactionP90Ms?: number;
+  trialsTotal?: number;
+  bestCombo?: number;
+  points?: number;
   visualThemeId?: SchulteThemeId;
   audioEnabledSnapshot?: AudioSettings;
   difficulty: Difficulty;
@@ -127,6 +157,23 @@ export interface ReactionDailyPoint {
   count: number;
 }
 
+export interface NBackDailyPoint {
+  date: string;
+  accuracy: number;
+  avgScore: number;
+  speed: number;
+  count: number;
+}
+
+export interface DecisionRushDailyPoint {
+  date: string;
+  accuracy: number;
+  avgScore: number;
+  reactionP90Ms: number;
+  bestComboAvg: number;
+  count: number;
+}
+
 export interface DailyProgressSummary {
   date: string;
   sessionsTotal: number;
@@ -140,7 +187,7 @@ export interface DailyProgressSummary {
 }
 
 export interface TrainingModule {
-  id: TrainingModuleId | "n_back";
+  id: TrainingModuleId;
   title: string;
   description: string;
   status: "active" | "coming_soon";
@@ -164,6 +211,10 @@ export interface TrainingSetup {
   customTheme: Partial<SchulteThemeConfig> | null;
   autoAdjust: boolean;
   manualLevel: number | null;
+  shiftEnabled?: boolean;
+  shiftIntervalSec?: number;
+  shiftSwaps?: number;
+  timedBaseClear?: boolean;
 }
 
 export interface UserModeProfile {
@@ -334,6 +385,20 @@ export interface DailyChallengeCompletionSummary {
   completed: number;
   pending: number;
   completionRatePct: number;
+}
+
+export interface DailyChallengeStreakSummary {
+  period: ComparePeriod;
+  currentStreakDays: number;
+  bestStreakDays: number;
+  completedDays: number;
+}
+
+export interface DailyChallengeTrendPoint {
+  localDate: string;
+  completed: boolean;
+  completionPct: number;
+  attemptsCount: number;
 }
 
 export interface ModeRecommendation {

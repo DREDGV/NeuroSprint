@@ -1,4 +1,8 @@
-export type ReactionVariantId = "signal" | "stroop_match" | "pair_match";
+export type ReactionVariantId =
+  | "signal"
+  | "stroop_match"
+  | "pair_match"
+  | "number_match";
 
 export interface ReactionVariant {
   id: ReactionVariantId;
@@ -37,6 +41,8 @@ const PAIR_SHAPES = [
 
 const PAIR_VALUES = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
+const NUMBER_POOL = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
 export const REACTION_VARIANTS: ReactionVariant[] = [
   {
     id: "signal",
@@ -52,6 +58,11 @@ export const REACTION_VARIANTS: ReactionVariant[] = [
     id: "pair_match",
     title: "Пара",
     description: "Найдите нужную пару по подсказке: символ + число."
+  },
+  {
+    id: "number_match",
+    title: "Число-цель",
+    description: "Найдите и нажмите целевое число в квадратной сетке 2x2."
   }
 ];
 
@@ -72,6 +83,14 @@ function shuffle<T>(items: T[]): T[] {
     next[j] = temp;
   }
   return next;
+}
+
+function pickUniqueNumbers(count: number): number[] {
+  const unique = new Set<number>();
+  while (unique.size < count) {
+    unique.add(pickOne(NUMBER_POOL));
+  }
+  return [...unique];
 }
 
 function buildStroopChallenge(): ReactionChallenge {
@@ -163,6 +182,23 @@ function buildPairChallenge(): ReactionChallenge {
   };
 }
 
+function buildNumberChallenge(): ReactionChallenge {
+  const numbers = pickUniqueNumbers(4);
+  const target = numbers[randomInt(numbers.length)] ?? 1;
+  const options = shuffle(
+    numbers.map((value) => ({
+      id: `n-${value}`,
+      label: String(value),
+      isCorrect: value === target
+    }))
+  );
+
+  return {
+    prompt: `Найдите число: ${target}.`,
+    options
+  };
+}
+
 export function buildReactionChallenge(variantId: ReactionVariantId): ReactionChallenge | null {
   if (variantId === "signal") {
     return null;
@@ -170,5 +206,8 @@ export function buildReactionChallenge(variantId: ReactionVariantId): ReactionCh
   if (variantId === "stroop_match") {
     return buildStroopChallenge();
   }
-  return buildPairChallenge();
+  if (variantId === "pair_match") {
+    return buildPairChallenge();
+  }
+  return buildNumberChallenge();
 }

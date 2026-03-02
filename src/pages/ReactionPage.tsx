@@ -49,6 +49,9 @@ function toReactionModeId(variantId: ReactionVariantId): TrainingModeId {
   if (variantId === "pair_match") {
     return "reaction_pair";
   }
+  if (variantId === "number_match") {
+    return "reaction_number";
+  }
   return "reaction_signal";
 }
 
@@ -58,6 +61,9 @@ function toReactionVariantId(modeId: string | null): ReactionVariantId | null {
   }
   if (modeId === "reaction_pair") {
     return "pair_match";
+  }
+  if (modeId === "reaction_number") {
+    return "number_match";
   }
   if (modeId === "reaction_signal") {
     return "signal";

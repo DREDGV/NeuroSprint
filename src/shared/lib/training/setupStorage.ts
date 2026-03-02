@@ -58,7 +58,23 @@ function normalizeSetup(
     manualLevel:
       typeof setup.manualLevel === "number" && Number.isFinite(setup.manualLevel)
         ? Math.max(1, Math.min(10, Math.round(setup.manualLevel)))
-        : null
+        : null,
+    shiftEnabled:
+      typeof setup.shiftEnabled === "boolean"
+        ? setup.shiftEnabled
+        : fallback.shiftEnabled ?? false,
+    shiftIntervalSec:
+      typeof setup.shiftIntervalSec === "number" && Number.isFinite(setup.shiftIntervalSec)
+        ? Math.max(0, Math.round(setup.shiftIntervalSec))
+        : fallback.shiftIntervalSec ?? 0,
+    shiftSwaps:
+      typeof setup.shiftSwaps === "number" && Number.isFinite(setup.shiftSwaps)
+        ? Math.max(0, Math.round(setup.shiftSwaps))
+        : fallback.shiftSwaps ?? 0,
+    timedBaseClear:
+      typeof setup.timedBaseClear === "boolean"
+        ? setup.timedBaseClear
+        : fallback.timedBaseClear ?? false
   };
 }
 

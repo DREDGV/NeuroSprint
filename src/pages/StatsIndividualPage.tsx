@@ -17,6 +17,8 @@ import { normalizeUserRole } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import {
+  isDecisionRushMode,
+  isNBackMode,
   isReactionMode,
   isSprintMathMode,
   isTimedMode,
@@ -27,9 +29,11 @@ import { StatCard } from "../shared/ui/StatCard";
 import type {
   ClassGroup,
   ClassicDailyPoint,
+  DecisionRushDailyPoint,
   GroupMetric,
   ModeMetricSnapshot,
   ModeRecommendation,
+  NBackDailyPoint,
   ReactionDailyPoint,
   Session,
   SprintMathDailyPoint,
@@ -96,6 +100,8 @@ export function StatsIndividualPage() {
   const [dailyClassic, setDailyClassic] = useState<ClassicDailyPoint[]>([]);
   const [dailyTimed, setDailyTimed] = useState<TimedDailyPoint[]>([]);
   const [dailyReaction, setDailyReaction] = useState<ReactionDailyPoint[]>([]);
+  const [dailyNBack, setDailyNBack] = useState<NBackDailyPoint[]>([]);
+  const [dailyDecision, setDailyDecision] = useState<DecisionRushDailyPoint[]>([]);
   const [dailySprintMath, setDailySprintMath] = useState<SprintMathDailyPoint[]>([]);
   const [recentSessions, setRecentSessions] = useState<Session[]>([]);
   const [profiles, setProfiles] = useState<UserModeProfile[]>([]);
@@ -161,21 +167,43 @@ export function StatsIndividualPage() {
           setDailyTimed(daily as TimedDailyPoint[]);
           setDailyClassic([]);
           setDailyReaction([]);
+          setDailyNBack([]);
+          setDailyDecision([]);
           setDailySprintMath([]);
         } else if (isSprintMathMode(modeId)) {
           setDailySprintMath(daily as SprintMathDailyPoint[]);
           setDailyTimed([]);
           setDailyReaction([]);
+          setDailyNBack([]);
+          setDailyDecision([]);
           setDailyClassic([]);
         } else if (isReactionMode(modeId)) {
           setDailyReaction(daily as ReactionDailyPoint[]);
           setDailyTimed([]);
           setDailyClassic([]);
+          setDailyNBack([]);
+          setDailyDecision([]);
+          setDailySprintMath([]);
+        } else if (isNBackMode(modeId)) {
+          setDailyNBack(daily as NBackDailyPoint[]);
+          setDailyTimed([]);
+          setDailyClassic([]);
+          setDailyReaction([]);
+          setDailyDecision([]);
+          setDailySprintMath([]);
+        } else if (isDecisionRushMode(modeId)) {
+          setDailyDecision(daily as DecisionRushDailyPoint[]);
+          setDailyTimed([]);
+          setDailyClassic([]);
+          setDailyReaction([]);
+          setDailyNBack([]);
           setDailySprintMath([]);
         } else {
           setDailyClassic(daily as ClassicDailyPoint[]);
           setDailyTimed([]);
           setDailyReaction([]);
+          setDailyNBack([]);
+          setDailyDecision([]);
           setDailySprintMath([]);
         }
         setRecentSessions(sessions);
@@ -408,6 +436,28 @@ export function StatsIndividualPage() {
         nameC: "Точность (%)"
       }));
     }
+    if (isNBackMode(modeId)) {
+      return dailyNBack.map((entry) => ({
+        date: entry.date,
+        valueA: Number((entry.accuracy * 100).toFixed(1)),
+        valueB: Number(entry.avgScore.toFixed(2)),
+        valueC: Number(entry.speed.toFixed(2)),
+        nameA: "Точность (%)",
+        nameB: "Средний score",
+        nameC: "Темп"
+      }));
+    }
+    if (isDecisionRushMode(modeId)) {
+      return dailyDecision.map((entry) => ({
+        date: entry.date,
+        valueA: Number((entry.accuracy * 100).toFixed(1)),
+        valueB: Number(entry.avgScore.toFixed(2)),
+        valueC: Number(entry.reactionP90Ms.toFixed(0)),
+        nameA: "Точность (%)",
+        nameB: "Средний score",
+        nameC: "P90 (мс)"
+      }));
+    }
     if (isSprintMathMode(modeId)) {
       return dailySprintMath.map((entry) => ({
         date: entry.date,
@@ -428,7 +478,7 @@ export function StatsIndividualPage() {
       nameB: "Среднее время (сек)",
         nameC: ""
       }));
-  }, [dailyClassic, dailyReaction, dailySprintMath, dailyTimed, modeId]);
+  }, [dailyClassic, dailyDecision, dailyNBack, dailyReaction, dailySprintMath, dailyTimed, modeId]);
 
   const sprintSummary = useMemo(() => {
     if (!isSprintMathMode(modeId) || recentSessions.length === 0) {
@@ -765,7 +815,10 @@ export function StatsIndividualPage() {
                 strokeWidth={3}
                 dot={{ r: 4 }}
               />
-              {isSprintMathMode(modeId) || isReactionMode(modeId) ? (
+              {isSprintMathMode(modeId) ||
+              isReactionMode(modeId) ||
+              isNBackMode(modeId) ||
+              isDecisionRushMode(modeId) ? (
                 <Line
                   type="monotone"
                   dataKey="valueC"

@@ -48,6 +48,26 @@ const ReactionPage = lazy(() =>
     default: module.ReactionPage
   }))
 );
+const NBackSetupPage = lazy(() =>
+  import("../pages/NBackSetupPage").then((module) => ({
+    default: module.NBackSetupPage
+  }))
+);
+const NBackSessionPage = lazy(() =>
+  import("../pages/NBackSessionPage").then((module) => ({
+    default: module.NBackSessionPage
+  }))
+);
+const DecisionRushSetupPage = lazy(() =>
+  import("../pages/DecisionRushSetupPage").then((module) => ({
+    default: module.DecisionRushSetupPage
+  }))
+);
+const DecisionRushSessionPage = lazy(() =>
+  import("../pages/DecisionRushSessionPage").then((module) => ({
+    default: module.DecisionRushSessionPage
+  }))
+);
 const SchulteSessionPage = lazy(() =>
   import("../pages/SchulteSessionPage").then((module) => ({
     default: module.SchulteSessionPage
@@ -159,6 +179,38 @@ export function App() {
                 element={
                   <RequireActiveUser>
                     <ReactionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/nback"
+                element={
+                  <RequireActiveUser>
+                    <NBackSetupPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/nback/session"
+                element={
+                  <RequireActiveUser>
+                    <NBackSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/decision-rush"
+                element={
+                  <RequireActiveUser>
+                    <DecisionRushSetupPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/decision-rush/session"
+                element={
+                  <RequireActiveUser>
+                    <DecisionRushSessionPage />
                   </RequireActiveUser>
                 }
               />

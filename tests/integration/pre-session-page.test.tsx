@@ -37,6 +37,16 @@ function ReactionMarker() {
   return <p data-testid="reaction-setup-marker">{location.search}</p>;
 }
 
+function NBackMarker() {
+  const location = useLocation();
+  return <p data-testid="nback-setup-marker">{location.search}</p>;
+}
+
+function DecisionRushMarker() {
+  const location = useLocation();
+  return <p data-testid="decision-setup-marker">{location.search}</p>;
+}
+
 describe("PreSessionPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -91,6 +101,7 @@ describe("PreSessionPage", () => {
               element={<p data-testid="schulte-setup-marker">Schulte setup</p>}
             />
             <Route path="/training/reaction" element={<ReactionMarker />} />
+            <Route path="/training/nback" element={<NBackMarker />} />
           </Routes>
         </ActiveUserProvider>
       </MemoryRouter>
@@ -130,6 +141,7 @@ describe("PreSessionPage", () => {
           <Routes>
             <Route path="/training/pre-session" element={<PreSessionPage />} />
             <Route path="/training/reaction" element={<ReactionMarker />} />
+            <Route path="/training/nback" element={<NBackMarker />} />
           </Routes>
         </ActiveUserProvider>
       </MemoryRouter>
@@ -144,6 +156,56 @@ describe("PreSessionPage", () => {
     await user.click(screen.getByTestId("pre-session-start-btn"));
     expect(await screen.findByTestId("reaction-setup-marker")).toHaveTextContent(
       "?mode=reaction_pair"
+    );
+  });
+
+  it("supports nback module flow and opens nback mode route", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/training/pre-session?module=n_back"]}>
+        <ActiveUserProvider>
+          <Routes>
+            <Route path="/training/pre-session" element={<PreSessionPage />} />
+            <Route path="/training/nback" element={<NBackMarker />} />
+          </Routes>
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("pre-session-page")).toBeInTheDocument();
+    expect(screen.getByTestId("pre-session-mode-nback_1")).toBeInTheDocument();
+    expect(screen.queryByTestId("pre-session-mode-classic_plus")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("pre-session-mode-nback_2"));
+    await user.click(screen.getByTestId("pre-session-start-btn"));
+    expect(await screen.findByTestId("nback-setup-marker")).toHaveTextContent(
+      "?mode=nback_2"
+    );
+  });
+
+  it("supports decision rush module flow and opens decision mode route", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/training/pre-session?module=decision_rush"]}>
+        <ActiveUserProvider>
+          <Routes>
+            <Route path="/training/pre-session" element={<PreSessionPage />} />
+            <Route path="/training/decision-rush" element={<DecisionRushMarker />} />
+          </Routes>
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("pre-session-page")).toBeInTheDocument();
+    expect(screen.getByTestId("pre-session-mode-decision_kids")).toBeInTheDocument();
+    expect(screen.queryByTestId("pre-session-mode-classic_plus")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("pre-session-mode-decision_pro"));
+    await user.click(screen.getByTestId("pre-session-start-btn"));
+    expect(await screen.findByTestId("decision-setup-marker")).toHaveTextContent(
+      "?mode=decision_pro"
     );
   });
 });

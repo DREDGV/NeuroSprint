@@ -24,6 +24,31 @@
   - фильтр периода (`7/30/90/all`),
   - mode-aware рейтинг по текущему выбранному режиму,
   - подсветка активного пользователя в списке.
+- В `/stats` расширен блок `Daily Challenge`:
+  - добавлена `текущая серия` и `лучшая серия` выполнения,
+  - добавлен долгосрочный тренд по дням (`0/100%`),
+  - добавлено количество выполненных challenge-дней в выбранном периоде.
+- Расширен `dailyChallengeRepository`:
+  - `getStreakSummary(...)`,
+  - `listCompletionTrend(...)`,
+  - чистый helper `buildDailyChallengeStreak(...)`.
+- Исправлены битые строки в challenge-локализации (`Reaction` titles, тексты challenge).
+- Добавлен новый режим в `Reaction`: `Число-цель` (`reaction_number`):
+  - выбор целевого числа в сетке `2x2`,
+  - запуск из pre-session и через query `?mode=reaction_number`,
+  - сохранение сессий и участие в статистике/recommendation.
+- Улучшена дружелюбность pre-session:
+  - обновлены тексты и подсказки по режимам `Reaction`,
+  - очищена кодировка `PreSessionPage` до корректного UTF-8.
+- Реализован новый модуль `N-Back Lite`:
+  - setup `/training/nback` (выбор `1-back/2-back`, `60/90 сек`),
+  - session `/training/nback/session` (сетка `3x3`, ответы `Совпало/Не совпало`, таймер и прогресс),
+  - сохранение сессий в IndexedDB (`taskId/moduleId="n_back"`, `modeId="nback_1|nback_2"`).
+- `N-Back Lite` интегрирован в:
+  - `TrainingHub` и `Pre-session`,
+  - simple/individual/group статистику,
+  - recommendation engine,
+  - daily challenge ротацию и launch-path.
 
 ## [0.5.0-dev.4] - 2026-03-01
 ### Добавлено

@@ -15,7 +15,13 @@ const MODE_IDS: TrainingModeId[] = [
   "sprint_mixed",
   "reaction_signal",
   "reaction_stroop",
-  "reaction_pair"
+  "reaction_pair",
+  "reaction_number",
+  "nback_1",
+  "nback_2",
+  "decision_kids",
+  "decision_standard",
+  "decision_pro"
 ];
 
 function clamp(value: number, min: number, max: number): number {
@@ -44,7 +50,22 @@ function sprintTargetSpeed(modeId: TrainingModeId): number {
 
 function isReactionModeId(modeId: TrainingModeId): boolean {
   return (
-    modeId === "reaction_signal" || modeId === "reaction_stroop" || modeId === "reaction_pair"
+    modeId === "reaction_signal" ||
+    modeId === "reaction_stroop" ||
+    modeId === "reaction_pair" ||
+    modeId === "reaction_number"
+  );
+}
+
+function isNBackModeId(modeId: TrainingModeId): boolean {
+  return modeId === "nback_1" || modeId === "nback_2";
+}
+
+function isDecisionModeId(modeId: TrainingModeId): boolean {
+  return (
+    modeId === "decision_kids" ||
+    modeId === "decision_standard" ||
+    modeId === "decision_pro"
   );
 }
 
@@ -55,16 +76,54 @@ function reactionLabel(modeId: TrainingModeId): string {
   if (modeId === "reaction_pair") {
     return "пара";
   }
+  if (modeId === "reaction_number") {
+    return "число-цель";
+  }
   return "сигнал";
+}
+
+function nBackLabel(modeId: TrainingModeId): string {
+  return modeId === "nback_2" ? "2-back" : "1-back";
+}
+
+function decisionLabel(modeId: TrainingModeId): string {
+  if (modeId === "decision_kids") {
+    return "Kids";
+  }
+  if (modeId === "decision_pro") {
+    return "Pro";
+  }
+  return "Standard";
 }
 
 function reactionUntrainedPriority(modeId: TrainingModeId, hasReactionHistory: boolean): number {
   if (hasReactionHistory) {
-    // Keep untrained reaction variants available, but do not override weak trained variants.
     return 0.18;
   }
-  // Prefer the baseline signal mode when reaction has no history at all.
-  return modeId === "reaction_signal" ? 0.45 : 0.37;
+  if (modeId === "reaction_signal") {
+    return 0.45;
+  }
+  if (modeId === "reaction_stroop" || modeId === "reaction_pair") {
+    return 0.37;
+  }
+  return 0.34;
+}
+
+function nBackUntrainedPriority(modeId: TrainingModeId, hasNBackHistory: boolean): number {
+  if (hasNBackHistory) {
+    return 0.16;
+  }
+  return modeId === "nback_2" ? 0.28 : 0.3;
+}
+
+function decisionUntrainedPriority(modeId: TrainingModeId): number {
+  if (modeId === "decision_kids") {
+    return 0.33;
+  }
+  if (modeId === "decision_standard") {
+    return 0.3;
+  }
+  return 0.26;
 }
 
 function reactionTargetMs(modeId: TrainingModeId): number {
@@ -74,11 +133,29 @@ function reactionTargetMs(modeId: TrainingModeId): number {
   if (modeId === "reaction_pair") {
     return 900;
   }
+  if (modeId === "reaction_number") {
+    return 800;
+  }
   return 600;
+}
+
+function nBackTargetSpeed(modeId: TrainingModeId): number {
+  return modeId === "nback_2" ? 22 : 26;
+}
+
+function decisionTargetP90(modeId: TrainingModeId): number {
+  if (modeId === "decision_kids") {
+    return 1050;
+  }
+  if (modeId === "decision_pro") {
+    return 780;
+  }
+  return 900;
 }
 
 interface RecommendationBuildContext {
   hasReactionHistory: boolean;
+  hasNBackHistory: boolean;
 }
 
 function buildModeScore(
@@ -89,24 +166,41 @@ function buildModeScore(
   const recentDesc = sortByTimestampDesc(sessions).slice(0, 5);
 
   if (recentDesc.length === 0) {
-    const isReactionMode = isReactionModeId(modeId);
+    if (isReactionModeId(modeId)) {
+      return {
+        modeId,
+        priority: reactionUntrainedPriority(modeId, context.hasReactionHistory),
+        reason: `Вариант Reaction «${reactionLabel(modeId)}» еще не тренировался: добавьте короткую сессию.`,
+        sampleSize: 0
+      };
+    }
+    if (isNBackModeId(modeId)) {
+      return {
+        modeId,
+        priority: nBackUntrainedPriority(modeId, context.hasNBackHistory),
+        reason: `Режим N-Back Lite (${nBackLabel(modeId)}) еще не тренировался: полезно добавить его сегодня.`,
+        sampleSize: 0
+      };
+    }
+    if (isDecisionModeId(modeId)) {
+      return {
+        modeId,
+        priority: decisionUntrainedPriority(modeId),
+        reason: `Decision Rush (${decisionLabel(modeId)}) еще не тренировался: добавьте одну короткую серию.`,
+        sampleSize: 0
+      };
+    }
     return {
       modeId,
-      priority: isReactionMode
-        ? reactionUntrainedPriority(modeId, context.hasReactionHistory)
-        : 0.95,
-      reason: isReactionMode
-        ? `Вариант Reaction «${reactionLabel(modeId)}» еще не тренировался: добавьте короткую сессию.`
-        : "Режим еще не тренировался: полезно добавить его сегодня.",
+      priority: 0.95,
+      reason: "Режим еще не тренировался: полезно добавить его сегодня.",
       sampleSize: 0
     };
   }
 
-  const avgAccuracy =
-    recentDesc.reduce((sum, entry) => sum + entry.accuracy, 0) / recentDesc.length;
+  const avgAccuracy = recentDesc.reduce((sum, entry) => sum + entry.accuracy, 0) / recentDesc.length;
   const growthPct = scoreGrowthPct(recentDesc);
-  const avgSpeed =
-    recentDesc.reduce((sum, entry) => sum + entry.speed, 0) / recentDesc.length;
+  const avgSpeed = recentDesc.reduce((sum, entry) => sum + entry.speed, 0) / recentDesc.length;
 
   const accuracyWeakness = clamp(1 - avgAccuracy, 0, 1);
   const trendWeakness = clamp(Math.max(0, -growthPct) / 20, 0, 1);
@@ -124,16 +218,38 @@ function buildModeScore(
   }
 
   if (isReactionModeId(modeId)) {
-    const avgReactionMs =
-      recentDesc.reduce((sum, entry) => sum + entry.durationMs, 0) / recentDesc.length;
+    const avgReactionMs = recentDesc.reduce((sum, entry) => sum + entry.durationMs, 0) / recentDesc.length;
     const targetMs = reactionTargetMs(modeId);
     const reactionWeakness = clamp((avgReactionMs - targetMs) / targetMs, 0, 1);
     priority += reactionWeakness * 0.2;
-    reason = `Reaction «${reactionLabel(modeId)}»: точность ${(
-      avgAccuracy * 100
-    ).toFixed(1)}%, среднее время ${Math.round(avgReactionMs)} мс, тренд score ${growthPct.toFixed(
+    reason = `Reaction «${reactionLabel(modeId)}»: точность ${(avgAccuracy * 100).toFixed(
       1
-    )}%.`;
+    )}%, среднее время ${Math.round(avgReactionMs)} мс, тренд score ${growthPct.toFixed(1)}%.`;
+  }
+
+  if (isNBackModeId(modeId)) {
+    const targetSpeed = nBackTargetSpeed(modeId);
+    const speedWeakness = clamp((targetSpeed - avgSpeed) / targetSpeed, 0, 1);
+    priority += speedWeakness * 0.2;
+    reason = `N-Back Lite (${nBackLabel(modeId)}): точность ${(avgAccuracy * 100).toFixed(
+      1
+    )}%, темп ${avgSpeed.toFixed(1)} шаг/мин, тренд score ${growthPct.toFixed(1)}%.`;
+  }
+
+  if (isDecisionModeId(modeId)) {
+    const p90Values = recentDesc
+      .map((entry) => entry.reactionP90Ms ?? entry.durationMs)
+      .filter((entry) => Number.isFinite(entry) && entry > 0);
+    const avgP90 =
+      p90Values.length > 0
+        ? p90Values.reduce((sum, value) => sum + value, 0) / p90Values.length
+        : 0;
+    const targetP90 = decisionTargetP90(modeId);
+    const p90Weakness = clamp((avgP90 - targetP90) / targetP90, 0, 1);
+    priority += p90Weakness * 0.25;
+    reason = `Decision Rush (${decisionLabel(modeId)}): точность ${(avgAccuracy * 100).toFixed(
+      1
+    )}%, P90 ${Math.round(avgP90)} мс, тренд score ${growthPct.toFixed(1)}%.`;
   }
 
   return {
@@ -154,29 +270,29 @@ export function recommendModeByPerformance(sessions: Session[]): ModeRecommendat
   }
 
   const byMode = new Map<TrainingModeId, Session[]>();
-  for (const modeId of MODE_IDS) {
-    byMode.set(modeId, []);
-  }
+  MODE_IDS.forEach((modeId) => byMode.set(modeId, []));
 
-  const hasReactionHistory = sessions.some((session) =>
-    isReactionModeId(session.modeId)
-  );
+  const hasReactionHistory = sessions.some((session) => isReactionModeId(session.modeId));
+  const hasNBackHistory = sessions.some((session) => isNBackModeId(session.modeId));
 
   for (const session of sessions) {
     const bucket = byMode.get(session.modeId);
-    if (!bucket) {
-      continue;
+    if (bucket) {
+      bucket.push(session);
     }
-    bucket.push(session);
   }
 
   const ranked = MODE_IDS.map((modeId) =>
-    buildModeScore(modeId, byMode.get(modeId) ?? [], { hasReactionHistory })
+    buildModeScore(modeId, byMode.get(modeId) ?? [], {
+      hasReactionHistory,
+      hasNBackHistory
+    })
   ).sort((a, b) => b.priority - a.priority);
 
   const selected = ranked[0];
   const second = ranked[1];
   const priorityGap = selected && second ? selected.priority - second.priority : 0;
+
   let confidence = 0.62;
   if (selected.sampleSize >= 3) {
     confidence += 0.1;

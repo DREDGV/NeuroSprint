@@ -4,12 +4,12 @@ import { useActiveUser } from "../app/ActiveUserContext";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
-import { getSettings } from "../shared/lib/settings/settings";
 import {
   buildDailyMiniGoals,
   resolveNextStreakBadge,
   resolveStreakBadge
 } from "../shared/lib/motivation/motivation";
+import { getSettings } from "../shared/lib/settings/settings";
 import { moduleIdByModeId } from "../shared/lib/training/modeMapping";
 import { TRAINING_MODES } from "../shared/lib/training/presets";
 import { InfoHint } from "../shared/ui/InfoHint";
@@ -29,12 +29,24 @@ function isTrainingModeId(value: string | null): value is TrainingModeId {
     value === "sprint_mixed" ||
     value === "reaction_signal" ||
     value === "reaction_stroop" ||
-    value === "reaction_pair"
+    value === "reaction_pair" ||
+    value === "reaction_number" ||
+    value === "nback_1" ||
+    value === "nback_2" ||
+    value === "decision_kids" ||
+    value === "decision_standard" ||
+    value === "decision_pro"
   );
 }
 
 function isTrainingModuleId(value: string | null): value is TrainingModuleId {
-  return value === "schulte" || value === "sprint_math" || value === "reaction";
+  return (
+    value === "schulte" ||
+    value === "sprint_math" ||
+    value === "reaction" ||
+    value === "n_back" ||
+    value === "decision_rush"
+  );
 }
 
 function fallbackModeForModule(moduleId: TrainingModuleId): TrainingModeId {
@@ -43,6 +55,12 @@ function fallbackModeForModule(moduleId: TrainingModuleId): TrainingModeId {
   }
   if (moduleId === "reaction") {
     return "reaction_signal";
+  }
+  if (moduleId === "n_back") {
+    return "nback_1";
+  }
+  if (moduleId === "decision_rush") {
+    return "decision_kids";
   }
   return "classic_plus";
 }
@@ -55,6 +73,12 @@ function setupRouteByMode(modeId: TrainingModeId): string {
   if (moduleId === "reaction") {
     return `/training/reaction?mode=${modeId}`;
   }
+  if (moduleId === "n_back") {
+    return `/training/nback?mode=${modeId}`;
+  }
+  if (moduleId === "decision_rush") {
+    return `/training/decision-rush?mode=${modeId}`;
+  }
   return `/training/schulte?mode=${modeId}`;
 }
 
@@ -66,7 +90,25 @@ function getReactionModeTip(modeId: TrainingModeId): string | null {
     return "Фокус: сначала совпадение цвета и слова, затем ускорение.";
   }
   if (modeId === "reaction_pair") {
-    return "Фокус: быстро находите целевую пару по подсказке в 2x2 сетке.";
+    return "Фокус: быстро находите целевую пару по подсказке в сетке 2x2.";
+  }
+  if (modeId === "reaction_number") {
+    return "Фокус: находите целевое число без лишних кликов и держите стабильный темп.";
+  }
+  if (modeId === "nback_1") {
+    return "Фокус: ищите совпадение позиции с предыдущим шагом (1-back).";
+  }
+  if (modeId === "nback_2") {
+    return "Фокус: удерживайте в памяти позицию два шага назад (2-back).";
+  }
+  if (modeId === "decision_kids") {
+    return "Decision Rush Kids: мягкий темп и простые правила ДА/НЕТ.";
+  }
+  if (modeId === "decision_standard") {
+    return "Decision Rush Standard: цвет, форма, число и короткий boss-раунд.";
+  }
+  if (modeId === "decision_pro") {
+    return "Decision Rush Pro: быстрый темп, отрицания и больше переключений.";
   }
   return null;
 }
@@ -109,24 +151,16 @@ export function PreSessionPage() {
   );
 
   const selectedMode = useMemo(
-    () =>
-      visibleModes.find((mode) => mode.id === selectedModeId) ??
-      visibleModes[0] ??
-      TRAINING_MODES[0],
+    () => visibleModes.find((mode) => mode.id === selectedModeId) ?? visibleModes[0] ?? TRAINING_MODES[0],
     [selectedModeId, visibleModes]
   );
 
   const recommendationTitle = useMemo(
-    () =>
-      TRAINING_MODES.find((entry) => entry.id === recommendation?.modeId)?.title ??
-      recommendation?.modeId ??
-      "—",
+    () => TRAINING_MODES.find((entry) => entry.id === recommendation?.modeId)?.title ?? recommendation?.modeId ?? "—",
     [recommendation]
   );
-  const selectedReactionTip = useMemo(
-    () => getReactionModeTip(selectedMode.id),
-    [selectedMode.id]
-  );
+
+  const selectedReactionTip = useMemo(() => getReactionModeTip(selectedMode.id), [selectedMode.id]);
   const recommendationReactionTip = useMemo(
     () => getReactionModeTip(recommendation?.modeId ?? "classic_plus"),
     [recommendation?.modeId]
@@ -152,17 +186,8 @@ export function PreSessionPage() {
         return;
       }
 
-      if (summaryResult.status === "fulfilled") {
-        setDailySummary(summaryResult.value);
-      } else {
-        setDailySummary(null);
-      }
-
-      if (insightsResult.status === "fulfilled") {
-        setStreakDays(insightsResult.value.streakDays);
-      } else {
-        setStreakDays(0);
-      }
+      setDailySummary(summaryResult.status === "fulfilled" ? summaryResult.value : null);
+      setStreakDays(insightsResult.status === "fulfilled" ? insightsResult.value.streakDays : 0);
 
       if (recommendationResult.status === "fulfilled") {
         setRecommendation(recommendationResult.value);
@@ -189,10 +214,7 @@ export function PreSessionPage() {
       return;
     }
 
-    if (
-      recommendation &&
-      (!requestedModuleId || moduleIdByModeId(recommendation.modeId) === requestedModuleId)
-    ) {
+    if (recommendation && (!requestedModuleId || moduleIdByModeId(recommendation.modeId) === requestedModuleId)) {
       setSelectedModeId(recommendation.modeId);
       return;
     }
@@ -227,11 +249,11 @@ export function PreSessionPage() {
         Проверьте цель дня, выберите режим и запустите тренировку для пользователя{" "}
         <strong>{activeUserName}</strong>.
       </p>
+
       <InfoHint title="Как проще ориентироваться" testId="pre-session-hint">
-        <p>Сначала выберите рекомендованный режим, затем нажмите «К настройке тренировки».</p>
-        <p>
-          Если времени мало, ориентируйтесь на блок «Цель на сегодня» и выполните минимум сессий.
-        </p>
+        <p>1. Выберите рекомендованный режим.</p>
+        <p>2. Нажмите «К настройке тренировки».</p>
+        <p>3. При нехватке времени ориентируйтесь на блок «Цель на сегодня» и выполните минимум сессий.</p>
       </InfoHint>
 
       <section className="setup-block" data-testid="pre-session-goal">

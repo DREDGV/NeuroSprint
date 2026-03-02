@@ -73,4 +73,14 @@ describe("Reaction challenge mode persistence", () => {
     expect(mocks.save).toHaveBeenCalledTimes(1);
     expect(mocks.save.mock.calls[0][0].modeId).toBe("reaction_pair");
   });
+
+  it("saves finished series as reaction_number when opened from challenge route", async () => {
+    await completeReactionChoiceSeries("reaction_number");
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mocks.save).toHaveBeenCalledTimes(1);
+    expect(mocks.save.mock.calls[0][0].modeId).toBe("reaction_number");
+  });
 });

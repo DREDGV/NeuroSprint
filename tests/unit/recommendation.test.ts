@@ -13,18 +13,36 @@ function createSession(
   const mode =
     modeId === "timed_plus"
       ? "timed"
-      : modeId === "reaction_signal" || modeId === "reaction_stroop" || modeId === "reaction_pair"
+      : modeId === "reaction_signal" ||
+          modeId === "reaction_stroop" ||
+          modeId === "reaction_pair" ||
+          modeId === "reaction_number"
         ? "reaction"
-        : modeId === "sprint_add_sub" || modeId === "sprint_mixed"
-          ? "sprint_math"
-          : "classic";
+        : modeId === "nback_1" || modeId === "nback_2"
+          ? "n_back"
+          : modeId === "sprint_add_sub" || modeId === "sprint_mixed"
+            ? "sprint_math"
+            : "classic";
 
   return {
     id,
     userId: "u1",
-    taskId: mode === "sprint_math" ? "sprint_math" : mode === "reaction" ? "reaction" : "schulte",
+    taskId:
+      mode === "sprint_math"
+        ? "sprint_math"
+        : mode === "reaction"
+          ? "reaction"
+          : mode === "n_back"
+            ? "n_back"
+            : "schulte",
     moduleId:
-      mode === "sprint_math" ? "sprint_math" : mode === "reaction" ? "reaction" : "schulte",
+      mode === "sprint_math"
+        ? "sprint_math"
+        : mode === "reaction"
+          ? "reaction"
+          : mode === "n_back"
+            ? "n_back"
+            : "schulte",
     modeId,
     mode,
     level: 3,

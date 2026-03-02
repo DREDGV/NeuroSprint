@@ -1,7 +1,12 @@
+import { getTargetSpeedPerMinute } from "../../../features/schulte/levelConfig";
 import type { AdaptiveDecision, Session } from "../../types/domain";
 
 function clampLevel(level: number): number {
   return Math.max(1, Math.min(10, Math.round(level)));
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 export function computeAdaptiveDecision(
@@ -25,7 +30,7 @@ export function computeAdaptiveDecision(
       avgAccuracy: 0,
       scoreGrowthPct: 0,
       scoreDropPct: 0,
-      reason: "Недостаточно данных для пересчета (нужно 3 сессии).",
+      reason: "Недостаточно данных для пересчёта (нужно 3 сессии).",
       applied: false,
       source: "auto",
       evaluatedAt: now,
@@ -35,21 +40,38 @@ export function computeAdaptiveDecision(
 
   const first = window[0];
   const last = window[window.length - 1];
+
   const avgAccuracy = window.reduce((sum, entry) => sum + entry.accuracy, 0) / windowSize;
   const scoreGrowthPct =
     first.score > 0 ? ((last.score - first.score) / first.score) * 100 : 0;
   const scoreDropPct =
     first.score > 0 ? ((first.score - last.score) / first.score) * 100 : 0;
 
-  let delta: -1 | 0 | 1 = 0;
-  let reason = "Уровень сохранен: стабильная динамика.";
+  const avgNormalizedSpeed =
+    window.reduce((sum, entry) => {
+      const target = getTargetSpeedPerMinute(entry.modeId, entry.difficulty.gridSize);
+      const normalized = target > 0 ? entry.speed / target : 0;
+      return sum + Math.max(0, Math.min(1.2, normalized));
+    }, 0) / windowSize;
 
-  if (avgAccuracy >= 0.9 && scoreGrowthPct >= 8) {
+  const meanScore = window.reduce((sum, entry) => sum + entry.score, 0) / windowSize;
+  const scoreVariance =
+    window.reduce((sum, entry) => sum + (entry.score - meanScore) ** 2, 0) / windowSize;
+  const scoreStdDev = Math.sqrt(scoreVariance);
+  const consistency = meanScore > 0 ? clamp01(1 - scoreStdDev / meanScore) : 0;
+
+  const readinessScore =
+    0.5 * avgAccuracy + 0.3 * clamp01(avgNormalizedSpeed) + 0.2 * consistency;
+
+  let delta: -1 | 0 | 1 = 0;
+  let reason = "Уровень сохранён: стабильный баланс точности и темпа.";
+
+  if (readinessScore >= 0.85 && avgAccuracy >= 0.88) {
     delta = 1;
-    reason = "Уровень повышен: высокая точность и устойчивый рост score.";
-  } else if (avgAccuracy < 0.75 || scoreDropPct >= 10) {
+    reason = "Уровень повышен: высокая точность и готовность по темпу.";
+  } else if (readinessScore < 0.6 || avgAccuracy < 0.75 || scoreDropPct >= 10) {
     delta = -1;
-    reason = "Уровень снижен: точность ниже порога или заметная просадка score.";
+    reason = "Уровень снижен: точность или устойчивость ниже безопасного порога.";
   }
 
   const nextLevel = clampLevel(previousLevel + delta);
@@ -64,7 +86,9 @@ export function computeAdaptiveDecision(
     avgAccuracy,
     scoreGrowthPct,
     scoreDropPct,
-    reason,
+    reason: `${reason} readiness ${(readinessScore * 100).toFixed(0)}%, accuracy ${(
+      avgAccuracy * 100
+    ).toFixed(0)}%.`,
     applied: delta !== 0,
     source: "auto",
     evaluatedAt: now,

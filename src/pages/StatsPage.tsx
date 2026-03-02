@@ -19,14 +19,24 @@ import type {
   ComparePeriod,
   DailyChallengeCompletionSummary,
   DailyChallengeHistoryItem,
+  DailyChallengeStreakSummary,
+  DailyChallengeTrendPoint,
   DailyCompareBandPoint,
+  DecisionRushDailyPoint,
+  NBackDailyPoint,
   ReactionDailyPoint,
   SprintMathDailyPoint,
   TimedDailyPoint,
   TrainingModeId
 } from "../shared/types/domain";
 
-type StatsMode = "classic" | "timed" | "sprint_math" | "reaction";
+type StatsMode =
+  | "classic"
+  | "timed"
+  | "sprint_math"
+  | "reaction"
+  | "n_back"
+  | "decision_rush";
 type SprintModeFilter = "all" | "sprint_add_sub" | "sprint_mixed";
 type SprintSubmode = "sprint_add_sub" | "sprint_mixed";
 
@@ -170,9 +180,29 @@ function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): 
 
   if (mode === "reaction") {
     return {
-      modeIds: ["reaction_signal", "reaction_stroop", "reaction_pair"],
+      modeIds: ["reaction_signal", "reaction_stroop", "reaction_pair", "reaction_number"],
       metric: "score",
       title: "Сравнение по score",
+      metricSuffix: "",
+      digits: 2
+    };
+  }
+
+  if (mode === "n_back") {
+    return {
+      modeIds: ["nback_1", "nback_2"],
+      metric: "score",
+      title: "Сравнение по score (N-Back Lite)",
+      metricSuffix: "",
+      digits: 2
+    };
+  }
+
+  if (mode === "decision_rush") {
+    return {
+      modeIds: ["decision_kids", "decision_standard", "decision_pro"],
+      metric: "score",
+      title: "Сравнение по score (Decision Rush)",
       metricSuffix: "",
       digits: 2
     };
@@ -306,6 +336,8 @@ export function StatsPage() {
   const [classicData, setClassicData] = useState<ClassicDailyPoint[]>([]);
   const [timedData, setTimedData] = useState<TimedDailyPoint[]>([]);
   const [reactionData, setReactionData] = useState<ReactionDailyPoint[]>([]);
+  const [nBackData, setNBackData] = useState<NBackDailyPoint[]>([]);
+  const [decisionData, setDecisionData] = useState<DecisionRushDailyPoint[]>([]);
   const [sprintAllData, setSprintAllData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintAddSubData, setSprintAddSubData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintMixedData, setSprintMixedData] = useState<SprintMathDailyPoint[]>([]);
@@ -318,6 +350,8 @@ export function StatsPage() {
     null
   );
   const [challengeHistory, setChallengeHistory] = useState<DailyChallengeHistoryItem[]>([]);
+  const [challengeStreak, setChallengeStreak] = useState<DailyChallengeStreakSummary | null>(null);
+  const [challengeTrend, setChallengeTrend] = useState<DailyChallengeTrendPoint[]>([]);
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -331,6 +365,8 @@ export function StatsPage() {
       setClassicData([]);
       setTimedData([]);
       setReactionData([]);
+      setNBackData([]);
+      setDecisionData([]);
       setSprintAllData([]);
       setSprintAddSubData([]);
       setSprintMixedData([]);
@@ -345,17 +381,21 @@ export function StatsPage() {
       sessionRepository.aggregateDailyClassic(activeUserId),
       sessionRepository.aggregateDailyTimed(activeUserId),
       sessionRepository.aggregateDailyReaction(activeUserId),
+      sessionRepository.aggregateDailyNBack(activeUserId),
+      sessionRepository.aggregateDailyDecisionRush(activeUserId),
       sessionRepository.aggregateDailySprintMath(activeUserId),
       sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_add_sub"),
       sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_mixed")
     ])
-      .then(([classic, timed, reaction, sprintAll, sprintAddSub, sprintMixed]) => {
+      .then(([classic, timed, reaction, nBack, decision, sprintAll, sprintAddSub, sprintMixed]) => {
         if (cancelled) {
           return;
         }
         setClassicData(classic);
         setTimedData(timed);
         setReactionData(reaction);
+        setNBackData(nBack);
+        setDecisionData(decision);
         setSprintAllData(sprintAll);
         setSprintAddSubData(sprintAddSub as SprintMathDailyPoint[]);
         setSprintMixedData(sprintMixed as SprintMathDailyPoint[]);
@@ -413,6 +453,8 @@ export function StatsPage() {
     if (!activeUserId) {
       setChallengeSummary(null);
       setChallengeHistory([]);
+      setChallengeStreak(null);
+      setChallengeTrend([]);
       setChallengeLoading(false);
       return;
     }
@@ -422,19 +464,25 @@ export function StatsPage() {
 
     void Promise.all([
       dailyChallengeRepository.getCompletionSummary(activeUserId, challengePeriod),
-      dailyChallengeRepository.listHistory(activeUserId, challengePeriod, 10)
+      dailyChallengeRepository.listHistory(activeUserId, challengePeriod, 10),
+      dailyChallengeRepository.getStreakSummary(activeUserId, challengePeriod),
+      dailyChallengeRepository.listCompletionTrend(activeUserId, challengePeriod, 60)
     ])
-      .then(([summary, history]) => {
+      .then(([summary, history, streak, trend]) => {
         if (cancelled) {
           return;
         }
         setChallengeSummary(summary);
         setChallengeHistory(history);
+        setChallengeStreak(streak);
+        setChallengeTrend(trend);
       })
       .catch(() => {
         if (!cancelled) {
           setChallengeSummary(null);
           setChallengeHistory([]);
+          setChallengeStreak(null);
+          setChallengeTrend([]);
         }
       })
       .finally(() => {
@@ -447,6 +495,15 @@ export function StatsPage() {
       cancelled = true;
     };
   }, [activeUserId, challengePeriod]);
+
+  const challengeTrendChartData = useMemo(
+    () =>
+      challengeTrend.map((entry) => ({
+        ...entry,
+        dateShort: formatDateShort(entry.localDate)
+      })),
+    [challengeTrend]
+  );
 
   const sprintActiveData = useMemo(() => {
     if (sprintFilter === "sprint_add_sub") {
@@ -493,6 +550,29 @@ export function StatsPage() {
     [reactionData]
   );
 
+  const nBackChartData = useMemo(
+    () =>
+      nBackData.map((entry) => ({
+        date: entry.date,
+        dateShort: formatDateShort(entry.date),
+        accuracyPct: Number((entry.accuracy * 100).toFixed(1)),
+        avgScore: Number(entry.avgScore.toFixed(2))
+      })),
+    [nBackData]
+  );
+
+  const decisionChartData = useMemo(
+    () =>
+      decisionData.map((entry) => ({
+        date: entry.date,
+        dateShort: formatDateShort(entry.date),
+        accuracyPct: Number((entry.accuracy * 100).toFixed(1)),
+        avgScore: Number(entry.avgScore.toFixed(2)),
+        reactionP90Ms: Number(entry.reactionP90Ms.toFixed(0))
+      })),
+    [decisionData]
+  );
+
   const sprintMathChartData = useMemo(
     () =>
       sprintActiveData.map((entry) => ({
@@ -526,10 +606,22 @@ export function StatsPage() {
           ? timedChartData.map((point) => [point.date, point.avgScore])
           : mode === "reaction"
             ? reactionChartData.map((point) => [point.date, point.avgScore])
+            : mode === "n_back"
+              ? nBackChartData.map((point) => [point.date, point.avgScore])
+              : mode === "decision_rush"
+                ? decisionChartData.map((point) => [point.date, point.avgScore])
             : sprintMathChartData.map((point) => [point.date, point.avgScore]);
 
     return new Map<string, number>(entries);
-  }, [classicChartData, mode, reactionChartData, sprintMathChartData, timedChartData]);
+  }, [
+    classicChartData,
+    decisionChartData,
+    mode,
+    nBackChartData,
+    reactionChartData,
+    sprintMathChartData,
+    timedChartData
+  ]);
 
   const compareChartData = useMemo<CompareChartPoint[]>(() => {
     if (!compareEnabled) {
@@ -636,6 +728,62 @@ export function StatsPage() {
               label: `Лучший отклик: ${bestPoint.bestReactionMs.toFixed(0)} мс`,
               value: bestPoint.bestReactionMs,
               date: bestPoint.date
+        }
+          : null
+      };
+    }
+
+    if (mode === "n_back") {
+      const values = nBackChartData.map((point) => point.avgScore);
+      const trend = splitForTrend(values);
+      const changePct = computeChangePercent(trend.previous, trend.current, true);
+      const bestPoint =
+        nBackChartData.length > 0
+          ? nBackChartData.reduce((best, point) =>
+              point.avgScore > best.avgScore ? point : best
+            )
+          : null;
+
+      return {
+        headline: buildProgressHeadline(changePct, "score в N-Back Lite", nBackChartData.length),
+        previousAvg: trend.previous,
+        currentAvg: trend.current,
+        changePct,
+        snapshot: bestPoint
+          ? {
+              label: `Лучший score: ${bestPoint.avgScore.toFixed(2)}`,
+              value: bestPoint.avgScore,
+              date: bestPoint.date
+            }
+          : null
+      };
+    }
+
+    if (mode === "decision_rush") {
+      const values = decisionChartData.map((point) => point.avgScore);
+      const trend = splitForTrend(values);
+      const changePct = computeChangePercent(trend.previous, trend.current, true);
+      const bestPoint =
+        decisionChartData.length > 0
+          ? decisionChartData.reduce((best, point) =>
+              point.avgScore > best.avgScore ? point : best
+            )
+          : null;
+
+      return {
+        headline: buildProgressHeadline(
+          changePct,
+          "score в Decision Rush",
+          decisionChartData.length
+        ),
+        previousAvg: trend.previous,
+        currentAvg: trend.current,
+        changePct,
+        snapshot: bestPoint
+          ? {
+              label: `Лучший score: ${bestPoint.avgScore.toFixed(2)}`,
+              value: bestPoint.avgScore,
+              date: bestPoint.date
             }
           : null
       };
@@ -664,7 +812,15 @@ export function StatsPage() {
           }
         : null
     };
-  }, [classicChartData, mode, reactionChartData, sprintMathChartData, timedChartData]);
+  }, [
+    classicChartData,
+    decisionChartData,
+    mode,
+    nBackChartData,
+    reactionChartData,
+    sprintMathChartData,
+    timedChartData
+  ]);
 
   const isEmpty = useMemo(() => {
     if (mode === "classic") {
@@ -676,10 +832,18 @@ export function StatsPage() {
     if (mode === "reaction") {
       return reactionChartData.length === 0;
     }
+    if (mode === "n_back") {
+      return nBackChartData.length === 0;
+    }
+    if (mode === "decision_rush") {
+      return decisionChartData.length === 0;
+    }
     return sprintMathChartData.length === 0;
   }, [
     classicChartData.length,
+    decisionChartData.length,
     mode,
+    nBackChartData.length,
     reactionChartData.length,
     sprintMathChartData.length,
     timedChartData.length
@@ -731,6 +895,22 @@ export function StatsPage() {
           data-testid="stats-mode-reaction"
         >
           Reaction
+        </button>
+        <button
+          type="button"
+          className={mode === "n_back" ? "btn-secondary is-active" : "btn-secondary"}
+          onClick={() => setMode("n_back")}
+          data-testid="stats-mode-nback"
+        >
+          N-Back
+        </button>
+        <button
+          type="button"
+          className={mode === "decision_rush" ? "btn-secondary is-active" : "btn-secondary"}
+          onClick={() => setMode("decision_rush")}
+          data-testid="stats-mode-decision-rush"
+        >
+          Decision Rush
         </button>
         <button
           type="button"
@@ -833,9 +1013,44 @@ export function StatsPage() {
                 value={`${challengeSummary.completionRatePct.toFixed(1)}%`}
               />
             </div>
+
+            <div className="stats-grid compact" data-testid="stats-daily-challenge-streak">
+              <StatCard
+                title="Текущая серия"
+                value={`${challengeStreak?.currentStreakDays ?? 0} дн.`}
+              />
+              <StatCard title="Лучшая серия" value={`${challengeStreak?.bestStreakDays ?? 0} дн.`} />
+              <StatCard
+                title="Выполненных дней"
+                value={String(challengeStreak?.completedDays ?? 0)}
+              />
+              <StatCard title="Период" value={formatPeriodLabel(challengeSummary.period)} />
+            </div>
             <p className="comparison-note" data-testid="stats-daily-challenge-note">
-              Период: {formatPeriodLabel(challengeSummary.period)}.
+              Период: {formatPeriodLabel(challengeSummary.period)}. Серия считается по дням подряд с выполненным challenge.
             </p>
+
+            {challengeTrendChartData.length > 0 ? (
+              <div className="chart-box" data-testid="stats-daily-challenge-trend">
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={challengeTrendChartData}>
+                    <XAxis dataKey="dateShort" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip
+                      labelFormatter={(_, payload) => payload?.[0]?.payload?.localDate ?? ""}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="completionPct"
+                      name="Выполнение challenge (%)"
+                      stroke="#1e7f71"
+                      strokeWidth={3}
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : null}
 
             {challengeHistory.length === 0 ? (
               <p className="status-line">За выбранный период challenge еще не создавались.</p>
@@ -909,6 +1124,92 @@ export function StatsPage() {
                   ? reactionData.reduce((sum, point) => sum + point.avgScore * point.count, 0) /
                       reactionData.reduce((sum, point) => sum + point.count, 0)
                   : null
+              )}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {mode === "n_back" ? (
+        <section className="setup-block" data-testid="stats-nback-summary">
+          <h3>N-Back Lite: итоги</h3>
+          <div className="stats-grid compact">
+            <StatCard
+              title="Сессий"
+              value={String(nBackData.reduce((sum, point) => sum + point.count, 0))}
+            />
+            <StatCard
+              title="Точность"
+              value={formatMetric(
+                nBackData.length > 0
+                  ? (nBackData.reduce((sum, point) => sum + point.accuracy * point.count, 0) /
+                      nBackData.reduce((sum, point) => sum + point.count, 0)) *
+                      100
+                  : null,
+                1,
+                "%"
+              )}
+            />
+            <StatCard
+              title="Средний score"
+              value={formatMetric(
+                nBackData.length > 0
+                  ? nBackData.reduce((sum, point) => sum + point.avgScore * point.count, 0) /
+                      nBackData.reduce((sum, point) => sum + point.count, 0)
+                  : null
+              )}
+            />
+            <StatCard
+              title="Средний темп"
+              value={formatMetric(
+                nBackData.length > 0
+                  ? nBackData.reduce((sum, point) => sum + point.speed * point.count, 0) /
+                      nBackData.reduce((sum, point) => sum + point.count, 0)
+                  : null
+              )}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {mode === "decision_rush" ? (
+        <section className="setup-block" data-testid="stats-decision-rush-summary">
+          <h3>Decision Rush: итоги</h3>
+          <div className="stats-grid compact">
+            <StatCard
+              title="Сессий"
+              value={String(decisionData.reduce((sum, point) => sum + point.count, 0))}
+            />
+            <StatCard
+              title="Точность"
+              value={formatMetric(
+                decisionData.length > 0
+                  ? (decisionData.reduce((sum, point) => sum + point.accuracy * point.count, 0) /
+                      decisionData.reduce((sum, point) => sum + point.count, 0)) *
+                      100
+                  : null,
+                1,
+                "%"
+              )}
+            />
+            <StatCard
+              title="Средний score"
+              value={formatMetric(
+                decisionData.length > 0
+                  ? decisionData.reduce((sum, point) => sum + point.avgScore * point.count, 0) /
+                      decisionData.reduce((sum, point) => sum + point.count, 0)
+                  : null
+              )}
+            />
+            <StatCard
+              title="P90"
+              value={formatMetric(
+                decisionData.length > 0
+                  ? decisionData.reduce((sum, point) => sum + point.reactionP90Ms * point.count, 0) /
+                      decisionData.reduce((sum, point) => sum + point.count, 0)
+                  : null,
+                0,
+                " мс"
               )}
             />
           </div>
@@ -1183,6 +1484,58 @@ export function StatsPage() {
                   type="monotone"
                   dataKey="accuracyPct"
                   name="Точность (%)"
+                  stroke="#2e62c9"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
+            ) : mode === "n_back" ? (
+              <LineChart data={nBackChartData}>
+                <XAxis dataKey="dateShort" />
+                <YAxis />
+                <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
+                <Line
+                  type="monotone"
+                  dataKey="accuracyPct"
+                  name="Точность (%)"
+                  stroke="#1e7f71"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avgScore"
+                  name="Средний score"
+                  stroke="#f2a93b"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            ) : mode === "decision_rush" ? (
+              <LineChart data={decisionChartData}>
+                <XAxis dataKey="dateShort" />
+                <YAxis />
+                <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
+                <Line
+                  type="monotone"
+                  dataKey="accuracyPct"
+                  name="Точность (%)"
+                  stroke="#1e7f71"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avgScore"
+                  name="Средний score"
+                  stroke="#f2a93b"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="reactionP90Ms"
+                  name="P90 (мс)"
                   stroke="#2e62c9"
                   strokeWidth={2}
                   dot={{ r: 3 }}

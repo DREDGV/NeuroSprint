@@ -26,4 +26,14 @@ describe("reaction challenges", () => {
     expect(correct).toHaveLength(1);
     expect(correct[0]?.secondaryLabel).toBeTruthy();
   });
+
+  it("builds number challenge with exactly one correct option", () => {
+    const challenge = buildReactionChallenge("number_match");
+    expect(challenge).not.toBeNull();
+    expect(challenge?.options).toHaveLength(4);
+    expect(challenge?.prompt).toContain("Найдите число");
+
+    const correct = challenge?.options.filter((option) => option.isCorrect) ?? [];
+    expect(correct).toHaveLength(1);
+  });
 });

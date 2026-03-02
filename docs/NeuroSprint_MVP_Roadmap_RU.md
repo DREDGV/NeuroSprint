@@ -1,7 +1,7 @@
 ﻿# NeuroSprint MVP Roadmap (RU)
 
 ## Scope
-### In scope (MVP + v0.4 + v0.4.2 + v0.5.K)
+### In scope (MVP + v0.4 + v0.4.2 + v0.8 planning)
 - Профили пользователей на одном устройстве.
 - Активный пользователь в `localStorage` (`ns.activeUserId`).
 - Шульте: `Classic+`, `Timed+`, `Reverse`.
@@ -21,6 +21,9 @@
 - Sprint Math в простой статистике `/stats` + e2e smoke сценарий нового цикла.
 - Sprint Math в `TrainingHub` (активная карточка и пользовательский вход без прямого URL).
 - Sprint Math в расширенной статистике `/stats/individual` (режимы, тренды и блок последних сессий).
+- N-Back Lite: `1-back/2-back`, setup + session, сохранение в Dexie, интеграция в статистику, рекомендации и daily challenge.
+- Decision Rush: rules-based `ДА/НЕТ` (warmup/core/boss), адаптивный темп, combo, лидерборд и аналитика.
+- Memory Grid Rush: последовательности на сетке (Classic/Rush), прогресс span, лидерборд и аналитика памяти.
 - Встроенная страница `Справка` с историей версий внутри приложения (`/help`).
 - Проектный `CHANGELOG` с версионированием и датами (`docs/CHANGELOG_RU.md`).
 - Явная индикация активного пользователя в UI (header + home + session pages).
@@ -31,7 +34,7 @@
 - Backend/облако/аккаунты.
 - Синхронизация между устройствами.
 - APK-native сборка.
-- Новые тренировочные модули вне Шульте и Sprint Math (перенос на v0.5+).
+- Новые тренировочные модули вне Шульте / Sprint Math / Reaction / N-Back / Decision Rush / Memory Grid (перенос на следующий этап).
 
 ## Architecture Baseline
 - Frontend: `React + TypeScript + Vite`.
@@ -85,6 +88,10 @@
 | v0.5.N | Unified result screen | Done | Вынесен общий `SessionResultSummary` и унифицированы пост-сессионные экраны Schulte/Sprint Math |
 | v0.5.O | Interactive hints + Reaction beta | Done | Добавлен `InfoHint`, внедрены подсказки в setup/preview потоки, добавлен новый модуль `Reaction` и e2e smoke |
 | v0.5.P | Reaction persistence + analytics + recommendation | Done | Reaction сохранение/статистика/групповые сравнения, pre-session интеграция, mode-aware рекомендации |
+| v0.7.A | Reaction number-match | Done | Добавлен `reaction_number` и интеграция по pre-session/recommendation/stats |
+| v0.7.B | N-Back Lite module | Done | Новый модуль `N-Back Lite` (`nback_1/nback_2`) с setup/session/save/stats/recommendation/daily challenge |
+| v0.7.C | Decision Rush module | In progress | Новый модуль принятия решений (Warmup/Core/Boss, адаптивный темп, score по P90, leaderboard) |
+| v0.8.A | Memory Grid Rush module | Planned | Модуль памяти последовательностей (Classic/Rush, рост span, leaderboard, статистика прогресса) |
 
 ## Interfaces & Contracts
 ### Routes
@@ -95,6 +102,11 @@
 - `/training/schulte/:mode`
 - `/training/sprint-math`
 - `/training/sprint-math/session`
+- `/training/reaction`
+- `/training/nback`
+- `/training/nback/session`
+- `/training/decision-rush`
+- `/training/decision-rush/session`
 - `/stats`
 - `/stats/individual`
 - `/stats/group`
@@ -113,15 +125,16 @@
 - `ns.appRole`
 
 ### Domain contracts (актуально)
-- `Mode = "classic" | "timed" | "reverse" | "sprint_math"`
+- `Mode = "classic" | "timed" | "reverse" | "sprint_math" | "reaction" | "n_back" | "decision_rush"`
 - `GridSize = 3 | 4 | 5 | 6`
 - `Session` расширен полями `moduleId`, `modeId`, `level`, `presetId`, `adaptiveSource`, `visualThemeId`, `audioEnabledSnapshot`.
+- `TrainingModeId` расширен режимами `reaction_number`, `nback_1`, `nback_2`.
 - Добавлены `UserModeProfile`, `AdaptiveDecision`, `ClassGroup`, `GroupMember`, `UserPreference`, `SchulteThemeConfig`, `AudioSettings`.
-- Добавлен контракт `SprintMath` (`setup`, `task`, `metrics`, `session contract`) как отдельный слой подготовки v0.5.
+- Добавлены контракты `SprintMath` и `N-Back Lite` (`setup`, `task`, `metrics`, `session contract`).
 
 ### Repository contracts
 - `userRepository.create(name, role)/list/getById/rename/updateRole/remove`
-- `sessionRepository.save/listByUser/listByUserMode/aggregateDailyClassic/aggregateDailyTimed/getModeMetricSnapshot`
+- `sessionRepository.save/listByUser/listByUserMode/aggregateDailyClassic/aggregateDailyTimed/aggregateDailyNBack/getModeMetricSnapshot`
 - `trainingRepository.getUserModeProfile/saveUserModeProfile/listRecentSessionsByMode/evaluateAdaptiveLevel`
 - `groupRepository.createGroup/listGroups/renameGroup/removeGroup/createStudent/assignStudent/listStudents/removeMember/aggregateGroupStats/getUserPercentileInGroup`
 - `preferenceRepository.getOrCreate/saveSchulteTheme/saveAudioSettings`
@@ -135,6 +148,7 @@
 - percentile/group helpers.
 - theme resolver + audio settings merge.
 - motivation helpers (streak badges + daily mini-goals).
+- N-Back engine/scoring (`1-back/2-back`, hit/miss/falseAlarm/correctReject).
 
 ### Integration
 - training hub.
@@ -145,6 +159,7 @@
 - settings dev-mode visibility.
 - stats comparison blocks (individual/group).
 - schulte grid behavior.
+- nback setup/session/save flow.
 
 ### E2E smoke
 - profile -> home -> pre-session -> classic -> stats.
@@ -152,6 +167,7 @@
 - classes: create class + bulk students.
 - rainbow 3x3 session flow.
 - settings: fixture generation + benchmark + comparison views.
+- profile -> training -> nback -> result -> stats.
 
 ## Execution Log
 - 2026-02-23: Реализован MVP (M0-M6).
@@ -672,5 +688,134 @@
 
 ### Next Session Start
 1. Перейти к следующему инкременту плана: challenge streak + долгосрочный тренд и подготовка блока новых игр.
+
+## Incremental Update: v0.6.H (2026-03-01)
+### Status
+- Done.
+
+### Delivered in this session
+- Расширена challenge-аналитика в `/stats`:
+  - добавлен блок `Серия challenge`:
+    - текущая серия (`current streak`),
+    - лучшая серия (`best streak`),
+    - количество выполненных challenge-дней в выбранном периоде;
+  - добавлен долгосрочный тренд выполнения challenge (линия `0/100%` по дням).
+- Расширен `dailyChallengeRepository`:
+  - `getStreakSummary(userId, period)`,
+  - `listCompletionTrend(userId, period, limit)`,
+  - `buildDailyChallengeStreak(...)` как чистый helper-контракт.
+- Исправлены битые строки в `dailyChallengeRepository` (режимы Reaction и тексты challenge) для стабильной UTF-8 локализации.
+- Обновлены тесты:
+  - `tests/unit/daily-challenge.test.ts` (проверка streak-логики),
+  - `tests/integration/stats-page-sprint.test.tsx` (проверка streak/trend на `/stats` и reload по периоду).
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm test -- tests/unit/daily-challenge.test.ts tests/integration/stats-page-sprint.test.tsx tests/integration/home-daily-challenge.test.tsx` - passed.
+- `npm run build` - passed.
+
+### Next Session Start
+1. Перейти к следующему блоку плана: новый игровой модуль (первая версия) + дружелюбный интерактивный onboarding для новичка.
+
+## Incremental Update: v0.7.A (2026-03-01)
+### Status
+- Done.
+
+### Delivered in this session
+- Добавлена новая игровая вариация в модуле `Reaction`:
+  - `Reaction: Число-цель` (`reaction_number`, variant `number_match`),
+  - игровой формат: выбор целевого числа в квадратном поле `2x2`.
+- Новый режим подключен по всей цепочке:
+  - `TRAINING_MODES` и pre-session выбор режима,
+  - запуск по маршруту `/training/reaction?mode=reaction_number`,
+  - сохранение сессий в IndexedDB c `modeId="reaction_number"`,
+  - реакционная аналитика и compare-band учитывают новый режим.
+- Обновлен recommendation-engine:
+  - новый bucket `reaction_number`,
+  - mode-aware приоритет и причина рекомендации для режима.
+- Проведена cleanup-правка кодировки:
+  - `PreSessionPage`, `presets`, `recommendation`, `reaction challenges` переведены в читаемый UTF-8 текст.
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm test -- tests/unit/reaction-challenges.test.ts tests/integration/reaction-challenge-modes.test.tsx tests/integration/pre-session-page.test.tsx tests/unit/recommendation.test.ts tests/integration/training-hub.test.tsx tests/integration/stats-page-sprint.test.tsx` - passed.
+- `npm run build` - passed.
+- `npm run test:e2e -- tests/e2e/reaction.spec.ts` - passed.
+
+### Next Session Start
+1. Перейти к следующему блоку новых игр: определить и реализовать отдельный модуль (не вариацию) с setup + session + сохранением результатов.
+
+## Incremental Update: v0.7.B (2026-03-01)
+### Status
+- Done.
+
+### Delivered in this session
+- Реализован новый модуль `N-Back Lite`:
+  - setup-экран `/training/nback` с выбором `1-back/2-back` и `60/90 сек`,
+  - session-экран `/training/nback/session` с сеткой `3x3`, ответами `Совпало/Не совпало`, таймером и прогрессом.
+- Добавлен движок `src/features/nback/engine.ts`:
+  - генерация последовательности,
+  - оценка шагов (`hit/miss/falseAlarm/correctReject`),
+  - расчет итоговых метрик (`accuracy/speed/errors/score/effectiveCorrect`).
+- Добавлено сохранение результатов в `sessions`:
+  - `taskId="n_back"`,
+  - `moduleId="n_back"`,
+  - `modeId="nback_1" | "nback_2"`,
+  - `mode="n_back"`.
+- Расширены контракты и маппинг режимов:
+  - `Mode/TrainingModuleId/TrainingModeId/Session.taskId`,
+  - `modeMapping` (`nback_1/nback_2 -> n_back`),
+  - `TRAINING_MODULES` и `TRAINING_MODES`.
+- Интегрировано в пользовательские потоки:
+  - `TrainingHub` (модуль активен),
+  - `Pre-session` (запуск и подсказки),
+  - `Daily Challenge` (ротация и launch path),
+  - recommendation engine (`nback_1/nback_2`),
+  - `/stats`, `/stats/individual`, `/stats/group`.
+- Расширен `sessionRepository`:
+  - `aggregateDailyNBack(userId)`,
+  - поддержка `nback_1/nback_2` в `aggregateDailyByModeId`.
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm test -- tests/unit/nback-engine.test.ts tests/unit/recommendation.test.ts tests/unit/daily-challenge.test.ts tests/unit/session-aggregation.test.ts` - passed.
+- `npm test -- tests/integration/training-hub.test.tsx tests/integration/pre-session-page.test.tsx tests/integration/stats-page-sprint.test.tsx tests/integration/nback-setup-session.test.tsx` - passed.
+- `npm run test:e2e -- tests/e2e/nback.spec.ts` - passed.
+- `npm run build` - passed.
+
+### Next Session Start
+1. Перейти к следующему этапу плана: улучшение качества новых игровых модулей (`Reaction/N-Back`) и подготовка отдельного нового модуля памяти v0.7.C.
+
+## Planning Update: v0.7.C + v0.8.A (2026-03-01)
+### Status
+- In progress.
+
+### Accepted direction
+- Следующий основной модуль: `Decision Rush` (rules-based `ДА/НЕТ`, warmup/core/boss, адаптивный темп).
+- Следующий после него: `Memory Grid Rush` (последовательности на сетке, Classic/Rush, рост span).
+
+### Integration order
+1. `v0.7.C Decision Rush`
+- Контракты (`taskId=decision_rush`, `modeId=decision_kids|decision_standard|decision_pro`).
+- Setup + Session + Result + save в `sessions`.
+- Интеграция в `TrainingHub`, `Pre-session`, `Daily Challenge`, `Stats`.
+- Базовый локальный leaderboard (best-of-period).
+
+2. `v0.8.A Memory Grid Rush`
+- Контракты (`taskId=memory_grid_rush`, `modeId=memory_grid_classic|memory_grid_rush`).
+- Setup + Session + Result + save в `sessions`.
+- Интеграция в `TrainingHub`, `Pre-session`, `Daily Challenge`, `Stats`.
+- Локальный leaderboard:
+  - `classic`: сортировка по `spanMax`, tie-break по `avgRecallTimeMs`;
+  - `rush`: сортировка по `score`.
+
+### Visual direction (based on reference)
+- Для обоих модулей использовать полноэкранную “игровую арену” внутри страницы с крупными CTA.
+- Цветовая схема: насыщенный градиентный фон + контрастные карточки задания.
+- Кнопки действий: крупные (`ДА/НЕТ`, `Назад`, `Готово`) с явным состоянием.
+- Отдельный приоритет: не перегружать анимациями, сохранить стабильность на Android.
+
+### Next Session Start
+1. Продолжить `v0.7.C` с шага `C2`: завершить UX-polish `Decision Rush` (экран setup/session), добить интеграцию в stats/recommendation и добавить e2e.
 
 

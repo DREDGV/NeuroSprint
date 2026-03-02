@@ -59,9 +59,7 @@ const TargetIcon = ({ size = 24 }: { size?: number }) => (
 
 const TrophyIcon = ({ size = 24 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
-    <path d="M12 2l-1 3H6a2 2 0 00-2 2v2c0 2.5 1.5 4.5 3.5 5.5A5 5 0 0011 18v2H8v2h8v-2h-3v-2a5 5 0 003.5-3.5c2-1 3.5-3 3.5-5.5V7a2 2 0 00-2-2h-5L12 2z"/>
-    <path d="M4 7H2v2a4 4 0 004 4V7z"/>
-    <path d="M20 7h2v2a4 4 0 01-4 4V7z"/>
+    <path d="M18 5v1h-2V4.5c0-.83-.67-1.5-1.5-1.5S13 3.67 13 4.5V6H6C4.89 6 4 6.89 4 8v4c0 1.1.9 2 2 2h1v7c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-7h1c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-7zm-2 12h-8v-8h8v8zm-2-9c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
   </svg>
 );
 

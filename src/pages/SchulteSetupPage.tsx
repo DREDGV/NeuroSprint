@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useActiveUser } from "../app/ActiveUserContext";
+import { getSchulteLevelDefaults } from "../features/schulte/levelConfig";
 import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import {
@@ -115,6 +116,11 @@ export function SchulteSetupPage() {
   const previewTheme = useMemo(
     () => resolveSchulteTheme(setup.visualThemeId, setup.customTheme),
     [setup.customTheme, setup.visualThemeId]
+  );
+
+  const levelDefaults = useMemo(
+    () => getSchulteLevelDefaults(effectiveLevel, modeId),
+    [effectiveLevel, modeId]
   );
 
   function applyPreset(presetId: TrainingPresetId) {
@@ -469,6 +475,14 @@ export function SchulteSetupPage() {
             </>
           )}
         </div>
+        <p className="status-line">
+          Профиль уровня: {levelDefaults.gridSize}x{levelDefaults.gridSize},{" "}
+          {modeId === "timed_plus" ? `${levelDefaults.timeLimitSec} сек, ` : ""}
+          штраф {levelDefaults.errorPenalty}.
+          {levelDefaults.shiftEnabled
+            ? ` Shift: ${levelDefaults.shiftSwaps} перестановк(и) каждые ${levelDefaults.shiftIntervalSec} сек.`
+            : " Shift отключён."}
+        </p>
       </section>
 
       <section className="session-brief">
@@ -478,6 +492,15 @@ export function SchulteSetupPage() {
         <p>Тема: {SCHULTE_THEME_OPTIONS.find((theme) => theme.id === setup.visualThemeId)?.label}</p>
         {modeId === "timed_plus" ? <p>Время: {setup.timeLimitSec} сек</p> : null}
         <p>Штраф ошибки: {setup.errorPenalty}</p>
+        {setup.shiftEnabled ? (
+          <p>
+            Динамика поля: {setup.shiftSwaps ?? 1} перестановк(и) каждые{" "}
+            {setup.shiftIntervalSec ?? 0} сек.
+          </p>
+        ) : null}
+        {setup.timedBaseClear && modeId === "timed_plus" ? (
+          <p>Базовый Timed: клетки очищаются после верного клика.</p>
+        ) : null}
         <p>Источник сложности: {profile?.autoAdjust ? "Авто" : "Ручной"}</p>
       </section>
 
