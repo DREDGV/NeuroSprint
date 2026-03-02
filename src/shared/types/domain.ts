@@ -114,7 +114,7 @@ export interface Difficulty {
 export interface Session {
   id: string;
   userId: string;
-  taskId: "schulte" | "sprint_math" | "reaction" | "n_back" | "decision_rush";
+  taskId: "schulte" | "sprint_math" | "reaction" | "n_back" | "decision_rush" | "memory_grid" | "pattern_recognition";
   mode: Mode;
   moduleId: TrainingModuleId;
   modeId: TrainingModeId;

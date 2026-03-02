@@ -253,9 +253,9 @@ export function PatternRecognitionSessionPage() {
       errors: metrics.errors,
       correctCount: metrics.correctCount,
       level: levelToNumber(setup.level),
-      presetId: 'pattern_v1',
+      presetId: 'legacy',
       adaptiveSource: setup.modeId === 'pattern_progressive' ? 'auto' : 'manual',
-      visualThemeId: 'classic',
+      visualThemeId: 'classic_bw',
       audioEnabledSnapshot: {
         muted: false,
         volume: 0.35,
@@ -263,6 +263,11 @@ export function PatternRecognitionSessionPage() {
         click: false,
         correct: false,
         error: false
+      },
+      difficulty: {
+        gridSize: 5,
+        numbersCount: 25,
+        mode: 'pattern_recognition'
       },
       // Дополнительные метрики для Pattern Recognition
       reactionP90Ms: metrics.avgReactionTimeMs,

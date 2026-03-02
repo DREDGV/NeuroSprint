@@ -59,7 +59,7 @@ export function PatternRecognitionSetupPage() {
           ))}
         </div>
         <p className="status-line">
-          {PATTERN_MODES.find(m => m.id === setup.modeId)?.description}
+          {PATTERN_MODES.find((m: { id: PatternModeId }) => m.id === setup.modeId)?.description}
         </p>
       </section>
 
@@ -88,7 +88,7 @@ export function PatternRecognitionSetupPage() {
           </select>
         </div>
         <p className="status-line">
-          {PATTERN_LEVELS.find(l => l.id === setup.level)?.description}
+          {PATTERN_LEVELS.find((l: { id: PatternLevel }) => l.id === setup.level)?.description}
         </p>
       </section>
 
@@ -153,7 +153,7 @@ export function PatternRecognitionSetupPage() {
                 type="button"
                 className={isActive ? 'btn-secondary is-active' : 'btn-secondary'}
                 onClick={() =>
-                  setSetup((current) => {
+                  setSetup((current: typeof setup) => {
                     const exists = current.elementTypes.includes(type);
                     return {
                       ...current,
@@ -175,7 +175,7 @@ export function PatternRecognitionSetupPage() {
         <p className="status-line">
           {setup.elementTypes.length === 0 
             ? 'Выберите хотя бы один тип' 
-            : `Используется: ${setup.elementTypes.map(t => 
+            : `Используется: ${setup.elementTypes.map((t: string) => 
                 t === 'color' ? 'цвет' : t === 'shape' ? 'форма' : 'размер'
               ).join(', ')}`}
         </p>
@@ -183,11 +183,11 @@ export function PatternRecognitionSetupPage() {
 
       <section className="session-brief" data-testid="pattern-session-brief">
         <h3>Перед стартом</h3>
-        <p>Режим: {PATTERN_MODES.find(m => m.id === setup.modeId)?.title}</p>
-        <p>Уровень: {PATTERN_LEVELS.find(l => l.id === setup.level)?.title}</p>
+        <p>Режим: {PATTERN_MODES.find((m: { id: PatternModeId }) => m.id === setup.modeId)?.title}</p>
+        <p>Уровень: {PATTERN_LEVELS.find((l: { id: PatternLevel }) => l.id === setup.level)?.title}</p>
         {setup.modeId === 'pattern_timed' && <p>Время: {setup.durationSec} сек</p>}
         {setup.modeId === 'pattern_classic' && <p>Вопросов: {setup.questionCount}</p>}
-        <p>Элементы: {setup.elementTypes.map(t => 
+        <p>Элементы: {setup.elementTypes.map((t: string) => 
           t === 'color' ? 'цвет' : t === 'shape' ? 'форма' : 'размер'
         ).join(', ')}</p>
       </section>

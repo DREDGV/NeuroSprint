@@ -118,12 +118,12 @@ function generateProgression(level: PatternLevel, elementTypes: ('color' | 'shap
   for (let i = 0; i < 3; i++) {
     sequence.push({
       ...baseElement,
-      size: sizes[Math.min(i, sizes.length - 1)]
+      size: sizes[Math.min(i, sizes.length - 1)] as PatternSize
     });
   }
   
   // Следующий элемент - максимальный размер (продолжение)
-  const correctAnswer = { ...baseElement, size: 'large' };
+  const correctAnswer = { ...baseElement, size: 'large' as PatternSize };
   
   const options: PatternElement[] = [correctAnswer];
   while (options.length < 3) {

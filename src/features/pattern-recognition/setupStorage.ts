@@ -1,4 +1,4 @@
-import type { PatternSetup } from '../../../shared/types/pattern';
+import type { PatternSetup } from '../../shared/types/pattern';
 import { DEFAULT_PATTERN_SETUP, normalizePatternSetup } from './engine/patternConfig';
 
 const STORAGE_KEY = 'neurosprint:pattern-recognition:setup';

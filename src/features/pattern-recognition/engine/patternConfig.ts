@@ -69,3 +69,5 @@ export function getPatternModeTitle(modeId: PatternModeId): string {
 export function getPatternLevelTitle(level: PatternLevel): string {
   return PATTERN_LEVELS.find(l => l.id === level)?.title ?? 'Standard';
 }
+
+export type { PatternLevel, PatternModeId };

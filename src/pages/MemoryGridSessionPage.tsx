@@ -108,13 +108,14 @@ export function MemoryGridSessionPage() {
   const [bestSession, setBestSession] = useState<Session | null>(null);
   const [activeCell, setActiveCell] = useState<number | null>(null);
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
+  const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
 
   const totalCells = getGridCells(setup.gridSize);
   const isRush = setup.mode === "rush";
   const rushDurationMs = (setup.durationSec ?? 60) * 1000;
   const sessionElapsedMs = useMemo(() => {
     if (!isRush || phase === "intro" || phase === "finished") return 0;
-    return sequences.length * (MEMORY_GRID_SHOW_MS + MEMORY_GRID_PAUSE_MS) + recallTimes.reduce((a, b) => a + b, 0);
+    return sequences.length * MEMORY_GRID_STEP_INTERVAL_MS + recallTimes.reduce((a, b) => a + b, 0);
   }, [sequences.length, recallTimes, isRush, phase]);
 
   // Timer for phases
@@ -133,7 +134,7 @@ export function MemoryGridSessionPage() {
         }
 
         // Phase transitions
-        if (phase === "showing" && next >= MEMORY_GRID_SHOW_MS) {
+        if (phase === "showing" && next >= MEMORY_GRID_SHOW_MS * currentLevel) {
           startRecallPhase();
           return 0;
         }
@@ -143,7 +144,7 @@ export function MemoryGridSessionPage() {
     }, 50);
 
     return () => window.clearInterval(timer);
-  }, [phase, isRush, sessionElapsedMs]);
+  }, [phase, isRush, sessionElapsedMs, currentLevel]);
 
   function startSession(): void {
     setPhase("intro");
@@ -156,7 +157,21 @@ export function MemoryGridSessionPage() {
     setSaveError(null);
     setPreviousSession(null);
     setBestSession(null);
+    setLastAnswerCorrect(null);
     startLevel(setup.startLevel);
+  }
+
+  function restartSession(): void {
+    setSequences([]);
+    setUserResponses([]);
+    setRecallTimes([]);
+    setResult(null);
+    setSaved(false);
+    setSaveError(null);
+    setPreviousSession(null);
+    setBestSession(null);
+    setLastAnswerCorrect(null);
+    startSession();
   }
 
   function startLevel(level: number): void {
@@ -167,19 +182,19 @@ export function MemoryGridSessionPage() {
     setSelectedCell(null);
     setPhaseElapsedMs(0);
     setPhase("showing");
+    setLastAnswerCorrect(null);
     
     // Показ последовательности с комфортной скоростью
     let index = 0;
     const showInterval = window.setInterval(() => {
       if (index < sequence.length) {
         setActiveCell(sequence[index]);
-        // Клетка горит 400мс, потом гаснет
         setTimeout(() => setActiveCell(null), 400);
         index += 1;
       } else {
         window.clearInterval(showInterval);
       }
-    }, MEMORY_GRID_STEP_INTERVAL_MS); // 1500мс между клетками
+    }, MEMORY_GRID_STEP_INTERVAL_MS);
   }
 
   function startRecallPhase(): void {
@@ -200,7 +215,6 @@ export function MemoryGridSessionPage() {
       completeLevel(newResponse, recallTime);
     }
 
-    // Clear selection highlight after delay
     setTimeout(() => setSelectedCell(null), 200);
   }
 
@@ -210,24 +224,21 @@ export function MemoryGridSessionPage() {
     setSequences((prev) => [...prev, currentSequence]);
     setUserResponses((prev) => [...prev, response]);
     setRecallTimes((prev) => [...prev, recallTime]);
+    setLastAnswerCorrect(isCorrect);
 
     if (isCorrect) {
-      // Next level (максимум 7)
       setTimeout(() => {
         const nextLevel = Math.min(7, currentLevel + 1);
         startLevel(nextLevel);
-      }, 500);
+      }, 800);
     } else {
-      // Wrong answer
       if (!isRush) {
-        // Classic mode: game over
-        finishSession();
+        setTimeout(finishSession, 800);
       } else {
-        // Rush mode: decrease level and continue
         setTimeout(() => {
           const nextLevel = Math.max(1, currentLevel - 1);
           startLevel(nextLevel);
-        }, 500);
+        }, 800);
       }
     }
   }
@@ -251,7 +262,7 @@ export function MemoryGridSessionPage() {
 
     let cancelled = false;
     const session = buildSession(activeUserId, setup, result);
-    const modeId = modeIdFromMemoryGridMode(setup.mode, setup.gridSize);
+    const modeId = modeIdFromMemoryGridMode(setup.mode, setup.gridSize) as any;
 
     void sessionRepository
       .save(session)
@@ -287,28 +298,67 @@ export function MemoryGridSessionPage() {
     return true;
   }
 
-  const showingProgress = phase === "showing" ? (phaseElapsedMs / MEMORY_GRID_SHOW_MS) * 100 : 0;
+  const showingProgress = phase === "showing" ? (phaseElapsedMs / (MEMORY_GRID_SHOW_MS * currentLevel)) * 100 : 0;
   const rushProgress = isRush ? Math.min(100, (sessionElapsedMs / rushDurationMs) * 100) : 0;
+  const correctCount = sequences.length;
+  const currentCombo = sequences.length > 1 ? sequences.reduce((acc, _, i) => {
+    if (i === 0) return 0;
+    return arraysEqual(sequences[i], sequences[i-1]) ? acc + 1 : 0;
+  }, 0) : 0;
 
   return (
-    <section className="panel" data-testid="memory-grid-session-page">
-      <h2>Memory Grid Rush</h2>
-      <p>
-        Запомните последовательность подсвеченных клеток и воспроизведите её кликами.
-      </p>
-      <p className="active-user-inline" data-testid="session-active-user">
-        Активный пользователь: <strong>{activeUserName}</strong>
-      </p>
+    <section className="panel memory-grid-session-panel" data-testid="memory-grid-session-page">
+      {/* Header */}
+      <header className="memory-grid-header">
+        <div className="memory-grid-header-content">
+          <h2 className="memory-grid-title">
+            <span className="header-icon">🧠</span>
+            Memory Grid Rush
+          </h2>
+          <p className="memory-grid-subtitle">
+            {setup.mode === "classic" ? "Classic" : "Rush"} • {setup.gridSize}×{setup.gridSize} • Ур. {setup.startLevel}
+          </p>
+        </div>
+        
+        {isRush && (
+          <div className="memory-grid-rush-timer">
+            <span className="timer-icon">⏱️</span>
+            <span className="timer-value">{formatMs(Math.max(0, rushDurationMs - sessionElapsedMs))}</span>
+          </div>
+        )}
+      </header>
 
-      <div className="stats-grid">
-        <StatCard title="Уровень" value={String(currentLevel)} />
-        <StatCard title="Серия" value={String(sequences.length)} />
-        <StatCard title="Лучший" value={String(result?.spanMax ?? Math.max(...sequences.map(s => s.length), setup.startLevel))} />
-        {isRush && <StatCard title="Время" value={formatMs(rushDurationMs - sessionElapsedMs)} />}
+      {/* Stats Row */}
+      <div className="nback-stats-row">
+        <div className="nback-stat-card">
+          <span className="nback-stat-label">Уровень</span>
+          <span className="nback-stat-value">{currentLevel}</span>
+        </div>
+        <div className="nback-stat-card">
+          <span className="nback-stat-label">✓ Верно</span>
+          <span className="nback-stat-value success">{correctCount}</span>
+        </div>
+        <div className="nback-stat-card">
+          <span className="nback-stat-label">✗ Ошибки</span>
+          <span className="nback-stat-value error">{sequences.length > 0 ? userResponses.filter((r, i) => !arraysEqual(r, sequences[i])).length : 0}</span>
+        </div>
+        <div className="nback-stat-card">
+          <span className="nback-stat-label">🔥 Серия</span>
+          <span className="nback-stat-value combo">{currentCombo >= 3 ? `🔥${currentCombo}` : currentCombo}</span>
+        </div>
       </div>
 
-      {isRush && (
-        <div className="today-progress" style={{ marginTop: 12 }}>
+      {/* Phase Indicator */}
+      <div className={`memory-grid-phase-indicator ${phase}`}>
+        {phase === "intro" && "Нажмите Старт для начала"}
+        {phase === "showing" && "👀 Запомните последовательность!"}
+        {phase === "recalling" && "👆 Воспроизведите последовательность"}
+        {phase === "finished" && "✅ Сессия завершена"}
+      </div>
+
+      {/* Progress Bar для Rush */}
+      {isRush && phase !== "intro" && phase !== "finished" && (
+        <div className="today-progress" style={{ marginTop: 12, marginBottom: 12 }}>
           <div className="progress-track">
             <div className="progress-fill" style={{ width: `${rushProgress}%` }} />
           </div>
@@ -316,17 +366,17 @@ export function MemoryGridSessionPage() {
         </div>
       )}
 
-      {/* Phase indicator */}
-      <div className={`memory-grid-phase-indicator ${phase}`}>
-        {phase === "intro" && "Нажмите Старт"}
-        {phase === "showing" && "Запомните последовательность!"}
-        {phase === "recalling" && "Воспроизведите последовательность"}
-        {phase === "finished" && "Сессия завершена"}
-      </div>
-
-      {/* Game grid */}
-      <section className="setup-block">
+      {/* Game Grid */}
+      <section className="setup-block memory-grid-section">
         <h3>Игровое поле</h3>
+        
+        {/* Индикатор последнего ответа */}
+        {lastAnswerCorrect !== null && (
+          <div className={`nback-answer-indicator ${lastAnswerCorrect ? 'correct' : 'incorrect'}`}>
+            {lastAnswerCorrect ? '✓ Правильно!' : '✗ Ошибка'}
+          </div>
+        )}
+        
         <div 
           className="nback-grid memory-grid"
           style={{ gridTemplateColumns: `repeat(${setup.gridSize}, 1fr)` }}
@@ -354,6 +404,7 @@ export function MemoryGridSessionPage() {
           })}
         </div>
 
+        {/* Progress Bar для показа */}
         {phase === "showing" && (
           <div className="memory-grid-progress-bar">
             <div className="memory-grid-progress-fill" style={{ width: `${showingProgress}%` }} />
@@ -361,26 +412,28 @@ export function MemoryGridSessionPage() {
         )}
 
         <p className="status-line" data-testid="memory-grid-status">
-          {phase === "showing" && `Показ последовательности из ${currentLevel} клеток...`}
+          {phase === "showing" && `Запомните ${currentLevel} клеток...`}
           {phase === "recalling" && `Воспроизведите ${currentLevel} клеток`}
           {phase === "finished" && "Результаты ниже"}
+          {phase === "intro" && "Нажмите Старт"}
         </p>
       </section>
 
-      {/* Controls */}
-      {phase !== "finished" && (
-        <div className="action-row">
+      {/* Controls - крупные кнопки */}
+      {phase !== "finished" ? (
+        <div className="nback-controls" style={{ gridTemplateColumns: "1fr" }}>
           <button
             type="button"
-            className="btn-primary"
-            onClick={startSession}
+            className="nback-btn nback-btn-start"
+            onClick={phase === "showing" || phase === "recalling" ? restartSession : startSession}
             disabled={phase === "showing" || phase === "recalling"}
             data-testid="memory-grid-start-btn"
           >
-            {phase === "intro" ? "Старт" : "Заново"}
+            <span className="nback-btn-icon">{phase === "intro" ? "▶" : "↻"}</span>
+            <span className="nback-btn-text">{phase === "intro" ? "Старт" : "Заново"}</span>
           </button>
         </div>
-      )}
+      ) : null}
 
       {/* Results */}
       {result && (
