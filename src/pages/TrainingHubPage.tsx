@@ -7,7 +7,9 @@ const modulePrimaryRouteById: Record<string, string> = {
   sprint_math: "/training/sprint-math",
   reaction: "/training/reaction",
   n_back: "/training/nback",
-  decision_rush: "/training/decision-rush"
+  memory_grid: "/training/memory-grid",
+  decision_rush: "/training/decision-rush",
+  pattern_recognition: "/training/pattern-recognition"
 };
 
 const modulePreSessionRouteById: Record<string, string> = {
@@ -15,6 +17,7 @@ const modulePreSessionRouteById: Record<string, string> = {
   sprint_math: "/training/pre-session?module=sprint_math",
   reaction: "/training/pre-session?module=reaction",
   n_back: "/training/pre-session?module=n_back",
+  memory_grid: "/training/pre-session?module=memory_grid",
   decision_rush: "/training/pre-session?module=decision_rush"
 };
 
@@ -61,6 +64,16 @@ const DecisionIcon = ({ size = 32 }: { size?: number }) => (
     <path d="M12 3l9 4.5v9L12 21l-9-4.5v-9L12 3z"/>
     <path d="M12 12l4-4M12 12l-4 4"/>
     <circle cx="12" cy="12" r="2" fill="currentColor"/>
+  </svg>
+);
+
+const PatternIcon = ({ size = 32 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+    <circle cx="6" cy="6" r="2.5" fill="currentColor"/>
+    <circle cx="18" cy="6" r="2.5" fill="currentColor"/>
+    <circle cx="6" cy="18" r="2.5" fill="currentColor"/>
+    <circle cx="18" cy="18" r="2.5" fill="currentColor"/>
+    <path d="M6 6l12 12M18 6L6 18"/>
   </svg>
 );
 
@@ -163,6 +176,13 @@ export function TrainingHubPage() {
       gradient: "linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%)",
       bgLight: "rgba(6, 182, 212, 0.08)",
       icon: <DecisionIcon size={36} />
+    },
+    {
+      id: "pattern_recognition",
+      color: "#8b5cf6",
+      gradient: "linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)",
+      bgLight: "rgba(139, 92, 246, 0.08)",
+      icon: <PatternIcon size={36} />
     }
   ];
 

@@ -16,6 +16,7 @@ import type {
   ModeRecommendation,
   NBackDailyPoint,
   ModeMetricSnapshot,
+  PatternDailyPoint,
   ReactionDailyPoint,
   Session,
   SprintMathDailyPoint,
@@ -233,6 +234,43 @@ export function buildDecisionRushDailyPoints(sessions: Session[]): DecisionRushD
       avgScore,
       reactionP90Ms,
       bestComboAvg,
+      count: values.length
+    });
+  }
+
+  return points.sort(byDateAsc);
+}
+
+export function buildPatternDailyPoints(sessions: Session[]): PatternDailyPoint[] {
+  const grouped = new Map<string, Session[]>();
+  for (const session of sessions) {
+    if (session.mode !== "pattern_recognition") {
+      continue;
+    }
+
+    const bucket = grouped.get(session.localDate);
+    if (bucket) {
+      bucket.push(session);
+    } else {
+      grouped.set(session.localDate, [session]);
+    }
+  }
+
+  const points: PatternDailyPoint[] = [];
+  for (const [date, values] of grouped.entries()) {
+    const accuracy = values.reduce((sum, entry) => sum + entry.accuracy, 0) / values.length;
+    const avgScore = values.reduce((sum, entry) => sum + entry.score, 0) / values.length;
+    const avgReactionTimeMs =
+      values.reduce((sum, entry) => sum + (entry.reactionP90Ms ?? entry.durationMs), 0) /
+      values.length;
+    const bestStreak = Math.max(...values.map(entry => entry.bestCombo ?? 0));
+
+    points.push({
+      date,
+      accuracy,
+      avgScore,
+      avgReactionTimeMs,
+      bestStreak,
       count: values.length
     });
   }
@@ -625,6 +663,15 @@ export const sessionRepository = {
     return buildDecisionRushDailyPoints(sessions);
   },
 
+  async aggregateDailyPattern(userId: string): Promise<PatternDailyPoint[]> {
+    const sessions = await db.sessions
+      .where("userId")
+      .equals(userId)
+      .and((session) => session.mode === "pattern_recognition")
+      .toArray();
+    return buildPatternDailyPoints(sessions);
+  },
+
   async aggregateDailyByModeId(
     userId: string,
     modeId: TrainingModeId
@@ -635,6 +682,7 @@ export const sessionRepository = {
     | ReactionDailyPoint[]
     | NBackDailyPoint[]
     | DecisionRushDailyPoint[]
+    | PatternDailyPoint[]
   > {
     const sessions = await db.sessions
       .where("userId")
@@ -665,6 +713,13 @@ export const sessionRepository = {
       modeId === "decision_pro"
     ) {
       return buildDecisionRushDailyPoints(sessions);
+    }
+    if (
+      modeId === "pattern_classic" ||
+      modeId === "pattern_timed" ||
+      modeId === "pattern_progressive"
+    ) {
+      return buildPatternDailyPoints(sessions);
     }
 
     return buildClassicDailyPoints(sessions);

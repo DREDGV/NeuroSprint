@@ -487,7 +487,10 @@ export function DecisionRushSessionPage() {
     setCurrentTrial(null);
     finishedRef.current = true;
     runningRef.current = false;
+    pausedRef.current = false;
+    pausedAtRef.current = null;
     setIsRunning(false);
+    setIsPaused(false);
     setFinished(true);
     clearLoop();
 

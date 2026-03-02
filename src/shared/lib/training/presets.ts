@@ -50,6 +50,12 @@ export const TRAINING_MODULES: TrainingModule[] = [
     description:
       "Быстрый тренажер правил ДА/НЕТ со сменой правил и фокусом на точность.",
     status: "active"
+  },
+  {
+    id: "pattern_recognition",
+    title: "Pattern Recognition ⭐",
+    description: "Распознавание паттернов: «Что будет следующим?»",
+    status: "active"
   }
 ];
 

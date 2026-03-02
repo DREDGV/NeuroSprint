@@ -106,6 +106,21 @@ const SettingsPage = lazy(() =>
     default: module.SettingsPage
   }))
 );
+const PatternRecognitionSetupPage = lazy(() =>
+  import("../pages/PatternRecognitionSetupPage").then((module) => ({
+    default: module.PatternRecognitionSetupPage
+  }))
+);
+const PatternRecognitionSessionPage = lazy(() =>
+  import("../pages/PatternRecognitionSessionPage").then((module) => ({
+    default: module.PatternRecognitionSessionPage
+  }))
+);
+const PatternRecognitionResultPage = lazy(() =>
+  import("../pages/PatternRecognitionResultPage").then((module) => ({
+    default: module.PatternRecognitionResultPage
+  }))
+);
 
 export function App() {
   return (
@@ -237,6 +252,30 @@ export function App() {
                 element={
                   <RequireActiveUser>
                     <DecisionRushSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/pattern-recognition"
+                element={
+                  <RequireActiveUser>
+                    <PatternRecognitionSetupPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/pattern-recognition/session"
+                element={
+                  <RequireActiveUser>
+                    <PatternRecognitionSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/pattern-recognition/result"
+                element={
+                  <RequireActiveUser>
+                    <PatternRecognitionResultPage />
                   </RequireActiveUser>
                 }
               />

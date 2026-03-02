@@ -6,7 +6,8 @@ export type Mode =
   | "reaction"
   | "n_back"
   | "memory_grid"
-  | "decision_rush";
+  | "decision_rush"
+  | "pattern_recognition";
 export type AppRole = "teacher" | "student" | "home";
 export type TrainingModuleId =
   | "schulte"
@@ -14,7 +15,8 @@ export type TrainingModuleId =
   | "reaction"
   | "n_back"
   | "memory_grid"
-  | "decision_rush";
+  | "decision_rush"
+  | "pattern_recognition";
 export type TrainingModeId =
   | "classic_plus"
   | "timed_plus"
@@ -36,7 +38,10 @@ export type TrainingModeId =
   | "memory_grid_rush_4x4"
   | "decision_kids"
   | "decision_standard"
-  | "decision_pro";
+  | "decision_pro"
+  | "pattern_classic"
+  | "pattern_timed"
+  | "pattern_progressive";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
 export type TrainingPresetId =
   | "easy"
@@ -414,6 +419,15 @@ export interface ModeRecommendation {
   modeId: TrainingModeId;
   reason: string;
   confidence: number;
+}
+
+export interface PatternDailyPoint {
+  date: string;
+  accuracy: number;
+  avgScore: number;
+  avgReactionTimeMs: number;
+  bestStreak: number;
+  count: number;
 }
 
 export interface AppSettings {
