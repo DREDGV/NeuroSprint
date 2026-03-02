@@ -5,12 +5,11 @@ import { sessionRepository } from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import {
   calculateNBackSteps,
+  CELL_COLORS,
   evaluateNBackSession,
   generateNBackSequence,
+  getCellColor,
   modeIdFromNBackLevel,
-  NBACK_GRID_SIZE,
-  NBACK_STEP_MS,
-  NBACK_STIMULUS_MS,
   normalizeNBackSetup,
   type NBackSessionMetrics,
   type NBackSetup
@@ -54,7 +53,10 @@ function buildNBackTip(metrics: NBackSessionMetrics, level: NBackSetup["level"])
     return "Пропусков больше, чем ложных срабатываний. Сфокусируйтесь на отслеживании последовательности.";
   }
   if (level === 1 && metrics.accuracy > 0.88) {
-    return "Отличная точность в 1-back. Можно перейти на 2-back.";
+    return "Отличная точность в 1-back. Можно перейти на 2-back или 4×4.";
+  }
+  if (metrics.maxCombo >= 10) {
+    return `Восхитительно! Серия из ${metrics.maxCombo} правильных ответов — отличный темп.`;
   }
   return "Хороший темп. Поддерживайте стабильную точность на каждой серии.";
 }
@@ -65,7 +67,7 @@ function buildSession(
   metrics: NBackSessionMetrics
 ): Session {
   const now = new Date();
-  const modeId = modeIdFromNBackLevel(setup.level);
+  const modeId = modeIdFromNBackLevel(setup.level, setup.gridSize);
 
   return {
     id: createId(),
@@ -108,6 +110,7 @@ export function NBackSessionPage() {
 
   const totalSteps = useMemo(() => calculateNBackSteps(setup.durationSec), [setup.durationSec]);
   const durationMs = setup.durationSec * 1000;
+  const totalCells = setup.gridSize * setup.gridSize;
 
   const [sequence, setSequence] = useState<number[]>([]);
   const [responses, setResponses] = useState<Array<boolean | undefined>>([]);
@@ -119,14 +122,16 @@ export function NBackSessionPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastAnswerLabel, setLastAnswerLabel] = useState<string | null>(null);
+  const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
   const [previousSession, setPreviousSession] = useState<Session | null>(null);
   const [bestSession, setBestSession] = useState<Session | null>(null);
+  const [currentCombo, setCurrentCombo] = useState(0);
 
   const elapsedMs =
     startedAtMs == null ? 0 : Math.max(0, Math.min(durationMs, tickMs - startedAtMs));
-  const currentStep = Math.max(0, Math.min(totalSteps - 1, Math.floor(elapsedMs / NBACK_STEP_MS)));
-  const stepElapsedMs = elapsedMs - currentStep * NBACK_STEP_MS;
-  const stimulusVisible = isRunning && !finished && stepElapsedMs < NBACK_STIMULUS_MS;
+  const currentStep = Math.max(0, Math.min(totalSteps - 1, Math.floor(elapsedMs / 1500)));
+  const stepElapsedMs = elapsedMs - currentStep * 1500;
+  const stimulusVisible = isRunning && !finished && stepElapsedMs < 650;
   const activeCell = sequence[currentStep] ?? null;
   const remainingMs = Math.max(0, durationMs - elapsedMs);
   const progressPct = Math.min(100, Math.round((elapsedMs / durationMs) * 100));
@@ -160,10 +165,35 @@ export function NBackSessionPage() {
         sequence,
         level: setup.level,
         responses,
-        durationMs
+        durationMs,
+        gridSize: setup.gridSize
       })
     );
-  }, [durationMs, elapsedMs, finished, isRunning, responses, sequence, setup.level, startedAtMs]);
+  }, [durationMs, elapsedMs, finished, isRunning, responses, sequence, setup.level, setup.gridSize, startedAtMs]);
+
+  // Обновление combo в реальном времени
+  useEffect(() => {
+    if (!result) {
+      // Вычисляем текущее combo во время игры
+      let combo = 0;
+      let maxCombo = 0;
+      for (let i = setup.level; i < responses.length; i++) {
+        const isTarget = sequence[i] === sequence[i - setup.level];
+        const answerMatch = responses[i] === true;
+        const isCorrect = (isTarget && answerMatch) || (!isTarget && !answerMatch);
+        
+        if (responses[i] !== undefined) {
+          if (isCorrect) {
+            combo += 1;
+            maxCombo = Math.max(maxCombo, combo);
+          } else {
+            combo = 0;
+          }
+        }
+      }
+      setCurrentCombo(combo);
+    }
+  }, [responses, sequence, setup.level, result]);
 
   useEffect(() => {
     if (!activeUserId || !result || saved) {
@@ -172,7 +202,7 @@ export function NBackSessionPage() {
 
     let cancelled = false;
     const session = buildSession(activeUserId, setup, result);
-    const modeId = modeIdFromNBackLevel(setup.level);
+    const modeId = modeIdFromNBackLevel(setup.level, setup.gridSize);
 
     void sessionRepository
       .save(session)
@@ -211,7 +241,7 @@ export function NBackSessionPage() {
   }, [activeUserId, result, saved, setup]);
 
   function startSession(): void {
-    const nextSequence = generateNBackSequence(totalSteps, setup.level);
+    const nextSequence = generateNBackSequence(totalSteps, setup.level, setup.gridSize);
     const emptyResponses = Array.from({ length: totalSteps }, () => undefined as boolean | undefined);
     const now = Date.now();
 
@@ -225,8 +255,10 @@ export function NBackSessionPage() {
     setSaved(false);
     setSaveError(null);
     setLastAnswerLabel(null);
+    setLastAnswerCorrect(null);
     setPreviousSession(null);
     setBestSession(null);
+    setCurrentCombo(0);
   }
 
   function restartSession(): void {
@@ -240,8 +272,10 @@ export function NBackSessionPage() {
     setSaved(false);
     setSaveError(null);
     setLastAnswerLabel(null);
+    setLastAnswerCorrect(null);
     setPreviousSession(null);
     setBestSession(null);
+    setCurrentCombo(0);
   }
 
   function answer(isMatch: boolean): void {
@@ -249,7 +283,7 @@ export function NBackSessionPage() {
       return;
     }
 
-    const stepIndex = Math.floor((Date.now() - startedAtMs) / NBACK_STEP_MS);
+    const stepIndex = Math.floor((Date.now() - startedAtMs) / 1500);
     if (stepIndex < 0 || stepIndex >= totalSteps) {
       return;
     }
@@ -263,15 +297,25 @@ export function NBackSessionPage() {
       return next;
     });
 
+    // Проверка правильности ответа
+    const isTarget = stepIndex >= setup.level && sequence[stepIndex] === sequence[stepIndex - setup.level];
+    const isCorrect = (isTarget && isMatch) || (!isTarget && !isMatch);
+    setLastAnswerCorrect(isCorrect);
     setLastAnswerLabel(isMatch ? "Ответ: Совпало" : "Ответ: Не совпало");
+
+    // Сброс индикации через 1 секунду
+    setTimeout(() => {
+      setLastAnswerCorrect(null);
+      setLastAnswerLabel(null);
+    }, 1000);
   }
 
   return (
     <section className="panel" data-testid="nback-session-page">
       <h2>N-Back Lite</h2>
       <p>
-        Короткая серия на память с шагом 1.5 секунды. Отвечайте «Совпало/Не совпало»
-        для каждой позиции.
+        Тренировка рабочей памяти: запоминайте позицию и цвет подсвеченной клетки.
+        Отвечайте «Совпало», если позиция совпала с <strong>{setup.level}</strong> шаг{setup.level === 1 ? '' : 'а' + (setup.level === 2 ? '' : 'ов')} назад.
       </p>
       <p className="active-user-inline" data-testid="session-active-user">
         Активный пользователь: <strong>{activeUserName}</strong>
@@ -279,47 +323,79 @@ export function NBackSessionPage() {
 
       <div className="stats-grid">
         <StatCard title="Уровень" value={`${setup.level}-back`} />
+        <StatCard title="Сетка" value={`${setup.gridSize}×${setup.gridSize}`} />
         <StatCard title="Шаг" value={`${Math.min(currentStep + 1, totalSteps)} / ${totalSteps}`} />
         <StatCard title="Прогресс" value={`${progressPct}%`} />
-        <StatCard title="Осталось" value={formatMs(remainingMs)} />
-        <StatCard title="Ответов" value={String(answeredSteps)} />
+        <StatCard title="Combo" value={currentCombo >= 5 ? `🔥 ${currentCombo}` : String(currentCombo)} />
       </div>
 
       {!isRunning && !finished ? (
         <section className="session-brief" data-testid="nback-session-intro">
           <h3>Перед стартом</h3>
-          <p>Режим: {setup.level}-back</p>
-          <p>Длительность: {setup.durationSec} сек</p>
-          <p>Нажмите «Старт», когда будете готовы.</p>
+          <p>Режим: <strong>{setup.level}-back</strong> на сетке <strong>{setup.gridSize}×{setup.gridSize}</strong></p>
+          <p>Длительность: <strong>{setup.durationSec} сек</strong> ({totalSteps} шагов)</p>
+          <p>Запоминайте позицию <strong>и цвет</strong> клетки.</p>
+          <p className="status-line" style={{ color: '#1e7f71' }}>
+            💡 Совет: цвета помогают запоминать позиции лучше!
+          </p>
         </section>
       ) : null}
 
       <section className="setup-block">
         <h3>Игровое поле</h3>
-        <div className="nback-grid" data-testid="nback-grid">
-          {Array.from({ length: NBACK_GRID_SIZE * NBACK_GRID_SIZE }, (_, index) => {
+        
+        {/* Индикатор последнего ответа */}
+        {lastAnswerCorrect !== null && (
+          <div className={`nback-answer-indicator ${lastAnswerCorrect ? 'correct' : 'incorrect'}`}>
+            {lastAnswerCorrect ? '✓ Правильно!' : '✗ Ошибка'}
+          </div>
+        )}
+        
+        <div 
+          className="nback-grid" 
+          data-testid="nback-grid"
+          style={{ 
+            gridTemplateColumns: `repeat(${setup.gridSize}, 1fr)`,
+            '--grid-size': setup.gridSize 
+          } as React.CSSProperties}
+        >
+          {Array.from({ length: totalCells }, (_, index) => {
             const isActive = stimulusVisible && activeCell === index;
+            const cellColor = getCellColor(index, totalCells);
             return (
               <div
                 key={index}
-                className={isActive ? "nback-cell is-active" : "nback-cell"}
+                className={`nback-cell${isActive ? ' is-active' : ''}`}
                 data-testid={isActive ? "nback-active-cell" : undefined}
+                style={{
+                  backgroundColor: isActive ? cellColor : 'transparent',
+                  borderColor: isActive ? cellColor : '#c8dfd6',
+                  color: isActive ? '#fff' : 'transparent'
+                }}
               >
-                {isActive ? "●" : ""}
+                {isActive && (
+                  <span className="nback-cell-content">●</span>
+                )}
               </div>
             );
           })}
         </div>
+        
         <p className="status-line" data-testid="nback-live-status">
           {isRunning
             ? stimulusVisible
-              ? "Запомните позицию подсветки и дайте ответ."
-              : "Пауза шага: подготовьтесь к следующей подсветке."
+              ? "Запомните позицию и цвет!"
+              : `Пауза... (Combo: ${currentCombo})`
             : finished
               ? "Сессия завершена."
               : "Нажмите «Старт», чтобы начать серию."}
         </p>
-        {lastAnswerLabel ? <p className="status-line">{lastAnswerLabel}</p> : null}
+        
+        {lastAnswerLabel && !lastAnswerCorrect !== null && (
+          <p className={`status-line ${lastAnswerCorrect ? 'success-text' : 'error-text'}`}>
+            {lastAnswerLabel} {lastAnswerCorrect ? '✓' : '✗'}
+          </p>
+        )}
       </section>
 
       {!finished ? (
@@ -364,6 +440,7 @@ export function NBackSessionPage() {
             { label: "False alarm", value: String(result.falseAlarm) },
             { label: "Correct reject", value: String(result.correctReject) },
             { label: "Точность", value: `${(result.accuracy * 100).toFixed(1)}%` },
+            { label: "Лучшее combo", value: `🔥 ${result.maxCombo}` },
             { label: "Score", value: result.score.toFixed(2) }
           ]}
           previousSummary={
