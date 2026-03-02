@@ -923,8 +923,8 @@ textarea:focus-visible {
 
 .training-module-card {
   border-radius: 20px;
-  background: #fff;
-  border: 2px solid #e5e7eb;
+  background: var(--card-bg-light, rgba(30, 127, 113, 0.08));
+  border: 2px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }

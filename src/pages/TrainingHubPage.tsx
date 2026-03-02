@@ -76,9 +76,10 @@ interface TrainingModuleCardProps {
   color: string;
   gradient: string;
   icon: React.ReactNode;
+  bgLight: string;
 }
 
-function TrainingModuleCard({ module, color, gradient, icon }: TrainingModuleCardProps) {
+function TrainingModuleCard({ module, color, gradient, icon, bgLight }: TrainingModuleCardProps) {
   const primaryRoute = modulePrimaryRouteById[module.id];
   const preSessionRoute = modulePreSessionRouteById[module.id];
 
@@ -100,7 +101,7 @@ function TrainingModuleCard({ module, color, gradient, icon }: TrainingModuleCar
   }
 
   return (
-    <article className="training-module-card">
+    <article className="training-module-card" style={{ "--card-bg-light": bgLight } as React.CSSProperties}>
       <Link to={primaryRoute} className="module-card-link" style={{ "--card-color": color } as React.CSSProperties}>
         <div className="module-card-icon" style={{ background: gradient }}>
           {icon}
@@ -132,30 +133,35 @@ export function TrainingHubPage() {
       id: "schulte",
       color: "#1e7f71",
       gradient: "linear-gradient(135deg, #1e7f71 0%, #2d9d8a 100%)",
+      bgLight: "rgba(30, 127, 113, 0.08)",
       icon: <SchulteIcon size={36} />
     },
     {
       id: "sprint_math",
       color: "#7c3aed",
       gradient: "linear-gradient(135deg, #7c3aed 0%, #9f67ff 100%)",
+      bgLight: "rgba(124, 58, 237, 0.08)",
       icon: <MathIcon size={36} />
     },
     {
       id: "reaction",
       color: "#f59e0b",
       gradient: "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)",
+      bgLight: "rgba(245, 158, 11, 0.08)",
       icon: <ReactionIcon size={36} />
     },
     {
       id: "n_back",
       color: "#ec4899",
       gradient: "linear-gradient(135deg, #ec4899 0%, #f472b6 100%)",
+      bgLight: "rgba(236, 72, 153, 0.08)",
       icon: <MemoryIcon size={36} />
     },
     {
       id: "decision_rush",
       color: "#06b6d4",
       gradient: "linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%)",
+      bgLight: "rgba(6, 182, 212, 0.08)",
       icon: <DecisionIcon size={36} />
     }
   ];
@@ -191,6 +197,7 @@ export function TrainingHubPage() {
               module={module}
               color={config?.color || "#1e7f71"}
               gradient={config?.gradient || "linear-gradient(135deg, #1e7f71 0%, #2d9d8a 100%)"}
+              bgLight={config?.bgLight || "rgba(30, 127, 113, 0.08)"}
               icon={config?.icon || <SchulteIcon size={36} />}
             />
           );
