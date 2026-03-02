@@ -8,7 +8,8 @@ import {
   PATTERN_SIZES,
   PatternSize,
   PatternColor,
-  PatternShape
+  PatternShape,
+  PatternContentType
 } from '../../../shared/types/pattern';
 
 // Утилиты
@@ -44,7 +45,7 @@ function elementsEqual(a: PatternElement, b: PatternElement): boolean {
   return a.color === b.color && a.shape === b.shape && a.size === b.size;
 }
 
-// ==================== ГЕНЕРАТОРЫ ПАТТЕРНОВ ====================
+// ==================== ГЕНЕРАТОРЫ ВИЗУАЛЬНЫХ ПАТТЕРНОВ ====================
 
 // ABAB - Чередование
 function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 'size')[]): PatternQuestion {
@@ -60,7 +61,7 @@ function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
   
   // Генерируем неправильные варианты
   const options: PatternElement[] = [correctAnswer];
-  while (options.length < 3) {
+  while (options.length < (level === 'kids' ? 2 : 3)) {
     const wrong = randomElement();
     if (!options.some(opt => elementsEqual(opt, wrong))) {
       options.push(wrong);
@@ -72,8 +73,11 @@ function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
     patternType: 'ABAB',
     sequence,
     options: shuffle(options),
-    correctIndex: 0, // Будет пересчитан после shuffle
-    level
+    correctIndex: 0,
+    level,
+    contentType: 'visual',
+    hint: 'Чередование: A, B, A, B...',
+    explanation: 'Паттерн чередуется между двумя элементами. После B следует A.'
   };
 }
 
@@ -90,7 +94,7 @@ function generateAABB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
   const correctAnswer = { ...elementA }; // Продолжение паттерна AABBAA...
   
   const options: PatternElement[] = [correctAnswer];
-  while (options.length < 3) {
+  while (options.length < (level === 'kids' ? 2 : 3)) {
     const wrong = randomElement();
     if (!options.some(opt => elementsEqual(opt, wrong))) {
       options.push(wrong);
@@ -103,7 +107,10 @@ function generateAABB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
     sequence,
     options: shuffle(options),
     correctIndex: 0,
-    level
+    level,
+    contentType: 'visual',
+    hint: 'Пары: A, A, B, B...',
+    explanation: 'Каждый элемент повторяется дважды. После пары B начинается новая пара A.'
   };
 }
 
@@ -139,7 +146,10 @@ function generateProgression(level: PatternLevel, elementTypes: ('color' | 'shap
     sequence,
     options: shuffle(options),
     correctIndex: 0,
-    level
+    level,
+    contentType: 'visual',
+    hint: 'Прогрессия: размер увеличивается',
+    explanation: 'Каждый следующий элемент больше предыдущего.'
   };
 }
 
@@ -170,7 +180,10 @@ function generateCycle(level: PatternLevel, elementTypes: ('color' | 'shape' | '
     sequence,
     options: shuffle(options),
     correctIndex: 0,
-    level
+    level,
+    contentType: 'visual',
+    hint: 'Цикл из 3 элементов: A, B, C, A, B...',
+    explanation: 'Паттерн повторяется каждые 3 элемента. После A, B следует C.'
   };
 }
 
@@ -201,47 +214,10 @@ function generateMirror(level: PatternLevel, elementTypes: ('color' | 'shape' | 
     sequence,
     options: shuffle(options),
     correctIndex: 0,
-    level
-  };
-}
-
-// COMBINED - Комбинированный (для Pro уровня)
-function generateCombined(level: PatternLevel, elementTypes: ('color' | 'shape' | 'size')[]): PatternQuestion {
-  // Комбинируем цвет и форму: цвет чередуется, форма прогрессирует
-  const colors: PatternColor[] = shuffle([...PATTERN_COLORS]).slice(0, 2);
-  const shapes: PatternShape[] = shuffle([...PATTERN_SHAPES]).slice(0, 3);
-  
-  const sequence: PatternElement[] = [];
-  for (let i = 0; i < 4; i++) {
-    sequence.push({
-      color: colors[i % 2],
-      shape: shapes[Math.min(Math.floor(i / 2), shapes.length - 1)],
-      size: 'medium'
-    });
-  }
-  
-  // Следующий: цвет меняется, форма остаётся
-  const correctAnswer: PatternElement = {
-    color: colors[1], // меняем цвет
-    shape: shapes[Math.min(1, shapes.length - 1)],
-    size: 'medium'
-  };
-  
-  const options: PatternElement[] = [correctAnswer];
-  while (options.length < 4) {
-    const wrong = randomElement();
-    if (!options.some(opt => elementsEqual(opt, wrong))) {
-      options.push(wrong);
-    }
-  }
-  
-  return {
-    id: `combined-${Date.now()}-${Math.random()}`,
-    patternType: 'COMBINED',
-    sequence,
-    options: shuffle(options),
-    correctIndex: 0,
-    level
+    level,
+    contentType: 'visual',
+    hint: 'Зеркало: A, B, B, A...',
+    explanation: 'Паттерн зеркально отражается. После завершения зеркала начинается новый цикл.'
   };
 }
 

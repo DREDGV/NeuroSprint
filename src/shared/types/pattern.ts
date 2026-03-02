@@ -3,7 +3,7 @@ export type PatternColor = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'pur
 export type PatternShape = 'circle' | 'square' | 'triangle' | 'diamond' | 'star';
 export type PatternSize = 'small' | 'medium' | 'large';
 
-// Элемент паттерна
+// Элемент паттерна (визуальный)
 export interface PatternElement {
   color: PatternColor;
   shape: PatternShape;
@@ -11,22 +11,28 @@ export interface PatternElement {
 }
 
 // Типы паттернов
-export type PatternType = 
+export type PatternType =
   | 'ABAB'           // Чередование
   | 'AABB'           // Повторение пар
   | 'PROGRESSION'    // Прогрессия (+1 элемент)
   | 'CYCLE'          // Цикл (ABCABC)
   | 'MIRROR'         // Зеркальный (ABBA)
-  | 'COMBINED';      // Комбинированный
+  | 'MATH_SEQUENCE'  // Числовая последовательность
+  | 'MATH_ARITHMETIC' // Арифметическая прогрессия
+  | 'MATH_ALTERNATING'; // Чередование операций
 
 // Уровень сложности
 export type PatternLevel = 'kids' | 'standard' | 'pro';
 
 // Режим игры
-export type PatternModeId = 
+export type PatternModeId =
   | 'pattern_classic'    // Контрольный (15 вопросов)
   | 'pattern_timed'      // На время (60 сек)
-  | 'pattern_progressive'; // Адаптивный
+  | 'pattern_progressive' // Адаптивный
+  | 'pattern_learning';  // Обучающий (с подсказками)
+
+// Тип контента в паттерне
+export type PatternContentType = 'visual' | 'numeric' | 'mixed';
 
 // Настройки сессии
 export interface PatternSetup {
@@ -35,16 +41,22 @@ export interface PatternSetup {
   durationSec: 45 | 60 | 90;
   questionCount: number; // Для classic
   elementTypes: ('color' | 'shape' | 'size')[];
+  contentType: PatternContentType; // visual | numeric | mixed
+  showHints: boolean; // Показывать подсказки типа паттерна
 }
 
 // Вопрос паттерна
 export interface PatternQuestion {
   id: string;
   patternType: PatternType;
-  sequence: PatternElement[];
-  options: PatternElement[];
+  sequence: PatternElement[] | number[]; // Визуальные или числовые
+  options: PatternElement[] | number[];
   correctIndex: number;
   level: PatternLevel;
+  contentType: PatternContentType;
+  hint?: string; // Подсказка для обучающего режима
+  explanation?: string; // Объяснение ответа
+  mathRule?: string; // Математическое правило (для числовых паттернов)
 }
 
 // Результат ответа

@@ -1,4 +1,4 @@
-import type { PatternLevel, PatternModeId, PatternSetup } from '../../../shared/types/pattern';
+import type { PatternLevel, PatternModeId, PatternSetup, PatternContentType } from '../../../shared/types/pattern';
 
 export const PATTERN_MODES: Array<{
   id: PatternModeId;
@@ -19,6 +19,11 @@ export const PATTERN_MODES: Array<{
     id: 'pattern_progressive',
     title: 'Прогрессивный',
     description: 'Адаптивная сложность. Игра до 3 ошибок.'
+  },
+  {
+    id: 'pattern_learning',
+    title: 'Обучающий',
+    description: 'С подсказками и разбором ошибок.'
   }
 ];
 
@@ -30,17 +35,39 @@ export const PATTERN_LEVELS: Array<{
   {
     id: 'kids',
     title: 'Kids',
-    description: 'Простые паттерны ABAB и AABB. 2 варианта ответа.'
+    description: 'Простые паттерны ABAB и AABB. 2-3 варианта ответа.'
   },
   {
     id: 'standard',
     title: 'Standard',
-    description: 'Все типы паттернов. 3 варианта ответа.'
+    description: 'Все типы паттернов. 3-4 варианта ответа.'
   },
   {
     id: 'pro',
     title: 'Pro',
-    description: 'Комбинированные паттерны. 4 варианта ответа.'
+    description: 'Комбинированные и математические паттерны. 4 варианта.'
+  }
+];
+
+export const CONTENT_TYPES: Array<{
+  id: PatternContentType;
+  title: string;
+  icon: string;
+}> = [
+  {
+    id: 'visual',
+    title: 'Визуальные',
+    icon: '🎨'
+  },
+  {
+    id: 'numeric',
+    title: 'Числовые',
+    icon: '🔢'
+  },
+  {
+    id: 'mixed',
+    title: 'Микс',
+    icon: '🔀'
   }
 ];
 
@@ -49,7 +76,9 @@ export const DEFAULT_PATTERN_SETUP: PatternSetup = {
   level: 'standard',
   durationSec: 60,
   questionCount: 15,
-  elementTypes: ['color', 'shape']
+  elementTypes: ['color', 'shape'],
+  contentType: 'visual',
+  showHints: false
 };
 
 export function normalizePatternSetup(setup: Partial<PatternSetup>): PatternSetup {
@@ -58,7 +87,9 @@ export function normalizePatternSetup(setup: Partial<PatternSetup>): PatternSetu
     level: setup.level ?? 'standard',
     durationSec: setup.durationSec ?? 60,
     questionCount: setup.questionCount ?? 15,
-    elementTypes: setup.elementTypes ?? ['color', 'shape']
+    elementTypes: setup.elementTypes ?? ['color', 'shape'],
+    contentType: setup.contentType ?? 'visual',
+    showHints: setup.showHints ?? (setup.modeId === 'pattern_learning')
   };
 }
 
@@ -68,6 +99,10 @@ export function getPatternModeTitle(modeId: PatternModeId): string {
 
 export function getPatternLevelTitle(level: PatternLevel): string {
   return PATTERN_LEVELS.find(l => l.id === level)?.title ?? 'Standard';
+}
+
+export function getContentTypeTitle(id: PatternContentType): string {
+  return CONTENT_TYPES.find(t => t.id === id)?.title ?? 'Визуальные';
 }
 
 export type { PatternLevel, PatternModeId };

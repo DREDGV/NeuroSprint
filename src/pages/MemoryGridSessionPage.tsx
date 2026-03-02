@@ -113,6 +113,7 @@ export function MemoryGridSessionPage() {
   const totalCells = getGridCells(setup.gridSize);
   const isRush = setup.mode === "rush";
   const rushDurationMs = (setup.durationSec ?? 60) * 1000;
+  const showingTotalMs = currentLevel * MEMORY_GRID_STEP_INTERVAL_MS;
   const sessionElapsedMs = useMemo(() => {
     if (!isRush || phase === "intro" || phase === "finished") return 0;
     return sequences.length * MEMORY_GRID_STEP_INTERVAL_MS + recallTimes.reduce((a, b) => a + b, 0);
@@ -134,7 +135,7 @@ export function MemoryGridSessionPage() {
         }
 
         // Phase transitions
-        if (phase === "showing" && next >= MEMORY_GRID_SHOW_MS * currentLevel) {
+        if (phase === "showing" && next >= showingTotalMs) {
           startRecallPhase();
           return 0;
         }
@@ -144,7 +145,7 @@ export function MemoryGridSessionPage() {
     }, 50);
 
     return () => window.clearInterval(timer);
-  }, [phase, isRush, sessionElapsedMs, currentLevel]);
+  }, [phase, isRush, sessionElapsedMs, showingTotalMs]);
 
   function startSession(): void {
     setPhase("intro");
@@ -307,8 +308,7 @@ export function MemoryGridSessionPage() {
     return true;
   }
 
-  const showingTotalMs = currentLevel * MEMORY_GRID_STEP_INTERVAL_MS;
-  const showingProgress = phase === "showing" ? (phaseElapsedMs / showingTotalMs) * 100 : 0;
+  const showingProgress = phase === "showing" ? Math.min(100, (phaseElapsedMs / showingTotalMs) * 100) : 0;
   const rushProgress = isRush ? Math.min(100, (sessionElapsedMs / rushDurationMs) * 100) : 0;
   const correctCount = sequences.length;
   const currentCombo = sequences.length > 1 ? sequences.reduce((acc, _, i) => {
@@ -320,12 +320,12 @@ export function MemoryGridSessionPage() {
     <section className="panel memory-grid-session-panel" data-testid="memory-grid-session-page">
       {/* Header */}
       <header className="memory-grid-header">
-        <div className="memory-grid-header-content">
-          <h2 className="memory-grid-title">
+        <div className="memory-grid-header-content" style={{ textAlign: 'center', width: '100%' }}>
+          <h2 className="memory-grid-title" style={{ justifyContent: 'center' }}>
             <span className="header-icon">🧠</span>
             Memory Grid Rush
           </h2>
-          <p className="memory-grid-subtitle">
+          <p className="memory-grid-subtitle" style={{ textAlign: 'center' }}>
             {setup.mode === "classic" ? "Classic" : "Rush"} • {setup.gridSize}×{setup.gridSize} • Ур. {setup.startLevel}
           </p>
         </div>

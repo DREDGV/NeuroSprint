@@ -1731,6 +1731,7 @@ textarea:focus-visible {
 .memory-grid-header-content {
   display: grid;
   gap: 4px;
+  flex: 1;
 }
 
 .memory-grid-title {
@@ -1908,9 +1909,17 @@ textarea:focus-visible {
     gap: 12px;
   }
   
+  .memory-grid-header-content {
+    width: 100%;
+  }
+  
   .memory-grid-title {
     justify-content: center;
     font-size: 1.5rem;
+  }
+  
+  .memory-grid-subtitle {
+    text-align: center;
   }
   
   .memory-grid-rush-timer {
