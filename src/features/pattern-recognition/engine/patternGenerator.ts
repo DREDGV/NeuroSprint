@@ -60,20 +60,25 @@ function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
   const correctAnswer = { ...elementA }; // Следующий = A
   
   // Генерируем неправильные варианты
-  const options: PatternElement[] = [correctAnswer];
-  while (options.length < (level === 'kids' ? 2 : 3)) {
+  const options: PatternElement[] = [];
+  while (options.length < (level === 'kids' ? 1 : 2)) {
     const wrong = randomElement();
     if (!options.some(opt => elementsEqual(opt, wrong))) {
       options.push(wrong);
     }
   }
   
+  // Добавляем правильный ответ и перемешиваем
+  options.push(correctAnswer);
+  const shuffledOptions = shuffle(options);
+  const correctIndex = shuffledOptions.findIndex(opt => elementsEqual(opt, correctAnswer));
+  
   return {
     id: `abab-${Date.now()}-${Math.random()}`,
     patternType: 'ABAB',
     sequence,
-    options: shuffle(options),
-    correctIndex: 0,
+    options: shuffledOptions,
+    correctIndex,
     level,
     contentType: 'visual',
     hint: 'Чередование: A, B, A, B...',
@@ -93,20 +98,25 @@ function generateAABB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
   
   const correctAnswer = { ...elementA }; // Продолжение паттерна AABBAA...
   
-  const options: PatternElement[] = [correctAnswer];
-  while (options.length < (level === 'kids' ? 2 : 3)) {
+  const options: PatternElement[] = [];
+  while (options.length < (level === 'kids' ? 1 : 2)) {
     const wrong = randomElement();
     if (!options.some(opt => elementsEqual(opt, wrong))) {
       options.push(wrong);
     }
   }
   
+  // Добавляем правильный ответ и перемешиваем
+  options.push(correctAnswer);
+  const shuffledOptions = shuffle(options);
+  const correctIndex = shuffledOptions.findIndex(opt => elementsEqual(opt, correctAnswer));
+  
   return {
     id: `aabb-${Date.now()}-${Math.random()}`,
     patternType: 'AABB',
     sequence,
-    options: shuffle(options),
-    correctIndex: 0,
+    options: shuffledOptions,
+    correctIndex,
     level,
     contentType: 'visual',
     hint: 'Пары: A, A, B, B...',
@@ -132,20 +142,25 @@ function generateProgression(level: PatternLevel, elementTypes: ('color' | 'shap
   // Следующий элемент - максимальный размер (продолжение)
   const correctAnswer = { ...baseElement, size: 'large' as PatternSize };
   
-  const options: PatternElement[] = [correctAnswer];
-  while (options.length < 3) {
+  const options: PatternElement[] = [];
+  while (options.length < 2) {
     const wrong = randomElement(baseElement);
     if (!options.some(opt => elementsEqual(opt, wrong))) {
       options.push(wrong);
     }
   }
   
+  // Добавляем правильный ответ и перемешиваем
+  options.push(correctAnswer);
+  const shuffledOptions = shuffle(options);
+  const correctIndex = shuffledOptions.findIndex(opt => elementsEqual(opt, correctAnswer));
+  
   return {
     id: `progression-${Date.now()}-${Math.random()}`,
     patternType: 'PROGRESSION',
     sequence,
-    options: shuffle(options),
-    correctIndex: 0,
+    options: shuffledOptions,
+    correctIndex,
     level,
     contentType: 'visual',
     hint: 'Прогрессия: размер увеличивается',
@@ -166,20 +181,25 @@ function generateCycle(level: PatternLevel, elementTypes: ('color' | 'shape' | '
   
   const correctAnswer = { ...elementC }; // Продолжение цикла ABCABC...
   
-  const options: PatternElement[] = [correctAnswer];
-  while (options.length < (level === 'pro' ? 4 : 3)) {
+  const options: PatternElement[] = [];
+  while (options.length < (level === 'pro' ? 3 : 2)) {
     const wrong = randomElement();
     if (!options.some(opt => elementsEqual(opt, wrong))) {
       options.push(wrong);
     }
   }
   
+  // Добавляем правильный ответ и перемешиваем
+  options.push(correctAnswer);
+  const shuffledOptions = shuffle(options);
+  const correctIndex = shuffledOptions.findIndex(opt => elementsEqual(opt, correctAnswer));
+  
   return {
     id: `cycle-${Date.now()}-${Math.random()}`,
     patternType: 'CYCLE',
     sequence,
-    options: shuffle(options),
-    correctIndex: 0,
+    options: shuffledOptions,
+    correctIndex,
     level,
     contentType: 'visual',
     hint: 'Цикл из 3 элементов: A, B, C, A, B...',
@@ -200,20 +220,25 @@ function generateMirror(level: PatternLevel, elementTypes: ('color' | 'shape' | 
   // Продолжение зеркального паттерна - начинаем заново с A
   const correctAnswer = { ...elementA };
   
-  const options: PatternElement[] = [correctAnswer];
-  while (options.length < 3) {
+  const options: PatternElement[] = [];
+  while (options.length < 2) {
     const wrong = randomElement();
     if (!options.some(opt => elementsEqual(opt, wrong))) {
       options.push(wrong);
     }
   }
   
+  // Добавляем правильный ответ и перемешиваем
+  options.push(correctAnswer);
+  const shuffledOptions = shuffle(options);
+  const correctIndex = shuffledOptions.findIndex(opt => elementsEqual(opt, correctAnswer));
+  
   return {
     id: `mirror-${Date.now()}-${Math.random()}`,
     patternType: 'MIRROR',
     sequence,
-    options: shuffle(options),
-    correctIndex: 0,
+    options: shuffledOptions,
+    correctIndex,
     level,
     contentType: 'visual',
     hint: 'Зеркало: A, B, B, A...',
@@ -285,8 +310,8 @@ function generateMathArithmetic(level: PatternLevel): PatternQuestion {
   
   const correctAnswer = start + 4 * step;
   
-  const options: number[] = [correctAnswer];
-  while (options.length < (level === 'kids' ? 3 : 4)) {
+  const options: number[] = [];
+  while (options.length < (level === 'kids' ? 2 : 3)) {
     const offset = randomInt(-5, 5);
     const wrong = correctAnswer + offset;
     if (!options.includes(wrong) && wrong > 0) {
@@ -294,12 +319,17 @@ function generateMathArithmetic(level: PatternLevel): PatternQuestion {
     }
   }
   
+  // Добавляем правильный ответ и перемешиваем
+  options.push(correctAnswer);
+  const shuffledOptions = shuffle(options);
+  const correctIndex = shuffledOptions.indexOf(correctAnswer);
+  
   return {
     id: `math-arith-${Date.now()}-${Math.random()}`,
     patternType: 'MATH_ARITHMETIC',
     sequence,
-    options: shuffle(options),
-    correctIndex: 0,
+    options: shuffledOptions,
+    correctIndex,
     level,
     contentType: 'numeric',
     mathRule: `a₁=${start}, d=${step}`,
@@ -323,8 +353,8 @@ function generateMathAlternating(level: PatternLevel): PatternQuestion {
   // Убираем последний элемент - это будет ответ
   const correctAnswer = sequence.pop()!;
   
-  const options: number[] = [correctAnswer];
-  while (options.length < (level === 'kids' ? 3 : 4)) {
+  const options: number[] = [];
+  while (options.length < (level === 'kids' ? 2 : 3)) {
     const offset = randomInt(-3, 3);
     const wrong = correctAnswer + offset;
     if (!options.includes(wrong) && wrong > 0) {
@@ -332,12 +362,17 @@ function generateMathAlternating(level: PatternLevel): PatternQuestion {
     }
   }
   
+  // Добавляем правильный ответ и перемешиваем
+  options.push(correctAnswer);
+  const shuffledOptions = shuffle(options);
+  const correctIndex = shuffledOptions.indexOf(correctAnswer);
+  
   return {
     id: `math-alt-${Date.now()}-${Math.random()}`,
     patternType: 'MATH_ALTERNATING',
     sequence,
-    options: shuffle(options),
-    correctIndex: 0,
+    options: shuffledOptions,
+    correctIndex,
     level,
     contentType: 'numeric',
     mathRule: `+${add}, -${sub}`,

@@ -280,6 +280,14 @@ export function App() {
                 }
               />
               <Route
+                path="/training/pre-session?module=pattern_recognition"
+                element={
+                  <RequireActiveUser>
+                    <PreSessionPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
                 path="/play/schulte/classic"
                 element={<Navigate to="/training/schulte/classic_plus" replace />}
               />

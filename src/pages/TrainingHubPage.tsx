@@ -18,7 +18,8 @@ const modulePreSessionRouteById: Record<string, string> = {
   reaction: "/training/pre-session?module=reaction",
   n_back: "/training/pre-session?module=n_back",
   memory_grid: "/training/pre-session?module=memory_grid",
-  decision_rush: "/training/pre-session?module=decision_rush"
+  decision_rush: "/training/pre-session?module=decision_rush",
+  pattern_recognition: "/training/pre-session?module=pattern_recognition"
 };
 
 // Иконки для модулей

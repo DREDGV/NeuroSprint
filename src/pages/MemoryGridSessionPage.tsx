@@ -114,6 +114,7 @@ export function MemoryGridSessionPage() {
   const [shake, setShake] = useState(false);
   const [attemptCount, setAttemptCount] = useState(1);
   const [hintCell, setHintCell] = useState<number | null>(null);
+  const [hintOpacity, setHintOpacity] = useState(0);
   const [lastClickTime, setLastClickTime] = useState<number>(0);
 
   const totalCells = getGridCells(setup.gridSize);
@@ -204,6 +205,7 @@ export function MemoryGridSessionPage() {
     setShake(false);
     setAttemptCount(1);
     setHintCell(null);
+    setHintOpacity(0);
     setLastClickTime(0);
     
     // Показ последовательности с комфортной скоростью
@@ -343,7 +345,7 @@ export function MemoryGridSessionPage() {
   }
 
   // Простая функция для звуковых эффектов
-  function playSound(type: 'success' | 'error' | 'click') {
+  function playSound(type: 'success' | 'error' | 'click' | 'hint') {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
@@ -367,6 +369,12 @@ export function MemoryGridSessionPage() {
         gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.05);
+      } else if (type === 'hint') {
+        // Очень тихий звук для подсказки
+        oscillator.frequency.value = 400;
+        gainNode.gain.setValueAtTime(0.02, audioContext.currentTime);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
       }
     } catch (e) {
       // Игнорируем ошибки аудио (если браузер не поддерживает)
@@ -377,15 +385,36 @@ export function MemoryGridSessionPage() {
   useEffect(() => {
     if (phase !== 'recalling' || userResponse.length >= currentLevel) return;
     
-    const timer = setTimeout(() => {
+    // Через 3 секунды начинаем показывать намёк
+    const startHintTimer = setTimeout(() => {
       const nextCell = currentSequence[userResponse.length];
       setHintCell(nextCell);
-      playSound('click');
-    }, 3000); // 3 секунды бездействия
+      
+      // Медленное появление подсказки (от 0 до 0.3 за 2 секунды)
+      const fadeDuration = 2000;
+      const fadeSteps = 20;
+      const stepDuration = fadeDuration / fadeSteps;
+      let currentStep = 0;
+      
+      const fadeInterval = setInterval(() => {
+        currentStep += 1;
+        setHintOpacity(currentStep / fadeSteps * 0.3); // Максимум 0.3 прозрачности
+        
+        if (currentStep >= fadeSteps) {
+          clearInterval(fadeInterval);
+        }
+      }, stepDuration);
+      
+      // Тихий звуковой сигнал (едва слышный)
+      playSound('hint');
+      
+      return () => clearInterval(fadeInterval);
+    }, 3000);
     
     return () => {
-      clearTimeout(timer);
+      clearTimeout(startHintTimer);
       setHintCell(null);
+      setHintOpacity(0);
     };
   }, [phase, userResponse.length, currentLevel, currentSequence]);
 
@@ -489,10 +518,10 @@ export function MemoryGridSessionPage() {
                   playSound('click');
                 }}
                 style={{
-                  backgroundColor: isActive ? cellColor : isSelected ? cellColor + "40" : isWrong ? "rgba(239, 68, 68, 0.3)" : isCorrect ? "rgba(16, 185, 129, 0.3)" : isHint ? "rgba(59, 130, 246, 0.2)" : "transparent",
-                  borderColor: isActive || isSelected ? cellColor : isWrong ? "#ef4444" : isCorrect ? "#10b981" : isHint ? "#3b82f6" : "#c8dfd6",
+                  backgroundColor: isActive ? cellColor : isSelected ? cellColor + "40" : isWrong ? "rgba(239, 68, 68, 0.3)" : isCorrect ? "rgba(16, 185, 129, 0.3)" : isHint ? `rgba(59, 130, 246, ${hintOpacity})` : "transparent",
+                  borderColor: isActive || isSelected ? cellColor : isWrong ? "#ef4444" : isCorrect ? "#10b981" : isHint ? `rgba(59, 130, 246, ${Math.max(0.3, hintOpacity * 2)})` : "#c8dfd6",
                   cursor: phase === "recalling" ? "pointer" : "default",
-                  animation: isHint ? 'pulse-hint 1s ease-in-out infinite' : 'none'
+                  opacity: isHint ? (0.5 + hintOpacity * 1.5) : 1
                 }}
                 data-testid={isActive ? "memory-grid-active-cell" : undefined}
               >

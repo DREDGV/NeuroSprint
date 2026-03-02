@@ -35,7 +35,11 @@ function isTrainingModeId(value: string | null): value is TrainingModeId {
     value === "nback_2" ||
     value === "decision_kids" ||
     value === "decision_standard" ||
-    value === "decision_pro"
+    value === "decision_pro" ||
+    value === "pattern_classic" ||
+    value === "pattern_timed" ||
+    value === "pattern_progressive" ||
+    value === "pattern_learning"
   );
 }
 
@@ -45,7 +49,8 @@ function isTrainingModuleId(value: string | null): value is TrainingModuleId {
     value === "sprint_math" ||
     value === "reaction" ||
     value === "n_back" ||
-    value === "decision_rush"
+    value === "decision_rush" ||
+    value === "pattern_recognition"
   );
 }
 
@@ -61,6 +66,9 @@ function fallbackModeForModule(moduleId: TrainingModuleId): TrainingModeId {
   }
   if (moduleId === "decision_rush") {
     return "decision_kids";
+  }
+  if (moduleId === "pattern_recognition") {
+    return "pattern_classic";
   }
   return "classic_plus";
 }
@@ -78,6 +86,9 @@ function setupRouteByMode(modeId: TrainingModeId): string {
   }
   if (moduleId === "decision_rush") {
     return `/training/decision-rush?mode=${modeId}`;
+  }
+  if (moduleId === "pattern_recognition") {
+    return `/training/pattern-recognition?mode=${modeId}`;
   }
   return `/training/schulte?mode=${modeId}`;
 }
@@ -109,6 +120,18 @@ function getReactionModeTip(modeId: TrainingModeId): string | null {
   }
   if (modeId === "decision_pro") {
     return "Decision Rush Pro: быстрый темп, отрицания и больше переключений.";
+  }
+  if (modeId === "pattern_classic") {
+    return "Pattern Classic: 15 вопросов без таймера, фокус на точность.";
+  }
+  if (modeId === "pattern_timed") {
+    return "Pattern Timed: 60 секунд на максимум правильных ответов.";
+  }
+  if (modeId === "pattern_progressive") {
+    return "Pattern Progressive: адаптивная сложность, игра до 3 ошибок.";
+  }
+  if (modeId === "pattern_learning") {
+    return "Pattern Learning: обучающий режим с подсказками и разбором ошибок.";
   }
   return null;
 }
