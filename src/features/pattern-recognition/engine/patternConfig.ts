@@ -105,4 +105,4 @@ export function getContentTypeTitle(id: PatternContentType): string {
   return CONTENT_TYPES.find(t => t.id === id)?.title ?? 'Визуальные';
 }
 
-export type { PatternLevel, PatternModeId };
+export type { PatternLevel, PatternModeId, PatternContentType };

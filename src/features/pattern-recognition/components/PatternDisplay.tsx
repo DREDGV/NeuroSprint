@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PatternElement } from '../../../shared/types/pattern';
+import type { PatternElement, PatternType } from '../../../shared/types/pattern';
 import { COLOR_TO_CSS, SIZE_TO_CSS } from '../../../shared/types/pattern';
 
 interface PatternElementProps {
@@ -85,32 +85,121 @@ export function PatternElementDisplay({
   );
 }
 
-interface PatternSequenceProps {
-  sequence: PatternElement[];
-  elementSize?: number;
+interface PatternNumberProps {
+  value: number;
+  size?: number;
+  onClick?: () => void;
+  disabled?: boolean;
+  testId?: string;
 }
 
-export function PatternSequence({ sequence, elementSize = 56 }: PatternSequenceProps) {
+export function PatternNumber({
+  value,
+  size = 64,
+  onClick,
+  disabled = false,
+  testId
+}: PatternNumberProps) {
+  return (
+    <button
+      type="button"
+      className="pattern-number-btn"
+      onClick={onClick}
+      disabled={disabled}
+      style={{ 
+        width: size, 
+        height: size,
+        fontSize: Math.floor(size * 0.5),
+        cursor: disabled ? 'default' : 'pointer'
+      }}
+      data-testid={testId}
+      aria-label={`Число ${value}`}
+    >
+      {value}
+    </button>
+  );
+}
+
+interface PatternSequenceProps {
+  sequence: PatternElement[] | number[];
+  elementSize?: number;
+  patternType?: PatternType;
+  showHint?: boolean;
+}
+
+export function PatternSequence({ 
+  sequence, 
+  elementSize = 64,
+  patternType,
+  showHint = false
+}: PatternSequenceProps) {
+  const isNumeric = typeof sequence[0] === 'number';
+  
   return (
     <div className="pattern-sequence" data-testid="pattern-sequence">
-      {sequence.map((element, index) => (
-        <PatternElementDisplay
-          key={index}
-          element={element}
-          size={elementSize}
-          disabled
-          testId={`pattern-element-${index}`}
-        />
-      ))}
-      <div className="pattern-question-mark" data-testid="pattern-question">
-        <span>?</span>
+      {showHint && patternType && (
+        <div className="pattern-type-hint" data-testid="pattern-type-hint">
+          {getPatternTypeIcon(patternType)} {getPatternTypeLabel(patternType)}
+        </div>
+      )}
+      <div className="pattern-sequence-items">
+        {sequence.map((item, index) => (
+          isNumeric ? (
+            <PatternNumber
+              key={index}
+              value={item as number}
+              size={elementSize}
+              disabled
+              testId={`pattern-element-${index}`}
+            />
+          ) : (
+            <PatternElementDisplay
+              key={index}
+              element={item as PatternElement}
+              size={elementSize}
+              disabled
+              testId={`pattern-element-${index}`}
+            />
+          )
+        ))}
+        <div className="pattern-question-mark" data-testid="pattern-question">
+          <span>?</span>
+        </div>
       </div>
     </div>
   );
 }
 
+function getPatternTypeIcon(type: PatternType): string {
+  const icons: Record<PatternType, string> = {
+    ABAB: '🔀',
+    AABB: '👯',
+    PROGRESSION: '📈',
+    CYCLE: '🔄',
+    MIRROR: '🪞',
+    MATH_SEQUENCE: '🔢',
+    MATH_ARITHMETIC: '➕',
+    MATH_ALTERNATING: '⚡'
+  };
+  return icons[type] || '❓';
+}
+
+function getPatternTypeLabel(type: PatternType): string {
+  const labels: Record<PatternType, string> = {
+    ABAB: 'Чередование',
+    AABB: 'Пары',
+    PROGRESSION: 'Прогрессия',
+    CYCLE: 'Цикл',
+    MIRROR: 'Зеркало',
+    MATH_SEQUENCE: 'Последовательность',
+    MATH_ARITHMETIC: 'Арифметика',
+    MATH_ALTERNATING: 'Чередование'
+  };
+  return labels[type] || '';
+}
+
 interface PatternOptionsProps {
-  options: PatternElement[];
+  options: PatternElement[] | number[];
   correctIndex: number;
   onSelect: (index: number) => void;
   disabled?: boolean;
@@ -126,6 +215,7 @@ export function PatternOptions({
   selectedAnswer,
   showResult = false
 }: PatternOptionsProps) {
+  const isNumeric = typeof options[0] === 'number';
   const isSelected = (index: number) => selectedAnswer === index;
   const isCorrect = (index: number) => index === correctIndex;
   
@@ -145,14 +235,25 @@ export function PatternOptions({
         }
         
         return (
-          <PatternElementDisplay
-            key={index}
-            element={option}
-            size={64}
-            onClick={() => !disabled && onSelect(index)}
-            disabled={disabled || (showResult && selectedAnswer !== null)}
-            testId={`pattern-option-${index}`}
-          />
+          <div key={index} className={`pattern-option-wrapper ${stateClass}`}>
+            {isNumeric ? (
+              <PatternNumber
+                value={option as number}
+                size={72}
+                onClick={() => !disabled && onSelect(index)}
+                disabled={disabled || (showResult && selectedAnswer !== null)}
+                testId={`pattern-option-${index}`}
+              />
+            ) : (
+              <PatternElementDisplay
+                element={option as PatternElement}
+                size={72}
+                onClick={() => !disabled && onSelect(index)}
+                disabled={disabled || (showResult && selectedAnswer !== null)}
+                testId={`pattern-option-${index}`}
+              />
+            )}
+          </div>
         );
       })}
     </div>

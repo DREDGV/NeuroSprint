@@ -36,13 +36,13 @@ describe('PatternGenerator', () => {
     });
 
     it('должен генерировать вопрос конкретного типа', () => {
-      const question = generatePatternQuestion('standard', ['color'], 'ABAB');
+      const question = generatePatternQuestion('standard', ['color'], 'visual', 'ABAB');
       
       expect(question.patternType).toBe('ABAB');
     });
 
     it('должен иметь правильный ответ в options', () => {
-      const question = generatePatternQuestion('kids', ['color'], 'ABAB');
+      const question = generatePatternQuestion('kids', ['color'], 'visual', 'ABAB');
       
       // Проверяем, что правильный ответ существует в options
       const correctOption = question.options[question.correctIndex];

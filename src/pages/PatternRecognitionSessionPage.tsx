@@ -28,7 +28,7 @@ export function PatternRecognitionSessionPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { activeUserId } = useActiveUser();
-  
+
   const navState = location.state as PatternSessionNavState | null;
   const setup = navState?.setup;
 
@@ -60,11 +60,12 @@ export function PatternRecognitionSessionPage() {
     setQuestionStartTime(Date.now());
 
     // Генерируем вопросы
-    if (setup.modeId === 'pattern_classic') {
+    if (setup.modeId === 'pattern_classic' || setup.modeId === 'pattern_learning') {
       const initialQuestions = generatePatternQuestions(
         setup.questionCount,
         setup.level,
-        setup.elementTypes
+        setup.elementTypes,
+        setup.contentType
       );
       setQuestions(initialQuestions);
     } else if (setup.modeId === 'pattern_timed' || setup.modeId === 'pattern_progressive') {
@@ -72,7 +73,8 @@ export function PatternRecognitionSessionPage() {
       const initialQuestions = generatePatternQuestions(
         50,
         setup.level,
-        setup.elementTypes
+        setup.elementTypes,
+        setup.contentType
       );
       setQuestions(initialQuestions);
     }
@@ -320,10 +322,12 @@ export function PatternRecognitionSessionPage() {
       {/* Question */}
       <div className="pattern-session-content">
         <h3 className="pattern-instruction">Что будет следующим?</h3>
-        
+
         <PatternSequence
           sequence={currentQuestion.sequence}
           elementSize={64}
+          patternType={currentQuestion.patternType}
+          showHint={setup.showHints || setup.modeId === 'pattern_learning'}
         />
 
         <PatternOptions
@@ -345,11 +349,17 @@ export function PatternRecognitionSessionPage() {
         >
           Выйти
         </button>
-        
+
         {setup.modeId === 'pattern_progressive' && (
           <span className="status-line">
             Ошибок: {errorCount}/3 | Уровень: {currentLevel}
           </span>
+        )}
+        
+        {setup.modeId === 'pattern_learning' && showResult && currentQuestion?.explanation && (
+          <div className="pattern-explanation" data-testid="pattern-explanation">
+            💡 {currentQuestion.explanation}
+          </div>
         )}
       </footer>
     </section>

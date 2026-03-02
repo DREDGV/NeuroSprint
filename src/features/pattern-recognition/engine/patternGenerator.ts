@@ -221,55 +221,217 @@ function generateMirror(level: PatternLevel, elementTypes: ('color' | 'shape' | 
   };
 }
 
+// ==================== ГЕНЕРАТОРЫ МАТЕМАТИЧЕСКИХ ПАТТЕРНОВ ====================
+
+// MATH_SEQUENCE - Простая числовая последовательность
+function generateMathSequence(level: PatternLevel): PatternQuestion {
+  // Генерируем простую последовательность: +2, +3, +4, +5
+  const start = randomInt(1, 10);
+  const step = randomInt(2, 5);
+  
+  const sequence: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    sequence.push(start + i * step);
+  }
+  
+  const correctAnswer = start + 4 * step;
+  
+  // Генерируем неправильные варианты (близкие числа)
+  const options: number[] = [correctAnswer];
+  const wrongValues = [correctAnswer - step, correctAnswer + 1, correctAnswer - 1, correctAnswer + step];
+  
+  for (const wrong of shuffle(wrongValues)) {
+    if (!options.includes(wrong) && wrong > 0 && options.length < 4) {
+      options.push(wrong);
+    }
+  }
+  
+  while (options.length < 4) {
+    const randomWrong = randomInt(1, 50);
+    if (!options.includes(randomWrong)) {
+      options.push(randomWrong);
+    }
+  }
+  
+  return {
+    id: `math-seq-${Date.now()}-${Math.random()}`,
+    patternType: 'MATH_SEQUENCE',
+    sequence,
+    options: shuffle(options),
+    correctIndex: 0,
+    level,
+    contentType: 'numeric',
+    mathRule: `+${step}`,
+    hint: `Арифметическая прогрессия: каждое число больше предыдущего на ${step}`,
+    explanation: `Последовательность увеличивается на ${step}: ${sequence.join(', ')}, ${correctAnswer}.`
+  };
+}
+
+// MATH_ARITHMETIC - Арифметическая прогрессия
+function generateMathArithmetic(level: PatternLevel): PatternQuestion {
+  const start = randomInt(2, 15);
+  const step = level === 'kids' ? randomInt(1, 3) : randomInt(3, 7);
+  
+  const sequence: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    sequence.push(start + i * step);
+  }
+  
+  const correctAnswer = start + 4 * step;
+  
+  const options: number[] = [correctAnswer];
+  while (options.length < (level === 'kids' ? 3 : 4)) {
+    const offset = randomInt(-5, 5);
+    const wrong = correctAnswer + offset;
+    if (!options.includes(wrong) && wrong > 0) {
+      options.push(wrong);
+    }
+  }
+  
+  return {
+    id: `math-arith-${Date.now()}-${Math.random()}`,
+    patternType: 'MATH_ARITHMETIC',
+    sequence,
+    options: shuffle(options),
+    correctIndex: 0,
+    level,
+    contentType: 'numeric',
+    mathRule: `a₁=${start}, d=${step}`,
+    hint: `Каждое следующее число = предыдущее + ${step}`,
+    explanation: `Арифметическая прогрессия: start=${start}, шаг=${step}. Ответ: ${correctAnswer}.`
+  };
+}
+
+// MATH_ALTERNATING - Чередование операций
+function generateMathAlternating(level: PatternLevel): PatternQuestion {
+  const start = randomInt(5, 20);
+  const add = randomInt(2, 5);
+  const sub = randomInt(1, 3);
+  
+  const sequence: number[] = [start];
+  for (let i = 1; i < 5; i++) {
+    const prev = sequence[i - 1];
+    sequence.push(i % 2 === 1 ? prev + add : prev - sub);
+  }
+  
+  // Убираем последний элемент - это будет ответ
+  const correctAnswer = sequence.pop()!;
+  
+  const options: number[] = [correctAnswer];
+  while (options.length < (level === 'kids' ? 3 : 4)) {
+    const offset = randomInt(-3, 3);
+    const wrong = correctAnswer + offset;
+    if (!options.includes(wrong) && wrong > 0) {
+      options.push(wrong);
+    }
+  }
+  
+  return {
+    id: `math-alt-${Date.now()}-${Math.random()}`,
+    patternType: 'MATH_ALTERNATING',
+    sequence,
+    options: shuffle(options),
+    correctIndex: 0,
+    level,
+    contentType: 'numeric',
+    mathRule: `+${add}, -${sub}`,
+    hint: `Чередование: +${add}, -${sub}, +${add}, -${sub}...`,
+    explanation: `Операции чередуются: +${add}, затем -${sub}. Следующее: ${correctAnswer}.`
+  };
+}
+
 // ==================== ГЕНЕРАТОР ВОПРОСОВ ====================
 
-const patternGenerators: Record<PatternType, typeof generateABAB> = {
+const patternGenerators: Record<PatternType, Function> = {
   ABAB: generateABAB,
   AABB: generateAABB,
   PROGRESSION: generateProgression,
   CYCLE: generateCycle,
   MIRROR: generateMirror,
-  COMBINED: generateCombined
+  MATH_SEQUENCE: generateMathSequence,
+  MATH_ARITHMETIC: generateMathArithmetic,
+  MATH_ALTERNATING: generateMathAlternating
 };
 
 // Доступные типы паттернов по уровням
 const patternTypesByLevel: Record<PatternLevel, PatternType[]> = {
-  kids: ['ABAB', 'AABB'],
-  standard: ['ABAB', 'AABB', 'PROGRESSION', 'CYCLE', 'MIRROR'],
-  pro: ['ABAB', 'AABB', 'PROGRESSION', 'CYCLE', 'MIRROR', 'COMBINED']
+  kids: ['ABAB', 'AABB', 'MATH_SEQUENCE'],
+  standard: ['ABAB', 'AABB', 'PROGRESSION', 'CYCLE', 'MIRROR', 'MATH_SEQUENCE', 'MATH_ARITHMETIC'],
+  pro: ['ABAB', 'AABB', 'PROGRESSION', 'CYCLE', 'MIRROR', 'MATH_SEQUENCE', 'MATH_ARITHMETIC', 'MATH_ALTERNATING']
 };
 
-// Длина последовательности по уровням
-const sequenceLengthByLevel: Record<PatternLevel, number> = {
-  kids: 4,
-  standard: 5,
-  pro: 6
+// Веса для генерации (больше простых паттернов)
+const patternWeights: Record<PatternLevel, Record<PatternType, number>> = {
+  kids: { ABAB: 40, AABB: 40, PROGRESSION: 0, CYCLE: 0, MIRROR: 0, MATH_SEQUENCE: 20, MATH_ARITHMETIC: 0, MATH_ALTERNATING: 0 },
+  standard: { ABAB: 25, AABB: 25, PROGRESSION: 15, CYCLE: 15, MIRROR: 10, MATH_SEQUENCE: 10, MATH_ARITHMETIC: 0, MATH_ALTERNATING: 0 },
+  pro: { ABAB: 15, AABB: 15, PROGRESSION: 15, CYCLE: 15, MIRROR: 10, MATH_SEQUENCE: 15, MATH_ARITHMETIC: 10, MATH_ALTERNATING: 5 }
 };
+
+function selectPatternType(level: PatternLevel, contentType: PatternContentType): PatternType {
+  const availableTypes = patternTypesByLevel[level];
+  
+  // Фильтруем по типу контента
+  const filteredTypes = availableTypes.filter(type => {
+    if (contentType === 'visual') {
+      return !type.startsWith('MATH_');
+    }
+    if (contentType === 'numeric') {
+      return type.startsWith('MATH_');
+    }
+    return true; // mixed
+  });
+  
+  if (filteredTypes.length === 0) {
+    return availableTypes[0];
+  }
+  
+  // Выбираем с учётом весов
+  const weights = patternWeights[level];
+  const weightedTypes = filteredTypes.filter(t => weights[t] > 0);
+  
+  if (weightedTypes.length === 0) {
+    return filteredTypes[0];
+  }
+  
+  const totalWeight = weightedTypes.reduce((sum, type) => sum + weights[type], 0);
+  let random = Math.random() * totalWeight;
+  
+  for (const type of weightedTypes) {
+    random -= weights[type];
+    if (random <= 0) {
+      return type;
+    }
+  }
+  
+  return weightedTypes[0];
+}
 
 export function generatePatternQuestion(
   level: PatternLevel,
   elementTypes: ('color' | 'shape' | 'size')[],
+  contentType: PatternContentType = 'visual',
   patternType?: PatternType
 ): PatternQuestion {
-  const availableTypes = patternType 
-    ? [patternType] 
-    : patternTypesByLevel[level];
+  const selectedType = patternType || selectPatternType(level, contentType);
+  const generator = patternGenerators[selectedType] as Function;
   
-  const selectedType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-  const generator = patternGenerators[selectedType];
+  if (selectedType.startsWith('MATH_')) {
+    return generator(level) as PatternQuestion;
+  }
   
-  return generator(level, elementTypes);
+  return generator(level, elementTypes) as PatternQuestion;
 }
 
 export function generatePatternQuestions(
   count: number,
   level: PatternLevel,
-  elementTypes: ('color' | 'shape' | 'size')[]
+  elementTypes: ('color' | 'shape' | 'size')[],
+  contentType: PatternContentType = 'visual'
 ): PatternQuestion[] {
   const questions: PatternQuestion[] = [];
   
   for (let i = 0; i < count; i++) {
-    questions.push(generatePatternQuestion(level, elementTypes));
+    questions.push(generatePatternQuestion(level, elementTypes, contentType));
   }
   
   return questions;

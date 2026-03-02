@@ -39,7 +39,8 @@ const DAILY_CHALLENGE_MODE_ROTATION: TrainingModeId[] = [
   "decision_pro",
   "pattern_classic",
   "pattern_timed",
-  "pattern_progressive"
+  "pattern_progressive",
+  "pattern_learning"
 ];
 
 const MODE_TITLES: Record<TrainingModeId, string> = {
@@ -66,7 +67,8 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   decision_pro: "Decision Rush Pro",
   pattern_classic: "Pattern Recognition Classic",
   pattern_timed: "Pattern Recognition Timed",
-  pattern_progressive: "Pattern Recognition Progressive"
+  pattern_progressive: "Pattern Recognition Progressive",
+  pattern_learning: "Pattern Recognition Learning"
 };
 
 function addDays(localDate: string, days: number): string {

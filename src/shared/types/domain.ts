@@ -41,7 +41,8 @@ export type TrainingModeId =
   | "decision_pro"
   | "pattern_classic"
   | "pattern_timed"
-  | "pattern_progressive";
+  | "pattern_progressive"
+  | "pattern_learning";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
 export type TrainingPresetId =
   | "easy"

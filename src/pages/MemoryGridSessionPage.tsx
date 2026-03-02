@@ -109,6 +109,9 @@ export function MemoryGridSessionPage() {
   const [activeCell, setActiveCell] = useState<number | null>(null);
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
+  const [wrongCells, setWrongCells] = useState<Set<number>>(new Set());
+  const [correctCells, setCorrectCells] = useState<Set<number>>(new Set());
+  const [shake, setShake] = useState(false);
 
   const totalCells = getGridCells(setup.gridSize);
   const isRush = setup.mode === "rush";
@@ -193,6 +196,9 @@ export function MemoryGridSessionPage() {
     setPhaseElapsedMs(0);
     setPhase("showing");
     setLastAnswerCorrect(null);
+    setWrongCells(new Set());
+    setCorrectCells(new Set());
+    setShake(false);
     
     // Показ последовательности с комфортной скоростью
     let index = 0;
@@ -215,9 +221,21 @@ export function MemoryGridSessionPage() {
   function handleCellClick(cellIndex: number): void {
     if (phase !== "recalling") return;
 
+    const expectedIndex = currentSequence[userResponse.length];
+    const isCorrect = cellIndex === expectedIndex;
+    
     const newResponse = [...userResponse, cellIndex];
     setUserResponse(newResponse);
     setSelectedCell(cellIndex);
+
+    // Визуальная обратная связь
+    if (isCorrect) {
+      setCorrectCells(prev => new Set(prev).add(cellIndex));
+    } else {
+      setWrongCells(prev => new Set(prev).add(cellIndex));
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    }
 
     // Check if sequence complete
     if (newResponse.length >= currentLevel) {
@@ -388,27 +406,31 @@ export function MemoryGridSessionPage() {
         )}
         
         <div 
-          className="nback-grid memory-grid"
+          className={`nback-grid memory-grid${shake ? ' shake' : ''}`}
           style={{ gridTemplateColumns: `repeat(${setup.gridSize}, 1fr)` }}
           data-testid="memory-grid"
         >
           {Array.from({ length: totalCells }, (_, index) => {
             const isActive = activeCell === index;
             const isSelected = selectedCell === index;
+            const isWrong = wrongCells.has(index);
+            const isCorrect = correctCells.has(index);
             const cellColor = getCellColor(index);
             return (
               <div
                 key={index}
-                className={`nback-cell memory-grid-cell${isActive ? " is-active" : ""}${isSelected ? " is-selected" : ""}`}
+                className={`nback-cell memory-grid-cell${isActive ? " is-active" : ""}${isSelected ? " is-selected" : ""}${isWrong ? " is-wrong" : ""}${isCorrect ? " is-correct" : ""}`}
                 onClick={() => handleCellClick(index)}
                 style={{
-                  backgroundColor: isActive ? cellColor : isSelected ? cellColor + "40" : "transparent",
-                  borderColor: isActive || isSelected ? cellColor : "#c8dfd6",
+                  backgroundColor: isActive ? cellColor : isSelected ? cellColor + "40" : isWrong ? "rgba(239, 68, 68, 0.3)" : isCorrect ? "rgba(16, 185, 129, 0.3)" : "transparent",
+                  borderColor: isActive || isSelected ? cellColor : isWrong ? "#ef4444" : isCorrect ? "#10b981" : "#c8dfd6",
                   cursor: phase === "recalling" ? "pointer" : "default"
                 }}
                 data-testid={isActive ? "memory-grid-active-cell" : undefined}
               >
                 {isActive && <span className="nback-cell-content">●</span>}
+                {isWrong && <span className="nback-cell-content" style={{ color: "#ef4444" }}>✕</span>}
+                {isCorrect && <span className="nback-cell-content" style={{ color: "#10b981" }}>✓</span>}
               </div>
             );
           })}
