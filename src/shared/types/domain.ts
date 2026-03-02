@@ -5,6 +5,7 @@ export type Mode =
   | "sprint_math"
   | "reaction"
   | "n_back"
+  | "memory_grid"
   | "decision_rush";
 export type AppRole = "teacher" | "student" | "home";
 export type TrainingModuleId =

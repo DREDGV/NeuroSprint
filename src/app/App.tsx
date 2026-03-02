@@ -63,6 +63,11 @@ const MemoryGridSetupPage = lazy(() =>
     default: module.MemoryGridSetupPage
   }))
 );
+const MemoryGridSessionPage = lazy(() =>
+  import("../pages/MemoryGridSessionPage").then((module) => ({
+    default: module.MemoryGridSessionPage
+  }))
+);
 const DecisionRushSetupPage = lazy(() =>
   import("../pages/DecisionRushSetupPage").then((module) => ({
     default: module.DecisionRushSetupPage
@@ -208,6 +213,14 @@ export function App() {
                 element={
                   <RequireActiveUser>
                     <MemoryGridSetupPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/memory-grid/session"
+                element={
+                  <RequireActiveUser>
+                    <MemoryGridSessionPage />
                   </RequireActiveUser>
                 }
               />

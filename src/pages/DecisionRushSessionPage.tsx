@@ -181,7 +181,8 @@ function buildTip(metrics: DecisionRushSessionMetrics): string {
 function buildSession(
   userId: string,
   setup: DecisionRushSetup,
-  metrics: DecisionRushSessionMetrics
+  metrics: DecisionRushSessionMetrics,
+  baseStimulusIntervalMs: number
 ): Session {
   const now = new Date();
   const modeId = modeIdFromDecisionLevel(setup.level);
@@ -218,7 +219,7 @@ function buildSession(
       timeLimitSec: setup.durationSec,
       errorPenalty: 0.5,
       decisionLevel: setup.level,
-      decisionStimulusIntervalMs: initialDecisionIntervalMs(setup.level)
+      decisionStimulusIntervalMs: baseStimulusIntervalMs
     }
   };
 }
