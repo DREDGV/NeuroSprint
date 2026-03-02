@@ -1859,6 +1859,21 @@ textarea:focus-visible {
   border-color: #10b981 !important;
 }
 
+.memory-grid-cell.is-hint {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: #3b82f6 !important;
+  animation: pulse-hint 1s ease-in-out infinite;
+}
+
+@keyframes pulse-hint {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-8px); }

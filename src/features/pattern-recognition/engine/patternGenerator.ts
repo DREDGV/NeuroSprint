@@ -237,28 +237,34 @@ function generateMathSequence(level: PatternLevel): PatternQuestion {
   const correctAnswer = start + 4 * step;
   
   // Генерируем неправильные варианты (близкие числа)
-  const options: number[] = [correctAnswer];
   const wrongValues = [correctAnswer - step, correctAnswer + 1, correctAnswer - 1, correctAnswer + step];
+  const options: number[] = [];
   
+  // Сначала добавляем все варианты
   for (const wrong of shuffle(wrongValues)) {
-    if (!options.includes(wrong) && wrong > 0 && options.length < 4) {
+    if (!options.includes(wrong) && wrong > 0 && options.length < 3) {
       options.push(wrong);
     }
   }
   
-  while (options.length < 4) {
+  while (options.length < 3) {
     const randomWrong = randomInt(1, 50);
     if (!options.includes(randomWrong)) {
       options.push(randomWrong);
     }
   }
   
+  // Добавляем правильный ответ и перемешиваем
+  options.push(correctAnswer);
+  const shuffledOptions = shuffle(options);
+  const correctIndex = shuffledOptions.indexOf(correctAnswer);
+  
   return {
     id: `math-seq-${Date.now()}-${Math.random()}`,
     patternType: 'MATH_SEQUENCE',
     sequence,
-    options: shuffle(options),
-    correctIndex: 0,
+    options: shuffledOptions,
+    correctIndex,
     level,
     contentType: 'numeric',
     mathRule: `+${step}`,

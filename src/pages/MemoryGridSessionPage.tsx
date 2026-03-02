@@ -112,6 +112,9 @@ export function MemoryGridSessionPage() {
   const [wrongCells, setWrongCells] = useState<Set<number>>(new Set());
   const [correctCells, setCorrectCells] = useState<Set<number>>(new Set());
   const [shake, setShake] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(1);
+  const [hintCell, setHintCell] = useState<number | null>(null);
+  const [lastClickTime, setLastClickTime] = useState<number>(0);
 
   const totalCells = getGridCells(setup.gridSize);
   const isRush = setup.mode === "rush";
@@ -199,6 +202,9 @@ export function MemoryGridSessionPage() {
     setWrongCells(new Set());
     setCorrectCells(new Set());
     setShake(false);
+    setAttemptCount(1);
+    setHintCell(null);
+    setLastClickTime(0);
     
     // Показ последовательности с комфортной скоростью
     let index = 0;
@@ -227,6 +233,15 @@ export function MemoryGridSessionPage() {
     const newResponse = [...userResponse, cellIndex];
     setUserResponse(newResponse);
     setSelectedCell(cellIndex);
+    setLastClickTime(Date.now());
+
+    // Звуковой эффект
+    playSound(isCorrect ? 'success' : 'error');
+    
+    // Виброотклик для мобильных
+    if (navigator.vibrate) {
+      navigator.vibrate(isCorrect ? 50 : 200);
+    }
 
     // Визуальная обратная связь
     if (isCorrect) {
@@ -235,6 +250,7 @@ export function MemoryGridSessionPage() {
       setWrongCells(prev => new Set(prev).add(cellIndex));
       setShake(true);
       setTimeout(() => setShake(false), 500);
+      setAttemptCount(prev => prev + 1);
     }
 
     // Check if sequence complete
@@ -326,6 +342,53 @@ export function MemoryGridSessionPage() {
     return true;
   }
 
+  // Простая функция для звуковых эффектов
+  function playSound(type: 'success' | 'error' | 'click') {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      if (type === 'success') {
+        oscillator.frequency.value = 800;
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+      } else if (type === 'error') {
+        oscillator.frequency.value = 200;
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+      } else if (type === 'click') {
+        oscillator.frequency.value = 600;
+        gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.05);
+      }
+    } catch (e) {
+      // Игнорируем ошибки аудио (если браузер не поддерживает)
+    }
+  }
+
+  // Подсветка подсказки если игрок застрял
+  useEffect(() => {
+    if (phase !== 'recalling' || userResponse.length >= currentLevel) return;
+    
+    const timer = setTimeout(() => {
+      const nextCell = currentSequence[userResponse.length];
+      setHintCell(nextCell);
+      playSound('click');
+    }, 3000); // 3 секунды бездействия
+    
+    return () => {
+      clearTimeout(timer);
+      setHintCell(null);
+    };
+  }, [phase, userResponse.length, currentLevel, currentSequence]);
+
   const showingProgress = phase === "showing" ? Math.min(100, (phaseElapsedMs / showingTotalMs) * 100) : 0;
   const rushProgress = isRush ? Math.min(100, (sessionElapsedMs / rushDurationMs) * 100) : 0;
   const correctCount = sequences.length;
@@ -415,16 +478,21 @@ export function MemoryGridSessionPage() {
             const isSelected = selectedCell === index;
             const isWrong = wrongCells.has(index);
             const isCorrect = correctCells.has(index);
+            const isHint = hintCell === index;
             const cellColor = getCellColor(index);
             return (
               <div
                 key={index}
-                className={`nback-cell memory-grid-cell${isActive ? " is-active" : ""}${isSelected ? " is-selected" : ""}${isWrong ? " is-wrong" : ""}${isCorrect ? " is-correct" : ""}`}
-                onClick={() => handleCellClick(index)}
+                className={`nback-cell memory-grid-cell${isActive ? " is-active" : ""}${isSelected ? " is-selected" : ""}${isWrong ? " is-wrong" : ""}${isCorrect ? " is-correct" : ""}${isHint ? " is-hint" : ""}`}
+                onClick={() => {
+                  handleCellClick(index);
+                  playSound('click');
+                }}
                 style={{
-                  backgroundColor: isActive ? cellColor : isSelected ? cellColor + "40" : isWrong ? "rgba(239, 68, 68, 0.3)" : isCorrect ? "rgba(16, 185, 129, 0.3)" : "transparent",
-                  borderColor: isActive || isSelected ? cellColor : isWrong ? "#ef4444" : isCorrect ? "#10b981" : "#c8dfd6",
-                  cursor: phase === "recalling" ? "pointer" : "default"
+                  backgroundColor: isActive ? cellColor : isSelected ? cellColor + "40" : isWrong ? "rgba(239, 68, 68, 0.3)" : isCorrect ? "rgba(16, 185, 129, 0.3)" : isHint ? "rgba(59, 130, 246, 0.2)" : "transparent",
+                  borderColor: isActive || isSelected ? cellColor : isWrong ? "#ef4444" : isCorrect ? "#10b981" : isHint ? "#3b82f6" : "#c8dfd6",
+                  cursor: phase === "recalling" ? "pointer" : "default",
+                  animation: isHint ? 'pulse-hint 1s ease-in-out infinite' : 'none'
                 }}
                 data-testid={isActive ? "memory-grid-active-cell" : undefined}
               >
@@ -445,7 +513,7 @@ export function MemoryGridSessionPage() {
 
         <p className="status-line" data-testid="memory-grid-status">
           {phase === "showing" && `Запомните ${currentLevel} клеток...`}
-          {phase === "recalling" && `Воспроизведите ${currentLevel} клеток (или нажмите "Повторить")`}
+          {phase === "recalling" && `Воспроизведите ${currentLevel} клеток (попыток: ${attemptCount})`}
           {phase === "finished" && "Результаты ниже"}
           {phase === "intro" && "Нажмите Старт"}
         </p>
