@@ -29,6 +29,8 @@ export function ProfilesPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<AppRole | "all">("all");
+  const [sortOrder, setSortOrder] = useState<"name" | "date" | "activity">("date");
 
   // Загрузка аватарок из localStorage
   const getUserAvatar = useCallback((userId: string) => {
@@ -228,15 +230,38 @@ export function ProfilesPage() {
     [activeUserId, users]
   );
 
-  // Фильтрация профилей по поиску
+  // Фильтрация и сортировка профилей
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
-    const query = searchQuery.toLowerCase();
-    return users.filter((user) =>
-      user.name.toLowerCase().includes(query) ||
-      appRoleLabel(normalizeUserRole(user.role)).toLowerCase().includes(query)
-    );
-  }, [users, searchQuery]);
+    let result = [...users];
+    
+    // Фильтр по поиску
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((user) =>
+        user.name.toLowerCase().includes(query) ||
+        appRoleLabel(normalizeUserRole(user.role)).toLowerCase().includes(query)
+      );
+    }
+    
+    // Фильтр по роли
+    if (roleFilter !== "all") {
+      result = result.filter((user) => normalizeUserRole(user.role) === roleFilter);
+    }
+    
+    // Сортировка
+    result.sort((a, b) => {
+      if (sortOrder === "name") {
+        return a.name.localeCompare(b.name, "ru-RU");
+      }
+      if (sortOrder === "date") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      // activity — сортировка по последней активности (пока по createdAt)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    
+    return result;
+  }, [users, searchQuery, roleFilter, sortOrder]);
 
   if (!access.profiles.view) {
     return (
@@ -339,7 +364,7 @@ export function ProfilesPage() {
 
       {/* Поиск профилей */}
       <section className="setup-block">
-        <h3>🔍 Поиск</h3>
+        <h3>🔍 Поиск и фильтры</h3>
         <div className="settings-form">
           <input
             type="text"
@@ -348,11 +373,77 @@ export function ProfilesPage() {
             placeholder="Начните вводить имя или роль..."
             data-testid="profile-search-input"
           />
-          {searchQuery && (
+          
+          {/* Фильтр по ролям */}
+          <div className="segmented-row" data-testid="role-filter">
+            <button
+              type="button"
+              className={roleFilter === "all" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setRoleFilter("all")}
+            >
+              Все ({users.length})
+            </button>
+            <button
+              type="button"
+              className={roleFilter === "admin" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setRoleFilter("admin")}
+            >
+              👑 Админ ({users.filter(u => normalizeUserRole(u.role) === "admin").length})
+            </button>
+            <button
+              type="button"
+              className={roleFilter === "teacher" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setRoleFilter("teacher")}
+            >
+              🍎 Учитель ({users.filter(u => normalizeUserRole(u.role) === "teacher").length})
+            </button>
+            <button
+              type="button"
+              className={roleFilter === "student" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setRoleFilter("student")}
+            >
+              🎓 Ученик ({users.filter(u => normalizeUserRole(u.role) === "student").length})
+            </button>
+            <button
+              type="button"
+              className={roleFilter === "home" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setRoleFilter("home")}
+            >
+              🏠 Дом ({users.filter(u => normalizeUserRole(u.role) === "home").length})
+            </button>
+          </div>
+          
+          {/* Сортировка */}
+          <div className="segmented-row" data-testid="sort-order">
+            <button
+              type="button"
+              className={sortOrder === "name" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setSortOrder("name")}
+            >
+              🔤 По имени
+            </button>
+            <button
+              type="button"
+              className={sortOrder === "date" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setSortOrder("date")}
+            >
+              📅 По дате
+            </button>
+            <button
+              type="button"
+              className={sortOrder === "activity" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setSortOrder("activity")}
+            >
+              ⏰ По активности
+            </button>
+          </div>
+          
+          {searchQuery || roleFilter !== "all" ? (
             <p className="status-line">
               Найдено: {filteredUsers.length} из {users.length}
+              {roleFilter !== "all" && ` (роль: ${appRoleLabel(roleFilter)})`}
             </p>
-          )}
+          ) : null}
         </div>
       </section>
 
