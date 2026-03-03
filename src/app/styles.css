@@ -1895,20 +1895,20 @@ textarea:focus-visible {
 }
 
 .memory-grid-cell.is-wrong {
-  background: linear-gradient(145deg, #fca5a5 0%, #ef4444 100%) !important;
-  border-color: #dc2626 !important;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+  background: linear-gradient(145deg, #fecaca 0%, #fca5a5 100%) !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 4px 12px rgba(248, 113, 113, 0.25) !important;
 }
 
 .memory-grid-cell.is-correct {
-  background: linear-gradient(145deg, #6ee7b7 0%, #10b981 100%) !important;
-  border-color: #059669 !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+  background: linear-gradient(145deg, #a7f3d0 0%, #6ee7b7 100%) !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.25) !important;
 }
 
 .memory-grid-cell.is-hint {
-  background: linear-gradient(145deg, #93c5fd 0%, #60a5fa 100%) !important;
-  border-color: #3b82f6 !important;
+  background: linear-gradient(145deg, #bfdbfe 0%, #93c5fd 100%) !important;
+  border-color: #60a5fa !important;
   transition: opacity 0.1s ease, background-color 0.2s ease;
 }
 
