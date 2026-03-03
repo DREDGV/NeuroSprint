@@ -6,7 +6,9 @@ import {
   saveMemoryGridSetup
 } from "../features/memory-grid/setupStorage";
 import {
+  DIFFICULTY_PRESETS,
   normalizeMemoryGridSetup,
+  type MemoryGridDifficulty,
   type MemoryGridLevel,
   type MemoryGridMode,
   type MemoryGridSetup,
@@ -53,7 +55,7 @@ export function MemoryGridSetupPage() {
       </p>
 
       <InfoHint title="Как играть" testId="memory-grid-setup-hint">
-        <p><strong>1.</strong> Выберите режим и размер сетки.</p>
+        <p><strong>1.</strong> Выберите режим сложности и размер сетки.</p>
         <p><strong>2.</strong> Смотрите на последовательность подсвеченных клеток.</p>
         <p><strong>3.</strong> После показа воспроизведите последовательность кликами.</p>
         <p><strong>4.</strong> Classic: ошибка = конец игры. Rush: 60 сек на максимум уровней.</p>
@@ -62,23 +64,34 @@ export function MemoryGridSetupPage() {
       <section className="setup-block">
         <h3>Настройки сессии</h3>
         <div className="settings-form">
-          <label htmlFor="memory-grid-mode">Режим</label>
+          <label htmlFor="memory-grid-difficulty">Режим сложности</label>
           <select
-            id="memory-grid-mode"
-            value={setup.mode}
-            onChange={(event) =>
+            id="memory-grid-difficulty"
+            value={setup.difficulty}
+            onChange={(event) => {
+              const newDifficulty = event.target.value as MemoryGridDifficulty;
+              const preset = DIFFICULTY_PRESETS[newDifficulty];
               setSetup((current) =>
                 normalizeMemoryGridSetup({
                   ...current,
-                  mode: event.target.value as MemoryGridMode
+                  difficulty: newDifficulty,
+                  gridSize: preset.gridSizes[0],
+                  startLevel: preset.levelRange[0]
                 })
-              )
-            }
-            data-testid="memory-grid-mode-select"
+              );
+            }}
+            data-testid="memory-grid-difficulty-select"
           >
-            <option value="classic">Classic (ошибка = конец)</option>
-            <option value="rush">Rush (60 секунд)</option>
+            {Object.entries(DIFFICULTY_PRESETS).map(([key, preset]) => (
+              <option key={key} value={key}>
+                {preset.title} — {preset.recommended}
+              </option>
+            ))}
           </select>
+          
+          <p className="status-line" style={{ fontSize: '0.85rem', marginTop: '-8px' }}>
+            {DIFFICULTY_PRESETS[setup.difficulty].description}
+          </p>
 
           <label htmlFor="memory-grid-size">Размер сетки</label>
           <select
@@ -94,8 +107,11 @@ export function MemoryGridSetupPage() {
             }
             data-testid="memory-grid-size-select"
           >
-            <option value={3}>3 × 3 (9 клеток)</option>
-            <option value={4}>4 × 4 (16 клеток)</option>
+            {DIFFICULTY_PRESETS[setup.difficulty].gridSizes.map((size) => (
+              <option key={size} value={size}>
+                {size} × {size} ({size * size} клеток)
+              </option>
+            ))}
           </select>
 
           <label htmlFor="memory-grid-level">Начальный уровень</label>
@@ -112,13 +128,15 @@ export function MemoryGridSetupPage() {
             }
             data-testid="memory-grid-level-select"
           >
-            <option value={1}>1 (2 клетки - очень легко)</option>
-            <option value={2}>2 (3 клетки - легко)</option>
-            <option value={3}>3 (4 клетки - нормально)</option>
-            <option value={4}>4 (5 клеток - средне)</option>
-            <option value={5}>5 (6 клеток - сложно)</option>
-            <option value={6}>6 (7 клеток - очень сложно)</option>
-            <option value={7}>7 (8 клеток - эксперт)</option>
+            {Array.from(
+              { length: DIFFICULTY_PRESETS[setup.difficulty].levelRange[1] - DIFFICULTY_PRESETS[setup.difficulty].levelRange[0] + 1 },
+              (_, i) => i + DIFFICULTY_PRESETS[setup.difficulty].levelRange[0]
+            ).map((level) => (
+              <option key={level} value={level}>
+                {level} ({level + 1} кл.
+                {level <= 2 ? ' - очень легко' : level <= 4 ? ' - нормально' : level <= 6 ? ' - сложно' : ' - эксперт'})
+              </option>
+            ))}
           </select>
 
           {setup.mode === "rush" && (

@@ -90,7 +90,7 @@
 | v0.5.P | Reaction persistence + analytics + recommendation | Done | Reaction сохранение/статистика/групповые сравнения, pre-session интеграция, mode-aware рекомендации |
 | v0.7.A | Reaction number-match | Done | Добавлен `reaction_number` и интеграция по pre-session/recommendation/stats |
 | v0.7.B | N-Back Lite module | Done | Новый модуль `N-Back Lite` (`nback_1/nback_2`) с setup/session/save/stats/recommendation/daily challenge |
-| v0.7.C | Decision Rush module | In progress | Новый модуль принятия решений (Warmup/Core/Boss, адаптивный темп, score по P90, leaderboard) |
+| v0.7.C | Decision Rush module | Done | Модуль завершен: setup/session/save/stats/recommendation/daily challenge + UX-polish и e2e покрытие |
 | v0.8.A | Memory Grid Rush module | Planned | Модуль памяти последовательностей (Classic/Rush, рост span, leaderboard, статистика прогресса) |
 
 ## Interfaces & Contracts
@@ -850,7 +850,7 @@
 
 ## Incremental Update: v0.7.C.2 (2026-03-03)
 ### Status
-- In progress.
+- Done.
 
 ### Delivered in this session
 - Закрыт основной UX-polish `Decision Rush`:
@@ -868,9 +868,11 @@
 - `npm run check:encoding` - passed.
 - `npm test -- tests/integration/training-hub.test.tsx tests/integration/pre-session-page.test.tsx tests/unit/decision-rush-engine.test.ts` - passed.
 - `npm run test:e2e -- tests/e2e/decision-rush.spec.ts` - passed.
+- `npm run test:e2e` - passed (16/16).
+- `npm test` - passed (35 files, 141 tests).
 - `npm run build` - passed.
 
 ### Next Session Start
-1. Допрогнать полный `npm run test:e2e` и закрыть `v0.7.C` итоговым статусом + фиксацией следующего шага `v0.8.A`.
+1. Перейти к `v0.8.A`: полный цикл `Memory Grid Rush` (setup/session/save/stats) и UX-polish.
 
 

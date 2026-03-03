@@ -156,6 +156,7 @@ export const NBACK_MODES: TrainingMode[] = [
 ];
 
 export const MEMORY_GRID_MODES: TrainingMode[] = [
+  // Classic режимы
   {
     id: "memory_grid_classic",
     moduleId: "memory_grid",
@@ -163,16 +164,41 @@ export const MEMORY_GRID_MODES: TrainingMode[] = [
     description: "Запомните последовательность и воспроизведите её. Ошибка = конец игры."
   },
   {
+    id: "memory_grid_classic_kids",
+    moduleId: "memory_grid",
+    title: "Memory Grid Kids",
+    description: "Мягкий режим для детей 6-10 лет. Медленнее темп, проще уровни."
+  },
+  {
+    id: "memory_grid_classic_pro",
+    moduleId: "memory_grid",
+    title: "Memory Grid Pro",
+    description: "Сложный режим для взрослых. Быстрый темп, сетка 4×4."
+  },
+  {
     id: "memory_grid_classic_4x4",
     moduleId: "memory_grid",
     title: "Memory Grid Classic 4×4",
     description: "Увеличенная сетка 4×4 для классического режима."
   },
+  // Rush режимы
   {
     id: "memory_grid_rush",
     moduleId: "memory_grid",
     title: "Memory Grid Rush",
     description: "60 секунд на прохождение максимального количества уровней."
+  },
+  {
+    id: "memory_grid_rush_kids",
+    moduleId: "memory_grid",
+    title: "Memory Grid Rush Kids",
+    description: "Мягкий режим на время для детей."
+  },
+  {
+    id: "memory_grid_rush_pro",
+    moduleId: "memory_grid",
+    title: "Memory Grid Rush Pro",
+    description: "Быстрый режим на время для экспертов."
   },
   {
     id: "memory_grid_rush_4x4",

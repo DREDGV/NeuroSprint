@@ -30,19 +30,22 @@
   - `npm test -- tests/integration/training-hub.test.tsx tests/integration/pre-session-page.test.tsx tests/unit/decision-rush-engine.test.ts`,
   - `npm run test:e2e -- tests/e2e/decision-rush.spec.ts`,
   - `npm run build`.
+- Подтвержден полный регресс после добавления нового e2e:
+  - `npm run test:e2e` (16/16),
+  - `npm test` (35 files, 141 tests).
 
 ## Что в работе
-- `v0.7.C` финализация:
-  - общий e2e-регресс после добавления `decision-rush.spec.ts`,
-  - выравнивание аналитики новых модулей (`Decision/Pattern/Memory`) в individual/group stats.
+- Подготовка следующего этапа `v0.8.A`:
+  - финализация контракта `Memory Grid Rush` для режима `Classic/Rush`,
+  - проверка UX setup/session и интеграции в сводную статистику.
 
 ## Блокеры
 - Нет.
 
 ## Следующие 3 шага
-1. Прогнать полный `npm run test:e2e` и зафиксировать стабильность нового `decision-rush.spec.ts` в общем наборе.
-2. Проверить mode-aware отображение `Decision/Pattern/Memory` в `StatsIndividual/StatsGroup` и закрыть оставшиеся UX-разрывы.
-3. После закрытия `v0.7.C` открыть `v0.8.A` (Memory Grid Rush full cycle + analytics).
+1. Стартовать `v0.8.A`: пройтись по setup/session `Memory Grid Rush` и закрыть UX-разрывы.
+2. Уточнить mode-aware отображение `Memory Grid` в `StatsIndividual/StatsGroup` и добавить целевые integration-тесты.
+3. Подготовить следующий dev-срез после закрытия `v0.8.A` (version/help/changelog + регресс).
 
 ## Команды для быстрого старта
 ```powershell

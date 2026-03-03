@@ -49,7 +49,7 @@ function buildSession(
   metrics: MemoryGridSessionMetrics
 ): Session {
   const now = new Date();
-  const modeId = modeIdFromMemoryGridMode(setup.mode, setup.gridSize) as any;
+  const modeId = modeIdFromMemoryGridMode(setup.mode, setup.difficulty, setup.gridSize) as any;
 
   return {
     id: createId(),
@@ -308,7 +308,7 @@ export function MemoryGridSessionPage() {
 
     let cancelled = false;
     const session = buildSession(activeUserId, setup, result);
-    const modeId = modeIdFromMemoryGridMode(setup.mode, setup.gridSize) as any;
+    const modeId = modeIdFromMemoryGridMode(setup.mode, setup.difficulty, setup.gridSize) as any;
 
     void sessionRepository
       .save(session)

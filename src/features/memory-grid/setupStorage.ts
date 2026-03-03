@@ -6,11 +6,11 @@ export function getMemoryGridSetup(): MemoryGridSetup {
   try {
     const raw = localStorage.getItem(MEMORY_GRID_SETUP_KEY);
     if (!raw) {
-      return normalizeMemoryGridSetup(null);
+      return normalizeMemoryGridSetup({ difficulty: "standard" });
     }
     return normalizeMemoryGridSetup(JSON.parse(raw) as Partial<MemoryGridSetup>);
   } catch {
-    return normalizeMemoryGridSetup(null);
+    return normalizeMemoryGridSetup({ difficulty: "standard" });
   }
 }
 
@@ -19,7 +19,7 @@ export function saveMemoryGridSetup(setup: MemoryGridSetup): void {
 }
 
 export function resetMemoryGridSetup(): MemoryGridSetup {
-  const setup = normalizeMemoryGridSetup(null);
+  const setup = normalizeMemoryGridSetup({ difficulty: "standard" });
   saveMemoryGridSetup(setup);
   return setup;
 }

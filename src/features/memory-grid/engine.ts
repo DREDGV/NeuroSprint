@@ -1,31 +1,72 @@
 import type { TrainingModeId } from "../../shared/types/domain";
 
 export const MEMORY_GRID_SIZE = 3;
-export const MEMORY_GRID_SHOW_MS = 1200; // Время показа одной клетки (было 1000)
-export const MEMORY_GRID_PAUSE_MS = 600; // Пауза между клетками (было 500)
-export const MEMORY_GRID_STEP_INTERVAL_MS = 1800; // Общий шаг: показ + пауза (было 1500)
+export const MEMORY_GRID_SHOW_MS = 1200;
+export const MEMORY_GRID_PAUSE_MS = 600;
+export const MEMORY_GRID_STEP_INTERVAL_MS = 1800;
 
-export type MemoryGridLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type MemoryGridLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type MemoryGridSize = 3 | 4;
 export type MemoryGridMode = "classic" | "rush";
+export type MemoryGridDifficulty = "kids" | "standard" | "pro";
 
 export interface MemoryGridSetup {
   mode: MemoryGridMode;
+  difficulty: MemoryGridDifficulty;
   gridSize: MemoryGridSize;
   startLevel: MemoryGridLevel;
-  durationSec?: 60 | 90 | 120; // только для rush
+  durationSec?: 60 | 90 | 120;
 }
 
+// Параметры режимов сложности
+export const DIFFICULTY_PRESETS: Record<MemoryGridDifficulty, {
+  title: string;
+  description: string;
+  gridSizes: MemoryGridSize[];
+  levelRange: [MemoryGridLevel, MemoryGridLevel];
+  stepIntervalMs: number;
+  recommended: string;
+}> = {
+  kids: {
+    title: "Kids",
+    description: "Мягкий режим для детей",
+    gridSizes: [3],
+    levelRange: [1, 5],
+    stepIntervalMs: 2000, // Медленнее
+    recommended: "6-10 лет"
+  },
+  standard: {
+    title: "Standard",
+    description: "Базовый режим",
+    gridSizes: [3, 4],
+    levelRange: [1, 7],
+    stepIntervalMs: 1800, // Нормально
+    recommended: "10+ лет"
+  },
+  pro: {
+    title: "Pro",
+    description: "Сложный режим",
+    gridSizes: [4],
+    levelRange: [3, 9],
+    stepIntervalMs: 1200, // Быстрее
+    recommended: "Взрослые"
+  }
+};
+
 export interface MemoryGridStepEvaluation {
-  correct: number;
-  errors: number;
-  avgRecallTimeMs: number;
+  hit: number;
+  miss: number;
+  falseAlarm: number;
+  correctReject: number;
 }
 
 export interface MemoryGridSessionMetrics extends MemoryGridStepEvaluation {
   spanMax: number;
   levelsCompleted: number;
   totalSequences: number;
+  correct: number;
+  errors: number;
+  avgRecallTimeMs: number;
   accuracy: number;
   score: number;
 }
@@ -52,18 +93,25 @@ function randomCell(gridSize: MemoryGridSize, random: () => number): number {
 
 export function normalizeMemoryGridSetup(input: Partial<MemoryGridSetup> | null | undefined): MemoryGridSetup {
   const mode = input?.mode === "rush" ? "rush" : "classic";
-  const gridSize = input?.gridSize === 4 ? 4 : 3;
-  const startLevel = input?.startLevel && input.startLevel >= 1 && input.startLevel <= 9 
-    ? input.startLevel as MemoryGridLevel 
-    : 3;
+  const difficulty = input?.difficulty || "standard";
+  const gridSize = input?.gridSize || (difficulty === "pro" ? 4 : 3);
+  const startLevel = input?.startLevel 
+    ? Math.max(
+        DIFFICULTY_PRESETS[difficulty].levelRange[0],
+        Math.min(input.startLevel, DIFFICULTY_PRESETS[difficulty].levelRange[1])
+      ) as MemoryGridLevel
+    : DIFFICULTY_PRESETS[difficulty].levelRange[0];
   const durationSec = input?.durationSec === 120 ? 120 : input?.durationSec === 90 ? 90 : 60;
   
-  return { mode, gridSize, startLevel, durationSec };
+  return { mode, difficulty, gridSize, startLevel, durationSec };
 }
 
-export function modeIdFromMemoryGridMode(mode: MemoryGridMode, gridSize: MemoryGridSize = 3): TrainingModeId {
-  if (mode === "rush") return gridSize === 4 ? "memory_grid_rush_4x4" : "memory_grid_rush";
-  return gridSize === 4 ? "memory_grid_classic_4x4" : "memory_grid_classic";
+export function modeIdFromMemoryGridMode(mode: MemoryGridMode, difficulty: MemoryGridDifficulty = "standard", gridSize: MemoryGridSize = 3): TrainingModeId {
+  const difficultySuffix = difficulty === "kids" ? "_kids" : difficulty === "pro" ? "_pro" : "";
+  const sizeSuffix = gridSize === 4 ? "_4x4" : "";
+  
+  if (mode === "rush") return `memory_grid_rush${difficultySuffix}${sizeSuffix}` as TrainingModeId;
+  return `memory_grid_classic${difficultySuffix}${sizeSuffix}` as TrainingModeId;
 }
 
 export function generateMemoryGridSequence(
@@ -120,7 +168,7 @@ export function evaluateMemoryGridSession(input: MemoryGridEvaluationInput): Mem
     if (isCorrect) {
       correct += 1;
       levelsCompleted += 1;
-      spanMax = Math.min(7, Math.max(spanMax, sequence.length)) as MemoryGridLevel;
+      spanMax = Math.min(9, Math.max(spanMax, sequence.length)) as MemoryGridLevel;
     } else {
       errors += 1;
       // В classic режиме ошибка заканчивает игру
@@ -148,6 +196,10 @@ export function evaluateMemoryGridSession(input: MemoryGridEvaluationInput): Mem
     totalSequences,
     correct,
     errors,
+    hit: correct,
+    miss: 0,
+    falseAlarm: errors,
+    correctReject: 0,
     avgRecallTimeMs,
     accuracy,
     score
