@@ -47,8 +47,9 @@ export function ProfilesPage() {
     [users]
   );
   const recoveryMode = teachersCount === 0;
-  const canAssignRoleOnCreate = access.profiles.updateRole || recoveryMode;
-  const canUpdateProfileRoles = access.profiles.updateRole || recoveryMode;
+  const isFirstProfile = users.length === 0;
+  const canAssignRoleOnCreate = access.profiles.updateRole || recoveryMode || isFirstProfile;
+  const canUpdateProfileRoles = access.profiles.updateRole || recoveryMode || isFirstProfile;
   
   // Проверка: может ли текущий пользователь редактировать конкретный профиль
   const canEditUser = useCallback((user: User) => {
@@ -298,6 +299,14 @@ export function ProfilesPage() {
           {!canAssignRoleOnCreate ? (
             <p className="status-line" data-testid="profiles-create-role-note">
               В текущей роли можно создать только профиль «Ученик».
+            </p>
+          ) : isFirstProfile ? (
+            <p className="status-line" style={{ color: '#10b981' }}>
+              🔥 Первый профиль! Выберите роль «Учитель» или «Администратор» для полного доступа.
+            </p>
+          ) : recoveryMode ? (
+            <p className="status-line" style={{ color: '#f59e0b' }}>
+              ⚠️ В системе нет учителей. Создайте профиль с ролью «Учитель» для восстановления доступа.
             </p>
           ) : null}
           <button

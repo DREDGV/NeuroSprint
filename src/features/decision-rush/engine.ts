@@ -255,10 +255,24 @@ function buildWarmupRules(level: DecisionRushLevel): DecisionRushRule[] {
   return rules;
 }
 
-function buildBossRule(): DecisionRushRule {
+function buildBossRule(level: DecisionRushLevel): DecisionRushRule {
+  if (level === "kids") {
+    return {
+      title: "Boss: Комбо",
+      description: "Жми ДА, если красный или круг",
+      evaluate: (stimulus) => stimulus.color === "red" || stimulus.shape === "circle"
+    };
+  }
+  if (level === "pro") {
+    return {
+      title: "Boss: Струп",
+      description: "Жми ДА, если цвет НЕ равен слову",
+      evaluate: (stimulus) => stimulus.stroopInk !== stimulus.stroopWord
+    };
+  }
   return {
     title: "Boss: Струп",
-    description: "Жми ДА, если цвет = слово",
+    description: "Жми ДА, если цвет равен слову",
     evaluate: (stimulus) => stimulus.stroopInk === stimulus.stroopWord
   };
 }
@@ -266,22 +280,20 @@ function buildBossRule(): DecisionRushRule {
 function buildBalancedTrial(
   rule: DecisionRushRule,
   phase: DecisionRushPhase,
-  level: DecisionRushLevel,
-  random: () => number
+  random: () => number,
+  stimulusFactory: () => DecisionRushStimulus = () => buildStimulus(random)
 ): DecisionRushTrial {
   const targetAnswer: DecisionRushAnswer = random() < 0.5 ? "yes" : "no";
   const maxAttempts = 10;
 
   let fallbackStimulus: DecisionRushStimulus | null = null;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const stimulus =
-      phase === "boss" ? buildStroopStimulus(level, random) : buildStimulus(random);
+    const stimulus = stimulusFactory();
     if (fallbackStimulus == null) {
       fallbackStimulus = stimulus;
     }
 
-    const isYes = rule.evaluate(stimulus);
-    const answer: DecisionRushAnswer = isYes ? "yes" : "no";
+    const answer: DecisionRushAnswer = rule.evaluate(stimulus) ? "yes" : "no";
     if (answer === targetAnswer) {
       return {
         phase,
@@ -292,7 +304,7 @@ function buildBalancedTrial(
     }
   }
 
-  const safeFallback = fallbackStimulus ?? buildStimulus(random);
+  const safeFallback = fallbackStimulus ?? stimulusFactory();
   return {
     phase,
     prompt: { title: rule.title, description: rule.description },
@@ -307,13 +319,15 @@ export function createDecisionRushTrial(
   random: () => number = Math.random
 ): DecisionRushTrial {
   if (phase === "boss") {
-    const rule = buildBossRule();
-    return buildBalancedTrial(rule, phase, level, random);
+    const rule = buildBossRule(level);
+    const stimulusFactory =
+      level === "kids" ? () => buildStimulus(random) : () => buildStroopStimulus(level, random);
+    return buildBalancedTrial(rule, phase, random, stimulusFactory);
   }
 
   const rules = phase === "warmup" ? buildWarmupRules(level) : buildCoreRules(level);
   const rule = randomFrom(rules, random);
-  return buildBalancedTrial(rule, phase, level, random);
+  return buildBalancedTrial(rule, phase, random, () => buildStimulus(random));
 }
 
 export function initialDecisionIntervalMs(level: DecisionRushLevel): number {

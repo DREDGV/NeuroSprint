@@ -18,7 +18,7 @@ export class UserRoleGuardError extends Error {
 }
 
 export function isAppRole(value: unknown): value is AppRole {
-  return value === "teacher" || value === "student" || value === "home";
+  return value === "teacher" || value === "student" || value === "home" || value === "admin";
 }
 
 export function normalizeUserRole(value: unknown): AppRole {

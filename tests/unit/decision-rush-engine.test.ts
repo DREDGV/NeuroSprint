@@ -39,6 +39,18 @@ describe("decision rush engine", () => {
     expect(trial.correctAnswer === "yes" || trial.correctAnswer === "no").toBe(true);
   });
 
+  it("uses level-specific boss stimulus strategy", () => {
+    const kidsTrial = createDecisionRushTrial("kids", "boss");
+    expect(kidsTrial.phase).toBe("boss");
+    expect(kidsTrial.stimulus.stroopWord).toBeUndefined();
+    expect(kidsTrial.stimulus.stroopInk).toBeUndefined();
+
+    const proTrial = createDecisionRushTrial("pro", "boss");
+    expect(proTrial.phase).toBe("boss");
+    expect(proTrial.stimulus.stroopWord).toBeTruthy();
+    expect(proTrial.stimulus.stroopInk).toBeTruthy();
+  });
+
   it("resolves phases by elapsed time", () => {
     expect(resolveDecisionPhase(0, 60)).toBe("warmup");
     expect(resolveDecisionPhase(20_000, 60)).toBe("core");
