@@ -848,4 +848,29 @@
 ### Next Session Start
 1. Закрыть `v0.7.C` (C3-C4): e2e Decision Rush + финальный UX-polish игрового экрана.
 
+## Incremental Update: v0.7.C.2 (2026-03-03)
+### Status
+- In progress.
+
+### Delivered in this session
+- Закрыт основной UX-polish `Decision Rush`:
+  - setup-уровни переведены в user-friendly формат (`Легко/Стандарт/Эксперт`),
+  - добавлен явный live-status в сессии (`старт/пауза/ответ принят/можно отвечать/завершено`),
+  - уточнены тексты обратной связи на разминке и после нажатий (`Ответ принят: ДА/НЕТ`).
+- Добавлены стабильные e2e-селекторы в `TrainingHub`:
+  - `training-open-*`,
+  - `training-plan-*`.
+- Добавлен e2e сценарий `tests/e2e/decision-rush.spec.ts`:
+  - путь `profiles -> training -> decision-rush -> session -> result -> stats`,
+  - путь `pre-session -> decision_pro -> decision setup`.
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm test -- tests/integration/training-hub.test.tsx tests/integration/pre-session-page.test.tsx tests/unit/decision-rush-engine.test.ts` - passed.
+- `npm run test:e2e -- tests/e2e/decision-rush.spec.ts` - passed.
+- `npm run build` - passed.
+
+### Next Session Start
+1. Допрогнать полный `npm run test:e2e` и закрыть `v0.7.C` итоговым статусом + фиксацией следующего шага `v0.8.A`.
+
 

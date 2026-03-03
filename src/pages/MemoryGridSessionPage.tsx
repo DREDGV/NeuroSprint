@@ -522,7 +522,6 @@ export function MemoryGridSessionPage() {
                 }}
                 data-testid={isActive ? "memory-grid-active-cell" : undefined}
               >
-                {isActive && <span className="nback-cell-content" style={{ color: '#3b82f6' }}>●</span>}
                 {isWrong && <span className="nback-cell-content" style={{ color: "#ef4444" }}>✕</span>}
                 {isCorrect && <span className="nback-cell-content" style={{ color: "#10b981" }}>✓</span>}
               </div>

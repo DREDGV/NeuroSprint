@@ -1899,9 +1899,37 @@ textarea:focus-visible {
 }
 
 .memory-grid-cell.is-active {
-  animation: memory-grid-pop 0.3s ease;
-  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 30%, transparent),
-              0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: memory-grid-pop 0.3s ease, memory-grid-fade 1.2s ease forwards;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #3b82f6 30%, transparent),
+              0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+@keyframes memory-grid-fade {
+  0% {
+    background: rgba(59, 130, 246, 0.8);
+    border-color: #3b82f6;
+    opacity: 1;
+  }
+  100% {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: #d1d5db;
+    opacity: 1;
+  }
+}
+
+.memory-grid-cell.is-active::before {
+  background: linear-gradient(145deg, #3b82f6 0%, #2563eb 100%) !important;
+  opacity: 1;
+  animation: active-cell-fade 1.2s ease forwards;
+}
+
+@keyframes active-cell-fade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
 }
 
 .memory-grid-cell.is-selected {

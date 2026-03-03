@@ -27,22 +27,10 @@ test.describe("Decision Rush", () => {
     await expect(page.getByTestId("decision-live-state")).toContainText("Можно отвечать", {
       timeout: 8_000
     });
+    await expect(page.getByTestId("decision-answer-yes")).toBeVisible();
+    await page.getByTestId("decision-answer-yes").click();
 
-    const yes = page.getByTestId("decision-answer-yes");
-    const no = page.getByTestId("decision-answer-no");
     const result = page.getByTestId("decision-result");
-
-    for (let i = 0; i < 80; i += 1) {
-      if (await result.isVisible()) {
-        break;
-      }
-
-      const target = i % 2 === 0 ? yes : no;
-      if (await target.isVisible() && await target.isEnabled()) {
-        await target.click();
-      }
-      await page.waitForTimeout(45);
-    }
 
     await expect(result).toBeVisible({ timeout: 12_000 });
 
