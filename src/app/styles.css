@@ -1835,27 +1835,31 @@ textarea:focus-visible {
 
 .memory-grid-cell {
   aspect-ratio: 1 / 1;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 2px solid #d1d5db;
-  background: rgba(255, 255, 255, 0.8);
+  background: linear-gradient(145deg, #f9fafb 0%, #f3f4f6 100%);
   display: grid;
   place-items: center;
   font-size: clamp(1.5rem, 4vw, 2.2rem);
   font-weight: 900;
   color: #6b7280;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
   min-height: 60px;
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.8),
+    0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .memory-grid-cell::before {
   content: "";
   position: absolute;
-  inset: 3px;
-  background: linear-gradient(145deg, #ffffff 0%, #f3f4f6 100%);
-  border-radius: 11px;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 50%);
+  border-radius: 12px;
   z-index: 0;
+  pointer-events: none;
 }
 
 .memory-grid-cell > * {
@@ -1863,98 +1867,57 @@ textarea:focus-visible {
   z-index: 1;
 }
 
-.memory-grid-cell.is-wrong {
-  background: rgba(239, 68, 68, 0.2) !important;
-  border-color: #ef4444 !important;
-  animation: shake 0.5s ease;
-}
-
-.memory-grid-cell.is-wrong::before {
-  background: linear-gradient(145deg, #fee2e2 0%, #fecaca 100%) !important;
-}
-
-.memory-grid-cell.is-correct {
-  background: rgba(16, 185, 129, 0.2) !important;
-  border-color: #10b981 !important;
-}
-
-.memory-grid-cell.is-correct::before {
-  background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%) !important;
-}
-
-.memory-grid-cell.is-hint {
-  transition: opacity 0.1s ease, background-color 0.1s ease;
-}
-
-.memory-grid-cell.is-hint::before {
-  background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%) !important;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-8px); }
-  40% { transform: translateX(8px); }
-  60% { transform: translateX(-8px); }
-  80% { transform: translateX(8px); }
-}
-
 .memory-grid-cell.is-active {
-  animation: memory-grid-pop 0.3s ease, memory-grid-fade 1.2s ease forwards;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #3b82f6 30%, transparent),
-              0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-@keyframes memory-grid-fade {
-  0% {
-    background: rgba(59, 130, 246, 0.8);
-    border-color: #3b82f6;
-    opacity: 1;
-  }
-  100% {
-    background: rgba(59, 130, 246, 0.1);
-    border-color: #d1d5db;
-    opacity: 1;
-  }
+  background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 100%);
+  border-color: #2563eb;
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.3),
+    0 4px 12px rgba(59, 130, 246, 0.3);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .memory-grid-cell.is-active::before {
-  background: linear-gradient(145deg, #3b82f6 0%, #2563eb 100%) !important;
-  opacity: 1;
-  animation: active-cell-fade 1.2s ease forwards;
+  background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%);
 }
 
-@keyframes active-cell-fade {
-  0% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.3;
-  }
+.memory-grid-cell.is-active::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  background: linear-gradient(145deg, rgba(96, 165, 250, 0.5) 0%, rgba(59, 130, 246, 0.3) 100%);
+  border-radius: 8px;
+  z-index: 0;
 }
 
 .memory-grid-cell.is-selected {
   opacity: 0.7;
-  transform: scale(0.95);
-  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+  transform: scale(0.98);
 }
 
-/* Shake для всей сетки при ошибке */
-.memory-grid.shake {
-  animation: shake 0.5s ease;
+.memory-grid-cell.is-wrong {
+  background: linear-gradient(145deg, #fca5a5 0%, #ef4444 100%) !important;
+  border-color: #dc2626 !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
 }
 
-@keyframes memory-grid-pop {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.15);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+.memory-grid-cell.is-correct {
+  background: linear-gradient(145deg, #6ee7b7 0%, #10b981 100%) !important;
+  border-color: #059669 !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+.memory-grid-cell.is-hint {
+  background: linear-gradient(145deg, #93c5fd 0%, #60a5fa 100%) !important;
+  border-color: #3b82f6 !important;
+  transition: opacity 0.1s ease, background-color 0.2s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
 }
 
 /* Progress Bar */
