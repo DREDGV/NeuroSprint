@@ -128,10 +128,10 @@ function getReactionModeTip(modeId: TrainingModeId): string | null {
   if (modeId === "pattern_learning") {
     return "Pattern Learning: обучающий режим с подсказками и разбором ошибок.";
   }
-  if (modeId === "memory_grid_classic" || modeId === "memory_grid_classic_4x4") {
+  if (modeId.startsWith("memory_grid_classic")) {
     return "Memory Grid Classic: запомните последовательность и повторите без ошибок.";
   }
-  if (modeId === "memory_grid_rush" || modeId === "memory_grid_rush_4x4") {
+  if (modeId.startsWith("memory_grid_rush")) {
     return "Memory Grid Rush: пройдите максимум уровней за ограниченное время.";
   }
   return null;

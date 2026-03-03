@@ -454,6 +454,113 @@ textarea:focus-visible {
   margin: 16px 0;
 }
 
+/* ================================
+   Avatar Selector Styles
+   ================================ */
+
+.avatar-selector {
+  position: relative;
+  display: inline-block;
+}
+
+.avatar-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f3f4f6 0%, #e5e7eb 100%);
+  border: 2px solid #d1d5db;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 1.2rem;
+}
+
+.avatar-selector-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #9ca3af;
+}
+
+.avatar-preview {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.avatar-arrow {
+  font-size: 0.9rem;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.avatar-selector-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  padding: 12px;
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  animation: avatar-dropdown-appear 0.2s ease;
+}
+
+@keyframes avatar-dropdown-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+
+.avatar-option {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f9fafb 0%, #f3f4f6 100%);
+  border: 2px solid #e5e7eb;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: grid;
+  place-items: center;
+}
+
+.avatar-option:hover {
+  transform: scale(1.1);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.avatar-option.is-selected {
+  background: linear-gradient(145deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 600px) {
+  .avatar-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  
+  .avatar-selector-dropdown {
+    right: auto;
+    left: 0;
+  }
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

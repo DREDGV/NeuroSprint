@@ -13,6 +13,7 @@ import { guardAccess } from "../shared/lib/auth/permissions";
 import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
 import type { AppRole, User } from "../shared/types/domain";
 import { ProfileCard, AVATAR_EMOJIS } from "../shared/ui/ProfileCard";
+import { AvatarSelector } from "../shared/ui/AvatarSelector";
 
 export function ProfilesPage() {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ export function ProfilesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [name, setName] = useState("");
   const [newRole, setNewRole] = useState<AppRole>("student");
+  const [newAvatar, setNewAvatar] = useState("👤");
   const [roleDrafts, setRoleDrafts] = useState<Record<string, AppRole>>({});
   const [avatarDrafts, setAvatarDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -89,9 +91,14 @@ export function ProfilesPage() {
     try {
       const roleForCreate = canAssignRoleOnCreate ? newRole : "student";
       const created = await userRepository.create(name.trim(), roleForCreate);
+      
+      // Сохраняем аватарку
+      localStorage.setItem(`ns.avatar.${created.id}`, newAvatar);
+      
       setActiveUserId(created.id);
       saveAppRole(normalizeUserRole(created.role));
       setName("");
+      setNewAvatar("👤");
       setNewRole("student");
       await loadUsers();
       setStatus(`Профиль "${created.name}" создан с ролью «${appRoleLabel(created.role)}».`);
@@ -236,6 +243,13 @@ export function ProfilesPage() {
             maxLength={32}
             data-testid="profile-name-input"
           />
+          
+          <label htmlFor="profile-avatar">Аватарка</label>
+          <AvatarSelector
+            selectedAvatar={newAvatar}
+            onSelect={setNewAvatar}
+          />
+          
           <label htmlFor="profile-role">Роль профиля</label>
           <select
             id="profile-role"
