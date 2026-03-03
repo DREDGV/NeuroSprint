@@ -1,41 +1,38 @@
 # NeuroSprint Execution Status (RU)
 
 ## Дата/время
-- 2026-03-02 14:00 (Asia/Novosibirsk)
+- 2026-03-03 15:14 (Asia/Novosibirsk)
 
 ## Что завершено
-- Запущен и интегрирован модуль `Decision Rush` (v0.7.C, C1-C2):
-  - маршруты `/training/decision-rush` и `/training/decision-rush/session`;
-  - setup-экран и полноценная session-страница;
-  - сохранение результатов в `sessions` (`taskId/moduleId/modeId = decision_rush/...`).
-- `Decision Rush` подключен в:
-  - `Training Hub`,
-  - `Pre-session`,
-  - recommendation engine,
-  - `Stats` (`/stats`, `/stats/individual`, `/stats/group`),
-  - daily challenge rotation.
-- Добавлены и обновлены тесты:
-  - unit: `decision-rush-engine`, `session-aggregation`,
-  - integration: `pre-session`, `training-hub`, `stats-page-sprint`.
-- Пройдены проверки:
+- Выполнен стабилизационный пакет после параллельной разработки:
+  - синхронизированы mode-контракты для `N-Back`, `Pattern`, `Memory Grid`;
+  - `Pre-session` переведен на динамическую валидацию модулей/режимов;
+  - исправлены launch-path для Daily Challenge (Memory Grid + Pattern Recognition);
+  - исправлен игровой цикл `Pattern Recognition` (инициализация, завершение, длительность сессии);
+  - добавлены проверки маршрутов в unit/integration-тестах.
+- Обновлены release-артефакты:
+  - версия приложения `0.5.0-dev.5`,
+  - `docs/CHANGELOG_RU.md`,
+  - встроенная история релизов в `/help`.
+- Подтвержден регресс:
   - `npm run check:encoding`,
-  - `npm run lint`,
-  - таргетные `npm test`,
-  - `npm run build`.
+  - `npm test`,
+  - `npm run build`,
+  - `npm run test:e2e -- tests/e2e/smoke.spec.ts`.
 
 ## Что в работе
-- Завершение `v0.7.C` (C3-C4):
-  - UX-polish игрового цикла Decision Rush (подсказки/визуальные состояния),
-  - e2e покрытие нового модуля,
-  - фиксация dev-среза версии после проверки ручного QA.
+- `v0.7.C` (C3-C4):
+  - финальный UX-polish `Decision Rush`,
+  - полноценный e2e-сценарий Decision Rush (`setup -> session -> save -> stats`),
+  - проверка и выравнивание поведения новых модулей в общей статистике.
 
 ## Блокеры
 - Нет.
 
 ## Следующие 3 шага
-1. Добавить e2e `Decision Rush` (`setup -> session -> save -> stats`).
-2. Довести UI/тексты Decision Rush до финального UX (без технических формулировок).
-3. После закрытия `v0.7.C` перейти к `v0.8.A` (`Memory Grid Rush`).
+1. Закрыть e2e для Decision Rush и включить в регулярный smoke/регресс набор.
+2. Довести UX Decision Rush: финальные тексты, обратная связь по ошибкам и темпу.
+3. После закрытия `v0.7.C` открыть `v0.8.A` (Memory Grid Rush full cycle + analytics).
 
 ## Команды для быстрого старта
 ```powershell

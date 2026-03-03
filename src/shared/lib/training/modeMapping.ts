@@ -7,7 +7,19 @@ const REACTION_MODE_IDS: TrainingModeId[] = [
   "reaction_pair",
   "reaction_number"
 ];
-const NBACK_MODE_IDS: TrainingModeId[] = ["nback_1", "nback_2"];
+const NBACK_MODE_IDS: TrainingModeId[] = [
+  "nback_1",
+  "nback_1_4x4",
+  "nback_2",
+  "nback_2_4x4",
+  "nback_3"
+];
+const MEMORY_GRID_MODE_IDS: TrainingModeId[] = [
+  "memory_grid_classic",
+  "memory_grid_classic_4x4",
+  "memory_grid_rush",
+  "memory_grid_rush_4x4"
+];
 const DECISION_RUSH_MODE_IDS: TrainingModeId[] = [
   "decision_kids",
   "decision_standard",
@@ -16,7 +28,9 @@ const DECISION_RUSH_MODE_IDS: TrainingModeId[] = [
 const PATTERN_MODE_IDS: TrainingModeId[] = [
   "pattern_classic",
   "pattern_timed",
-  "pattern_progressive"
+  "pattern_progressive",
+  "pattern_learning",
+  "pattern_multi"
 ];
 
 export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
@@ -28,6 +42,9 @@ export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
   }
   if (NBACK_MODE_IDS.includes(modeId)) {
     return "n_back";
+  }
+  if (MEMORY_GRID_MODE_IDS.includes(modeId)) {
+    return "memory_grid";
   }
   if (DECISION_RUSH_MODE_IDS.includes(modeId)) {
     return "decision_rush";
@@ -48,6 +65,10 @@ export function isReactionMode(modeId: TrainingModeId): boolean {
 
 export function isNBackMode(modeId: TrainingModeId): boolean {
   return NBACK_MODE_IDS.includes(modeId);
+}
+
+export function isMemoryGridMode(modeId: TrainingModeId): boolean {
+  return MEMORY_GRID_MODE_IDS.includes(modeId);
 }
 
 export function isDecisionRushMode(modeId: TrainingModeId): boolean {

@@ -48,26 +48,49 @@ function elementsEqual(a: PatternElement, b: PatternElement): boolean {
 // ==================== ГЕНЕРАТОРЫ ВИЗУАЛЬНЫХ ПАТТЕРНОВ ====================
 
 // ABAB - Чередование
-function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 'size')[], gaps: number = 1): PatternQuestion {
+function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 'size')[], gaps: number = 1, gapsInMiddle: boolean = false): PatternQuestion {
   const elementA = randomElement();
   const elementB = randomElement(elementA);
   
   // Увеличиваем длину последовательности
   const sequenceLength = level === 'kids' ? 4 : level === 'standard' ? 5 : 6;
+  const fullSequence: PatternElement[] = [];
+  for (let i = 0; i < sequenceLength + gaps; i++) {
+    fullSequence.push(i % 2 === 0 ? { ...elementA } : { ...elementB });
+  }
+  
+  // Определяем позиции пропусков
+  const gapPositions: number[] = [];
+  if (gapsInMiddle) {
+    // Пропуски в случайных местах (но не первый и не последний)
+    const availablePositions = Array.from({ length: sequenceLength + gaps - 2 }, (_, i) => i + 1);
+    const shuffled = shuffle(availablePositions);
+    gapPositions.push(...shuffled.slice(0, gaps));
+  } else {
+    // Пропуски в конце
+    for (let i = 0; i < gaps; i++) {
+      gapPositions.push(sequenceLength + gaps - 1 - i);
+    }
+  }
+  gapPositions.sort((a, b) => a - b);
+  
+  // Создаём последовательность с пропусками
   const sequence: PatternElement[] = [];
-  for (let i = 0; i < sequenceLength; i++) {
-    sequence.push(i % 2 === 0 ? { ...elementA } : { ...elementB });
+  for (let i = 0; i < sequenceLength + gaps; i++) {
+    if (!gapPositions.includes(i)) {
+      sequence.push(fullSequence[i]);
+    }
   }
   
   // Генерируем правильные ответы для пропусков
   const correctAnswers: PatternElement[] = [];
-  for (let i = 0; i < gaps; i++) {
-    correctAnswers.push((sequenceLength + i) % 2 === 0 ? { ...elementA } : { ...elementB });
+  for (const pos of gapPositions) {
+    correctAnswers.push(fullSequence[pos]);
   }
   
   // Генерируем неправильные варианты
   const options: PatternElement[] = [];
-  const optionsNeeded = gaps + 1; // На один больше, чем нужно выбрать
+  const optionsNeeded = gaps + 2; // На 2 больше, чем нужно выбрать
   while (options.length < optionsNeeded) {
     const wrong = randomElement();
     if (!options.some(opt => elementsEqual(opt, wrong))) {
@@ -99,9 +122,9 @@ function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
     correctIndex: correctIndices,
     level,
     contentType: 'visual',
-    hint: 'Чередование: A, B, A, B...',
+    hint: gapsInMiddle ? 'Чередование: пропуски в разных местах' : 'Чередование: A, B, A, B...',
     explanation: `Паттерн чередуется между двумя элементами. Нужно заполнить ${gaps} пропуска.`,
-    sequenceLength,
+    sequenceLength: sequence.length,
     answersNeeded: gaps,
     gaps,
     userAnswers: []
@@ -147,7 +170,8 @@ function generateAABB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
     hint: 'Пары: A, A, B, B...',
     explanation: 'Каждый элемент повторяется дважды. После пары B начинается новая пара A.',
     sequenceLength,
-    answersNeeded: 1
+    answersNeeded: 1,
+    gaps: 1
   };
 }
 
@@ -194,7 +218,8 @@ function generateProgression(level: PatternLevel, elementTypes: ('color' | 'shap
     hint: 'Прогрессия: размер увеличивается',
     explanation: 'Каждый следующий элемент больше предыдущего.',
     sequenceLength,
-    answersNeeded: 1
+    answersNeeded: 1,
+    gaps: 1
   };
 }
 
@@ -238,7 +263,8 @@ function generateCycle(level: PatternLevel, elementTypes: ('color' | 'shape' | '
     hint: 'Цикл из 3 элементов: A, B, C, A, B...',
     explanation: 'Паттерн повторяется каждые 3 элемента. После A, B следует C.',
     sequenceLength,
-    answersNeeded: 1
+    answersNeeded: 1,
+    gaps: 1
   };
 }
 
@@ -286,7 +312,8 @@ function generateMirror(level: PatternLevel, elementTypes: ('color' | 'shape' | 
     hint: 'Зеркало: A, B, B, A...',
     explanation: 'Паттерн зеркально отражается. После завершения зеркала начинается новый цикл.',
     sequenceLength,
-    answersNeeded: 1
+    answersNeeded: 1,
+    gaps: 1
   };
 }
 
@@ -342,7 +369,8 @@ function generateMathSequence(level: PatternLevel): PatternQuestion {
     hint: `Арифметическая прогрессия: каждое число больше предыдущего на ${step}`,
     explanation: `Последовательность увеличивается на ${step}: ${sequence.join(', ')}, ${correctAnswer}.`,
     sequenceLength,
-    answersNeeded: 1
+    answersNeeded: 1,
+    gaps: 1
   };
 }
 
@@ -386,7 +414,8 @@ function generateMathArithmetic(level: PatternLevel): PatternQuestion {
     hint: `Каждое следующее число = предыдущее + ${step}`,
     explanation: `Арифметическая прогрессия: start=${start}, шаг=${step}. Ответ: ${correctAnswer}.`,
     sequenceLength,
-    answersNeeded: 1
+    answersNeeded: 1,
+    gaps: 1
   };
 }
 
@@ -433,7 +462,8 @@ function generateMathAlternating(level: PatternLevel): PatternQuestion {
     hint: `Чередование: +${add}, -${sub}, +${add}, -${sub}...`,
     explanation: `Операции чередуются: +${add}, затем -${sub}. Следующее: ${correctAnswer}.`,
     sequenceLength,
-    answersNeeded: 1
+    answersNeeded: 1,
+    gaps: 1
   };
 }
 

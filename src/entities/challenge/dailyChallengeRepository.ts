@@ -68,7 +68,8 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   pattern_classic: "Pattern Recognition Classic",
   pattern_timed: "Pattern Recognition Timed",
   pattern_progressive: "Pattern Recognition Progressive",
-  pattern_learning: "Pattern Recognition Learning"
+  pattern_learning: "Pattern Recognition Learning",
+  pattern_multi: "Pattern Recognition Multi"
 };
 
 function addDays(localDate: string, days: number): string {
@@ -146,6 +147,12 @@ export function getChallengeLaunchPath(modeId: TrainingModeId): string {
   }
   if (moduleId === "decision_rush") {
     return `/training/decision-rush?mode=${modeId}`;
+  }
+  if (moduleId === "memory_grid") {
+    return `/training/memory-grid?mode=${modeId}`;
+  }
+  if (moduleId === "pattern_recognition") {
+    return `/training/pattern-recognition?mode=${modeId}`;
   }
   return `/training/schulte?mode=${modeId}`;
 }

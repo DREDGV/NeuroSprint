@@ -18,7 +18,10 @@ const MODE_IDS: TrainingModeId[] = [
   "reaction_pair",
   "reaction_number",
   "nback_1",
+  "nback_1_4x4",
   "nback_2",
+  "nback_2_4x4",
+  "nback_3",
   "decision_kids",
   "decision_standard",
   "decision_pro"
@@ -58,7 +61,13 @@ function isReactionModeId(modeId: TrainingModeId): boolean {
 }
 
 function isNBackModeId(modeId: TrainingModeId): boolean {
-  return modeId === "nback_1" || modeId === "nback_2";
+  return (
+    modeId === "nback_1" ||
+    modeId === "nback_1_4x4" ||
+    modeId === "nback_2" ||
+    modeId === "nback_2_4x4" ||
+    modeId === "nback_3"
+  );
 }
 
 function isDecisionModeId(modeId: TrainingModeId): boolean {
@@ -83,7 +92,19 @@ function reactionLabel(modeId: TrainingModeId): string {
 }
 
 function nBackLabel(modeId: TrainingModeId): string {
-  return modeId === "nback_2" ? "2-back" : "1-back";
+  if (modeId === "nback_1_4x4") {
+    return "1-back 4x4";
+  }
+  if (modeId === "nback_2") {
+    return "2-back";
+  }
+  if (modeId === "nback_2_4x4") {
+    return "2-back 4x4";
+  }
+  if (modeId === "nback_3") {
+    return "3-back";
+  }
+  return "1-back";
 }
 
 function decisionLabel(modeId: TrainingModeId): string {
@@ -113,7 +134,13 @@ function nBackUntrainedPriority(modeId: TrainingModeId, hasNBackHistory: boolean
   if (hasNBackHistory) {
     return 0.16;
   }
-  return modeId === "nback_2" ? 0.28 : 0.3;
+  if (modeId === "nback_3") {
+    return 0.24;
+  }
+  if (modeId === "nback_2" || modeId === "nback_2_4x4") {
+    return 0.28;
+  }
+  return 0.3;
 }
 
 function decisionUntrainedPriority(modeId: TrainingModeId): number {
@@ -140,7 +167,13 @@ function reactionTargetMs(modeId: TrainingModeId): number {
 }
 
 function nBackTargetSpeed(modeId: TrainingModeId): number {
-  return modeId === "nback_2" ? 22 : 26;
+  if (modeId === "nback_3") {
+    return 18;
+  }
+  if (modeId === "nback_2" || modeId === "nback_2_4x4") {
+    return 22;
+  }
+  return 26;
 }
 
 function decisionTargetP90(modeId: TrainingModeId): number {

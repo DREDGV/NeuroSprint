@@ -4,51 +4,36 @@
 
 ## [Unreleased]
 ### План
-- Локальный лидерборд и соревновательный слой без backend (по этапу 6 `NeuroSprint_AGENT_PLAN_RU.md`).
+- Завершение `v0.7.C`: финальный UX-polish `Decision Rush` и расширение e2e-покрытия.
+- Подготовка `v0.8.A`: запуск полного цикла `Memory Grid Rush`.
 
 ### Изменено
-- Стартовый UX приведен к двум явным сценариям:
-  - `Быстрый старт` с `Home` напрямую в активные тренировки,
-  - отдельный путь `План дня` через `Pre-session`.
-- На `Home` добавлены быстрые входы для `Classic`, `Sprint Math`, `Reaction`.
-- Обновлен smoke-сценарий `home -> pre-session -> setup` для защиты нового контракта запуска.
-- На `/stats` добавлен compare-mode `median/p25/p75`:
-  - toggle включения сравнения,
-  - выбор периода (`7/30/90/all`),
-  - отдельный график `Вы / P25 / Медиана / P75`,
-  - summary-карточки по последнему дню.
-- В `Настройках` расширен CSV-экспорт:
-  - добавлены файлы `user_preferences` и `user_mode_profiles`,
-  - экспортный набор теперь включает users/sessions/classes/preferences/mode-profiles.
-- В `Индивидуальной статистике` добавлен локальный `Лидерборд Top-10`:
-  - фильтр периода (`7/30/90/all`),
-  - mode-aware рейтинг по текущему выбранному режиму,
-  - подсветка активного пользователя в списке.
-- В `/stats` расширен блок `Daily Challenge`:
-  - добавлена `текущая серия` и `лучшая серия` выполнения,
-  - добавлен долгосрочный тренд по дням (`0/100%`),
-  - добавлено количество выполненных challenge-дней в выбранном периоде.
-- Расширен `dailyChallengeRepository`:
-  - `getStreakSummary(...)`,
-  - `listCompletionTrend(...)`,
-  - чистый helper `buildDailyChallengeStreak(...)`.
-- Исправлены битые строки в challenge-локализации (`Reaction` titles, тексты challenge).
-- Добавлен новый режим в `Reaction`: `Число-цель` (`reaction_number`):
-  - выбор целевого числа в сетке `2x2`,
-  - запуск из pre-session и через query `?mode=reaction_number`,
-  - сохранение сессий и участие в статистике/recommendation.
-- Улучшена дружелюбность pre-session:
-  - обновлены тексты и подсказки по режимам `Reaction`,
-  - очищена кодировка `PreSessionPage` до корректного UTF-8.
-- Реализован новый модуль `N-Back Lite`:
-  - setup `/training/nback` (выбор `1-back/2-back`, `60/90 сек`),
-  - session `/training/nback/session` (сетка `3x3`, ответы `Совпало/Не совпало`, таймер и прогресс),
-  - сохранение сессий в IndexedDB (`taskId/moduleId="n_back"`, `modeId="nback_1|nback_2"`).
-- `N-Back Lite` интегрирован в:
-  - `TrainingHub` и `Pre-session`,
-  - simple/individual/group статистику,
-  - recommendation engine,
-  - daily challenge ротацию и launch-path.
+- Продолжается стабилизация новых модулей и маршрутов перед следующим dev-срезом.
+
+## [0.5.0-dev.5] - 2026-03-03
+### Изменено
+- Синхронизированы mode-контракты и маппинг:
+  - N-Back расширен режимами `nback_1_4x4`, `nback_2_4x4`, `nback_3`,
+  - добавлены маппинги `memory_grid_* -> memory_grid`,
+  - добавлены mode-id для Pattern (`pattern_learning`, `pattern_multi`) в единый список режимов.
+- Укреплен pre-session поток:
+  - валидация module/mode переведена на динамический каталог `TRAINING_MODULES/TRAINING_MODES`,
+  - добавлен launch-path для Memory Grid,
+  - добавлены подсказки для расширенных N-Back и Memory Grid режимов.
+- Исправлены маршруты Daily Challenge:
+  - Memory Grid и Pattern Recognition запускаются в корректные setup-экраны.
+- Исправлен `Pattern Recognition` session-flow:
+  - корректная инициализация `pattern_multi`,
+  - корректное завершение фиксированных серий,
+  - исправлено сохранение длительности не-timed сессий.
+- В `StatsIndividual` добавлен защитный фильтр неподдержанных режимов (`memory_grid`, `pattern_recognition`) до полной аналитической интеграции.
+
+### Проверки
+- `npm run check:encoding` — passed.
+- `npm test -- tests/integration/pre-session-page.test.tsx tests/unit/daily-challenge.test.ts tests/unit/recommendation.test.ts tests/integration/stats-individual-comparison.test.tsx` — passed.
+- `npm test` — passed.
+- `npm run build` — passed.
+- `npm run test:e2e -- tests/e2e/smoke.spec.ts` — passed.
 
 ## [0.5.0-dev.4] - 2026-03-01
 ### Добавлено

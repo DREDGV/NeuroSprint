@@ -23,6 +23,12 @@ describe("daily challenge helpers", () => {
     );
     expect(getChallengeLaunchPath("reaction_pair")).toBe("/training/reaction?mode=reaction_pair");
     expect(getChallengeLaunchPath("nback_2")).toBe("/training/nback?mode=nback_2");
+    expect(getChallengeLaunchPath("memory_grid_rush")).toBe(
+      "/training/memory-grid?mode=memory_grid_rush"
+    );
+    expect(getChallengeLaunchPath("pattern_classic")).toBe(
+      "/training/pattern-recognition?mode=pattern_classic"
+    );
   });
 
   it("builds upcoming challenge preview based on deterministic rotation", () => {

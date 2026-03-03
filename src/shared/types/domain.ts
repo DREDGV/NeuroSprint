@@ -42,7 +42,8 @@ export type TrainingModeId =
   | "pattern_classic"
   | "pattern_timed"
   | "pattern_progressive"
-  | "pattern_learning";
+  | "pattern_learning"
+  | "pattern_multi";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
 export type TrainingPresetId =
   | "easy"

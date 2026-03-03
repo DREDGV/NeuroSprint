@@ -166,6 +166,28 @@ export function PatternRecognitionSetupPage() {
         </section>
       )}
 
+      {setup.modeId === 'pattern_multi' && (
+        <section className="setup-block">
+          <h3>Количество пропусков</h3>
+          <div className="segmented-row">
+            {[2, 3].map((gapCount) => (
+              <button
+                key={gapCount}
+                type="button"
+                className={(setup.gaps ?? 2) === gapCount ? 'btn-secondary is-active' : 'btn-secondary'}
+                onClick={() => setSetup((current: typeof setup) => ({ ...current, gaps: gapCount }))}
+                data-testid={`gaps-${gapCount}`}
+              >
+                {gapCount} пропуска
+              </button>
+            ))}
+          </div>
+          <p className="status-line">
+            {setup.gaps ?? 2} пропуска в последовательности — выберите все правильные ответы
+          </p>
+        </section>
+      )}
+
       <section className="setup-block">
         <h3>Подсказки</h3>
         <div className="settings-form">
@@ -201,6 +223,7 @@ export function PatternRecognitionSetupPage() {
         <p>Контент: {CONTENT_TYPES.find(t => t.id === setup.contentType)?.icon} {CONTENT_TYPES.find(t => t.id === setup.contentType)?.title}</p>
         {setup.modeId === 'pattern_timed' && <p>Время: {setup.durationSec} сек</p>}
         {setup.modeId === 'pattern_classic' && <p>Вопросов: {setup.questionCount}</p>}
+        {setup.modeId === 'pattern_multi' && <p>Пропусков: {setup.gaps ?? 2}</p>}
         <p>Подсказки: {setup.showHints || setup.modeId === 'pattern_learning' ? '✅ Вкл' : '❌ Выкл'}</p>
       </section>
 

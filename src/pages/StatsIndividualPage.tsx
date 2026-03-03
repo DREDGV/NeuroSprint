@@ -43,7 +43,9 @@ import type {
   UserModeProfile
 } from "../shared/types/domain";
 
-const STATS_TRAINING_MODES = TRAINING_MODES;
+const STATS_TRAINING_MODES = TRAINING_MODES.filter(
+  (mode) => mode.moduleId !== "memory_grid" && mode.moduleId !== "pattern_recognition"
+);
 
 function calculateStability(values: number[]): number | null {
   if (values.length < 2) {

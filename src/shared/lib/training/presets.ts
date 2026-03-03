@@ -203,13 +203,41 @@ export const DECISION_RUSH_MODES: TrainingMode[] = [
   }
 ];
 
+export const PATTERN_MODES: TrainingMode[] = [
+  {
+    id: "pattern_classic",
+    moduleId: "pattern_recognition",
+    title: "Pattern Recognition Classic",
+    description: "Фиксированная серия заданий на поиск закономерностей."
+  },
+  {
+    id: "pattern_timed",
+    moduleId: "pattern_recognition",
+    title: "Pattern Recognition Timed",
+    description: "Как можно больше правильных ответов за ограниченное время."
+  },
+  {
+    id: "pattern_progressive",
+    moduleId: "pattern_recognition",
+    title: "Pattern Recognition Progressive",
+    description: "Адаптивная сложность: уровень меняется по ходу сессии."
+  },
+  {
+    id: "pattern_learning",
+    moduleId: "pattern_recognition",
+    title: "Pattern Recognition Learning",
+    description: "Режим обучения с подсказками и разбором ответа."
+  }
+];
+
 export const TRAINING_MODES: TrainingMode[] = [
   ...SCHULTE_MODES,
   ...SPRINT_MATH_MODES,
   ...REACTION_MODES,
   ...NBACK_MODES,
   ...MEMORY_GRID_MODES,
-  ...DECISION_RUSH_MODES
+  ...DECISION_RUSH_MODES,
+  ...PATTERN_MODES
 ];
 
 const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {

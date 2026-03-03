@@ -11,7 +11,7 @@ import {
 } from "../shared/lib/motivation/motivation";
 import { getSettings } from "../shared/lib/settings/settings";
 import { moduleIdByModeId } from "../shared/lib/training/modeMapping";
-import { TRAINING_MODES } from "../shared/lib/training/presets";
+import { TRAINING_MODES, TRAINING_MODULES } from "../shared/lib/training/presets";
 import { InfoHint } from "../shared/ui/InfoHint";
 import type {
   DailyProgressSummary,
@@ -21,37 +21,17 @@ import type {
 } from "../shared/types/domain";
 
 function isTrainingModeId(value: string | null): value is TrainingModeId {
-  return (
-    value === "classic_plus" ||
-    value === "timed_plus" ||
-    value === "reverse" ||
-    value === "sprint_add_sub" ||
-    value === "sprint_mixed" ||
-    value === "reaction_signal" ||
-    value === "reaction_stroop" ||
-    value === "reaction_pair" ||
-    value === "reaction_number" ||
-    value === "nback_1" ||
-    value === "nback_2" ||
-    value === "decision_kids" ||
-    value === "decision_standard" ||
-    value === "decision_pro" ||
-    value === "pattern_classic" ||
-    value === "pattern_timed" ||
-    value === "pattern_progressive" ||
-    value === "pattern_learning"
-  );
+  if (!value) {
+    return false;
+  }
+  return TRAINING_MODES.some((mode) => mode.id === value);
 }
 
 function isTrainingModuleId(value: string | null): value is TrainingModuleId {
-  return (
-    value === "schulte" ||
-    value === "sprint_math" ||
-    value === "reaction" ||
-    value === "n_back" ||
-    value === "decision_rush" ||
-    value === "pattern_recognition"
-  );
+  if (!value) {
+    return false;
+  }
+  return TRAINING_MODULES.some((module) => module.id === value);
 }
 
 function fallbackModeForModule(moduleId: TrainingModuleId): TrainingModeId {
@@ -66,6 +46,9 @@ function fallbackModeForModule(moduleId: TrainingModuleId): TrainingModeId {
   }
   if (moduleId === "decision_rush") {
     return "decision_kids";
+  }
+  if (moduleId === "memory_grid") {
+    return "memory_grid_classic";
   }
   if (moduleId === "pattern_recognition") {
     return "pattern_classic";
@@ -86,6 +69,9 @@ function setupRouteByMode(modeId: TrainingModeId): string {
   }
   if (moduleId === "decision_rush") {
     return `/training/decision-rush?mode=${modeId}`;
+  }
+  if (moduleId === "memory_grid") {
+    return `/training/memory-grid?mode=${modeId}`;
   }
   if (moduleId === "pattern_recognition") {
     return `/training/pattern-recognition?mode=${modeId}`;
@@ -112,6 +98,15 @@ function getReactionModeTip(modeId: TrainingModeId): string | null {
   if (modeId === "nback_2") {
     return "Фокус: удерживайте в памяти позицию два шага назад (2-back).";
   }
+  if (modeId === "nback_1_4x4") {
+    return "Фокус: 1-back на более широкой сетке 4x4.";
+  }
+  if (modeId === "nback_2_4x4") {
+    return "Фокус: 2-back на сетке 4x4 для повышенной сложности.";
+  }
+  if (modeId === "nback_3") {
+    return "Фокус: 3-back требует максимальной концентрации и рабочей памяти.";
+  }
   if (modeId === "decision_kids") {
     return "Decision Rush Kids: мягкий темп и простые правила ДА/НЕТ.";
   }
@@ -132,6 +127,12 @@ function getReactionModeTip(modeId: TrainingModeId): string | null {
   }
   if (modeId === "pattern_learning") {
     return "Pattern Learning: обучающий режим с подсказками и разбором ошибок.";
+  }
+  if (modeId === "memory_grid_classic" || modeId === "memory_grid_classic_4x4") {
+    return "Memory Grid Classic: запомните последовательность и повторите без ошибок.";
+  }
+  if (modeId === "memory_grid_rush" || modeId === "memory_grid_rush_4x4") {
+    return "Memory Grid Rush: пройдите максимум уровней за ограниченное время.";
   }
   return null;
 }

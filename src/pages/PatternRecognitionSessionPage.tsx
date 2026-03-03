@@ -60,7 +60,11 @@ export function PatternRecognitionSessionPage() {
     setQuestionStartTime(Date.now());
 
     // Генерируем вопросы
-    if (setup.modeId === 'pattern_classic' || setup.modeId === 'pattern_learning') {
+    if (
+      setup.modeId === 'pattern_classic' ||
+      setup.modeId === 'pattern_learning' ||
+      setup.modeId === 'pattern_multi'
+    ) {
       const initialQuestions = generatePatternQuestions(
         setup.questionCount,
         setup.level,
@@ -216,13 +220,19 @@ export function PatternRecognitionSessionPage() {
           const newQuestions = generatePatternQuestions(
             20,
             setup.level,
-            setup.elementTypes
+            setup.elementTypes,
+            setup.contentType
           );
           setQuestions(prev => [...prev, ...newQuestions]);
         }
       }
 
-      if (setup?.modeId === 'pattern_classic' && nextIndex >= questions.length) {
+      if (
+        (setup?.modeId === 'pattern_classic' ||
+          setup?.modeId === 'pattern_learning' ||
+          setup?.modeId === 'pattern_multi') &&
+        nextIndex >= questions.length
+      ) {
         finishSession();
         return;
       }
@@ -240,6 +250,9 @@ export function PatternRecognitionSessionPage() {
     }
 
     setIsFinished(true);
+    const finalDurationMs =
+      startTime != null ? Math.max(1, Date.now() - startTime) : Math.max(1, elapsedTime);
+    setElapsedTime(finalDurationMs);
 
     // Сохраняем сессию
     const session: Session = {
@@ -251,7 +264,7 @@ export function PatternRecognitionSessionPage() {
       mode: 'pattern_recognition',
       timestamp: new Date().toISOString(),
       localDate: new Date().toISOString().split('T')[0],
-      durationMs: elapsedTime,
+      durationMs: finalDurationMs,
       score: metrics.score,
       accuracy: metrics.accuracy,
       speed: metrics.avgReactionTimeMs > 0 ? 1000 / metrics.avgReactionTimeMs : 0,

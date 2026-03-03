@@ -8,6 +8,19 @@ export interface ReleaseEntry {
 
 export const RELEASE_HISTORY: ReleaseEntry[] = [
   {
+    version: "0.5.0-dev.5",
+    date: "2026-03-03",
+    title: "Технический срез v0.5.0-dev.5: стабилизация новых модулей",
+    status: "dev",
+    highlights: [
+      "Синхронизированы mode-контракты для N-Back, Pattern, Memory Grid и Pre-session маршрутов.",
+      "Исправлены launch-path для Daily Challenge: Memory Grid и Pattern Recognition открываются в корректные setup-экраны.",
+      "Исправлен Pattern Recognition session-flow: старт режима pattern_multi, корректное завершение фиксированных серий и точное время сессии.",
+      "Усилена защита статистики: в индивидуальном сравнении временно скрыты неподдержанные режимы, чтобы исключить некорректные метрики.",
+      "Обновлены roadmap/status/changelog и подтверждены целевые проверки unit/integration + build + e2e smoke."
+    ]
+  },
+  {
     version: "0.5.0-dev.4",
     date: "2026-03-01",
     title: "Релиз v0.5.0-dev.4: Daily Challenge в статистике и финализация этапа",

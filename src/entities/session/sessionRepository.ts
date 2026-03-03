@@ -325,10 +325,14 @@ function normalizeSession(session: Session): Session {
       ? "sprint_math"
       : resolvedTaskId === "reaction"
         ? "reaction"
-        : resolvedTaskId === "n_back"
+      : resolvedTaskId === "n_back"
         ? "n_back"
-        : resolvedTaskId === "decision_rush"
+        : resolvedTaskId === "memory_grid"
+          ? "memory_grid"
+      : resolvedTaskId === "decision_rush"
         ? "decision_rush"
+        : resolvedTaskId === "pattern_recognition"
+          ? "pattern_recognition"
         : "schulte");
 
   return {
@@ -346,9 +350,13 @@ function normalizeSession(session: Session): Session {
             : session.mode === "reaction"
               ? "reaction_signal"
               : session.mode === "n_back"
-              ? "nback_1"
+                ? "nback_1"
+              : session.mode === "memory_grid"
+                ? "memory_grid_classic"
               : session.mode === "decision_rush"
-              ? "decision_standard"
+                ? "decision_standard"
+              : session.mode === "pattern_recognition"
+                ? "pattern_classic"
               : "classic_plus"),
     level: session.level ?? 1,
     presetId: session.presetId ?? "legacy",
@@ -704,7 +712,13 @@ export const sessionRepository = {
     ) {
       return buildReactionDailyPoints(sessions);
     }
-    if (modeId === "nback_1" || modeId === "nback_2") {
+    if (
+      modeId === "nback_1" ||
+      modeId === "nback_1_4x4" ||
+      modeId === "nback_2" ||
+      modeId === "nback_2_4x4" ||
+      modeId === "nback_3"
+    ) {
       return buildNBackDailyPoints(sessions);
     }
     if (
@@ -717,7 +731,9 @@ export const sessionRepository = {
     if (
       modeId === "pattern_classic" ||
       modeId === "pattern_timed" ||
-      modeId === "pattern_progressive"
+      modeId === "pattern_progressive" ||
+      modeId === "pattern_learning" ||
+      modeId === "pattern_multi"
     ) {
       return buildPatternDailyPoints(sessions);
     }

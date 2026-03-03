@@ -818,4 +818,34 @@
 ### Next Session Start
 1. Продолжить `v0.7.C` с шага `C2`: завершить UX-polish `Decision Rush` (экран setup/session), добить интеграцию в stats/recommendation и добавить e2e.
 
+## Incremental Update: v0.7.C.1 (2026-03-03)
+### Status
+- In progress.
+
+### Delivered in this session
+- Выполнена стабилизация после параллельных изменений:
+  - синхронизированы mode mappings в `modeMapping` для `nback_*`, `memory_grid_*`, `pattern_*`;
+  - `PreSessionPage` переведен на динамическую валидацию доступных `moduleId/modeId` из каталогов режимов;
+  - исправлены launch-path в `dailyChallengeRepository` для `memory_grid` и `pattern_recognition`;
+  - исправлен цикл `PatternRecognitionSessionPage`:
+    - корректная инициализация `pattern_multi`,
+    - корректное завершение фиксированных режимов,
+    - сохранение корректной длительности non-timed сессий;
+  - в `StatsIndividualPage` введен защитный фильтр неподдержанных режимов (`memory_grid`, `pattern_recognition`) до полного завершения mode-aware аналитики.
+- Синхронизированы release-артефакты:
+  - `package.json`/`package-lock.json` -> `0.5.0-dev.5`,
+  - `docs/CHANGELOG_RU.md`,
+  - `src/shared/constants/changelog.ts`,
+  - `docs/NeuroSprint_Execution_Status_RU.md`.
+
+### Validation
+- `npm run check:encoding` - passed.
+- `npm test -- tests/integration/pre-session-page.test.tsx tests/unit/daily-challenge.test.ts tests/unit/recommendation.test.ts tests/integration/stats-individual-comparison.test.tsx` - passed.
+- `npm test` - passed.
+- `npm run build` - passed.
+- `npm run test:e2e -- tests/e2e/smoke.spec.ts` - passed.
+
+### Next Session Start
+1. Закрыть `v0.7.C` (C3-C4): e2e Decision Rush + финальный UX-polish игрового экрана.
+
 
