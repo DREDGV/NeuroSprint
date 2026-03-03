@@ -28,6 +28,7 @@ export function ProfilesPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Загрузка аватарок из localStorage
   const getUserAvatar = useCallback((userId: string) => {
@@ -227,6 +228,16 @@ export function ProfilesPage() {
     [activeUserId, users]
   );
 
+  // Фильтрация профилей по поиску
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const query = searchQuery.toLowerCase();
+    return users.filter((user) =>
+      user.name.toLowerCase().includes(query) ||
+      appRoleLabel(normalizeUserRole(user.role)).toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
+
   if (!access.profiles.view) {
     return (
       <section className="panel" data-testid="profiles-page">
@@ -318,9 +329,28 @@ export function ProfilesPage() {
         </p>
       )}
 
+      {/* Поиск профилей */}
+      <section className="setup-block">
+        <h3>🔍 Поиск</h3>
+        <div className="settings-form">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Начните вводить имя или роль..."
+            data-testid="profile-search-input"
+          />
+          {searchQuery && (
+            <p className="status-line">
+              Найдено: {filteredUsers.length} из {users.length}
+            </p>
+          )}
+        </div>
+      </section>
+
       {/* Новые карточки профилей */}
       <div className="profiles-grid" data-testid="profiles-list">
-        {users.map((user) => (
+        {filteredUsers.map((user) => (
           <ProfileCard
             key={user.id}
             user={user}

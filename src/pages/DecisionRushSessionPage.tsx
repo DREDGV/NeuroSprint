@@ -684,6 +684,7 @@ export function DecisionRushSessionPage() {
   useEffect(
     () => () => {
       clearLoop();
+      clearTransitionTimer();
       clearFeedbackTimer();
     },
     []
@@ -884,7 +885,7 @@ export function DecisionRushSessionPage() {
                   : "decision-answer-btn decision-answer-btn-yes"
               }
               onClick={() => answer("yes")}
-              disabled={!isRunning || isPaused || currentAnswerLocked}
+              disabled={!isRunning || isPaused || currentAnswerLocked || isTransitioning}
               data-testid="decision-answer-yes"
             >
               ДА
@@ -897,7 +898,7 @@ export function DecisionRushSessionPage() {
                   : "decision-answer-btn decision-answer-btn-no"
               }
               onClick={() => answer("no")}
-              disabled={!isRunning || isPaused || currentAnswerLocked}
+              disabled={!isRunning || isPaused || currentAnswerLocked || isTransitioning}
               data-testid="decision-answer-no"
             >
               НЕТ
