@@ -48,6 +48,15 @@ export function ProfilesPage() {
   const recoveryMode = teachersCount === 0;
   const canAssignRoleOnCreate = access.profiles.updateRole || recoveryMode;
   const canUpdateProfileRoles = access.profiles.updateRole || recoveryMode;
+  
+  // Проверка: может ли текущий пользователь редактировать конкретный профиль
+  const canEditUser = useCallback((user: User) => {
+    // Учитель и Домашний могут редактировать все профили
+    if (access.profiles.edit) return true;
+    // Ученик может редактировать только свой собственный профиль
+    if (access.profiles.activate && user.id === activeUserId) return true;
+    return false;
+  }, [access.profiles.edit, access.profiles.activate, activeUserId]);
 
   const loadUsers = useCallback(async () => {
     const items = await userRepository.list();
@@ -306,7 +315,7 @@ export function ProfilesPage() {
             key={user.id}
             user={user}
             isActive={user.id === activeUserId}
-            canEdit={access.profiles.edit}
+            canEdit={canEditUser(user)}
             canActivate={access.profiles.activate}
             onActivate={handleSetActive}
             onRename={handleRename}
