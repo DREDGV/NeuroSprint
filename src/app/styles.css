@@ -490,8 +490,176 @@ textarea:focus-visible {
   padding: 0;
 }
 
-/* Адаптивность для мобильных */
-@media (max-width: 600px) {
+/* ================================
+   Profiles Control Panel
+   ================================ */
+
+.profiles-control-panel {
+  margin: 16px 0;
+  padding: 16px;
+  background: linear-gradient(145deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 16px;
+  border: 2px solid #e5e7eb;
+  display: grid;
+  gap: 12px;
+}
+
+.profiles-search-row {
+  display: flex;
+}
+
+.profiles-search-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  font-size: 1rem;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.profiles-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.profiles-filters-row,
+.profiles-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.profiles-role-filters,
+.profiles-sort-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-chip,
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  color: #4b5563;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-chip:hover,
+.sort-btn:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.filter-chip.is-active,
+.sort-btn.is-active {
+  background: linear-gradient(145deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #1d4ed8;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.chip-count {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.filter-chip.is-active .chip-count,
+.sort-btn.is-active .chip-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.profiles-stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+}
+
+.stats-info {
+  font-size: 0.95rem;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.stats-info strong {
+  color: #1f2937;
+}
+
+.stats-filter {
+  margin-left: 8px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.btn-clear-filters {
+  padding: 8px 14px;
+  font-size: 0.9rem;
+}
+
+.active-profile-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  font-weight: 600;
+  color: #065f46;
+}
+
+.banner-icon {
+  font-size: 1.2rem;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .profiles-control-panel {
+    padding: 12px;
+  }
+  
+  .profiles-filters-row,
+  .profiles-sort-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .filter-label {
+    margin-bottom: 4px;
+  }
+  
+  .profiles-stats-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
   .profile-card {
     flex-direction: column;
     align-items: flex-start;

@@ -351,100 +351,129 @@ export function ProfilesPage() {
         </p>
       ) : null}
 
+      {/* Активный профиль */}
       {activeUser ? (
-        <p className="status-line" data-testid="active-profile-status">
-          Активный профиль: <strong>{activeUser.name}</strong> (
-          {appRoleLabel(normalizeUserRole(activeUser.role))})
-        </p>
+        <div className="active-profile-banner" data-testid="active-profile-banner">
+          <span className="banner-icon">✅</span>
+          <span>Активный профиль: <strong>{activeUser.name}</strong> ({appRoleLabel(normalizeUserRole(activeUser.role))})</span>
+        </div>
       ) : (
         <p className="status-line" data-testid="active-profile-status">
-          Активный профиль не выбран.
+          ⚠️ Активный профиль не выбран.
         </p>
       )}
 
-      {/* Поиск профилей */}
-      <section className="setup-block">
-        <h3>🔍 Поиск и фильтры</h3>
-        <div className="settings-form">
+      {/* Панель управления: поиск + фильтры + сортировка */}
+      <section className="profiles-control-panel">
+        {/* Поиск */}
+        <div className="profiles-search-row">
           <input
             type="text"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Начните вводить имя или роль..."
+            placeholder="🔍 Поиск по имени или роли..."
+            className="profiles-search-input"
             data-testid="profile-search-input"
           />
-          
-          {/* Фильтр по ролям */}
-          <div className="segmented-row" data-testid="role-filter">
-            <button
-              type="button"
-              className={roleFilter === "all" ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setRoleFilter("all")}
-            >
-              Все ({users.length})
-            </button>
-            <button
-              type="button"
-              className={roleFilter === "admin" ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setRoleFilter("admin")}
-            >
-              👑 Админ ({users.filter(u => normalizeUserRole(u.role) === "admin").length})
-            </button>
-            <button
-              type="button"
-              className={roleFilter === "teacher" ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setRoleFilter("teacher")}
-            >
-              🍎 Учитель ({users.filter(u => normalizeUserRole(u.role) === "teacher").length})
-            </button>
-            <button
-              type="button"
-              className={roleFilter === "student" ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setRoleFilter("student")}
-            >
-              🎓 Ученик ({users.filter(u => normalizeUserRole(u.role) === "student").length})
-            </button>
-            <button
-              type="button"
-              className={roleFilter === "home" ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setRoleFilter("home")}
-            >
-              🏠 Дом ({users.filter(u => normalizeUserRole(u.role) === "home").length})
-            </button>
-          </div>
-          
-          {/* Сортировка */}
-          <div className="segmented-row" data-testid="sort-order">
-            <button
-              type="button"
-              className={sortOrder === "name" ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setSortOrder("name")}
-            >
-              🔤 По имени
-            </button>
-            <button
-              type="button"
-              className={sortOrder === "date" ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setSortOrder("date")}
-            >
-              📅 По дате
-            </button>
-            <button
-              type="button"
-              className={sortOrder === "activity" ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setSortOrder("activity")}
-            >
-              ⏰ По активности
-            </button>
-          </div>
-          
-          {searchQuery || roleFilter !== "all" ? (
-            <p className="status-line">
-              Найдено: {filteredUsers.length} из {users.length}
-              {roleFilter !== "all" && ` (роль: ${appRoleLabel(roleFilter)})`}
-            </p>
-          ) : null}
         </div>
+        
+        {/* Фильтры по ролям */}
+        <div className="profiles-filters-row">
+          <span className="filter-label">Фильтр:</span>
+          <div className="profiles-role-filters" data-testid="role-filter">
+            <button
+              type="button"
+              className={`filter-chip${roleFilter === "all" ? " is-active" : ""}`}
+              onClick={() => setRoleFilter("all")}
+              title="Все профили"
+            >
+              Все <span className="chip-count">{users.length}</span>
+            </button>
+            <button
+              type="button"
+              className={`filter-chip${roleFilter === "admin" ? " is-active" : ""}`}
+              onClick={() => setRoleFilter("admin")}
+              title="Администраторы"
+            >
+              👑 <span className="chip-count">{users.filter(u => normalizeUserRole(u.role) === "admin").length}</span>
+            </button>
+            <button
+              type="button"
+              className={`filter-chip${roleFilter === "teacher" ? " is-active" : ""}`}
+              onClick={() => setRoleFilter("teacher")}
+              title="Учителя"
+            >
+              🍎 <span className="chip-count">{users.filter(u => normalizeUserRole(u.role) === "teacher").length}</span>
+            </button>
+            <button
+              type="button"
+              className={`filter-chip${roleFilter === "student" ? " is-active" : ""}`}
+              onClick={() => setRoleFilter("student")}
+              title="Ученики"
+            >
+              🎓 <span className="chip-count">{users.filter(u => normalizeUserRole(u.role) === "student").length}</span>
+            </button>
+            <button
+              type="button"
+              className={`filter-chip${roleFilter === "home" ? " is-active" : ""}`}
+              onClick={() => setRoleFilter("home")}
+              title="Домашние"
+            >
+              🏠 <span className="chip-count">{users.filter(u => normalizeUserRole(u.role) === "home").length}</span>
+            </button>
+          </div>
+        </div>
+        
+        {/* Сортировка */}
+        <div className="profiles-sort-row">
+          <span className="filter-label">Сортировка:</span>
+          <div className="profiles-sort-buttons" data-testid="sort-order">
+            <button
+              type="button"
+              className={`sort-btn${sortOrder === "name" ? " is-active" : ""}`}
+              onClick={() => setSortOrder("name")}
+              title="По алфавиту"
+            >
+              🔤 Имя
+            </button>
+            <button
+              type="button"
+              className={`sort-btn${sortOrder === "date" ? " is-active" : ""}`}
+              onClick={() => setSortOrder("date")}
+              title="По дате создания"
+            >
+              📅 Дата
+            </button>
+            <button
+              type="button"
+              className={`sort-btn${sortOrder === "activity" ? " is-active" : ""}`}
+              onClick={() => setSortOrder("activity")}
+              title="По последней активности"
+            >
+              ⏰ Активность
+            </button>
+          </div>
+        </div>
+        
+        {/* Статистика */}
+        {(searchQuery || roleFilter !== "all") && (
+          <div className="profiles-stats-row">
+            <span className="stats-info">
+              📊 Найдено: <strong>{filteredUsers.length}</strong> из <strong>{users.length}</strong>
+              {roleFilter !== "all" && <span className="stats-filter">(роль: {appRoleLabel(roleFilter)})</span>}
+            </span>
+            <button
+              type="button"
+              className="btn-ghost btn-clear-filters"
+              onClick={() => {
+                setSearchQuery("");
+                setRoleFilter("all");
+              }}
+            >
+              ✕ Сбросить фильтры
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Новые карточки профилей */}
