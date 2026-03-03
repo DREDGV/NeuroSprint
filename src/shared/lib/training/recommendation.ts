@@ -22,10 +22,6 @@ const MODE_IDS: TrainingModeId[] = [
   "nback_2",
   "nback_2_4x4",
   "nback_3",
-  "memory_grid_classic",
-  "memory_grid_classic_4x4",
-  "memory_grid_rush",
-  "memory_grid_rush_4x4",
   "decision_kids",
   "decision_standard",
   "decision_pro"
@@ -82,15 +78,6 @@ function isDecisionModeId(modeId: TrainingModeId): boolean {
   );
 }
 
-function isMemoryGridModeId(modeId: TrainingModeId): boolean {
-  return (
-    modeId === "memory_grid_classic" ||
-    modeId === "memory_grid_classic_4x4" ||
-    modeId === "memory_grid_rush" ||
-    modeId === "memory_grid_rush_4x4"
-  );
-}
-
 function reactionLabel(modeId: TrainingModeId): string {
   if (modeId === "reaction_stroop") {
     return "цвет и слово";
@@ -130,19 +117,6 @@ function decisionLabel(modeId: TrainingModeId): string {
   return "Standard";
 }
 
-function memoryGridLabel(modeId: TrainingModeId): string {
-  if (modeId === "memory_grid_classic_4x4") {
-    return "Classic 4x4";
-  }
-  if (modeId === "memory_grid_rush_4x4") {
-    return "Rush 4x4";
-  }
-  if (modeId === "memory_grid_rush") {
-    return "Rush";
-  }
-  return "Classic";
-}
-
 function reactionUntrainedPriority(modeId: TrainingModeId, hasReactionHistory: boolean): number {
   if (hasReactionHistory) {
     return 0.18;
@@ -179,16 +153,6 @@ function decisionUntrainedPriority(modeId: TrainingModeId): number {
   return 0.26;
 }
 
-function memoryGridUntrainedPriority(modeId: TrainingModeId): number {
-  if (modeId === "memory_grid_classic") {
-    return 0.34;
-  }
-  if (modeId === "memory_grid_rush") {
-    return 0.3;
-  }
-  return 0.26;
-}
-
 function reactionTargetMs(modeId: TrainingModeId): number {
   if (modeId === "reaction_stroop") {
     return 950;
@@ -220,13 +184,6 @@ function decisionTargetP90(modeId: TrainingModeId): number {
     return 780;
   }
   return 900;
-}
-
-function memoryGridTargetMs(modeId: TrainingModeId): number {
-  if (modeId === "memory_grid_classic_4x4" || modeId === "memory_grid_rush_4x4") {
-    return 2800;
-  }
-  return modeId === "memory_grid_rush" ? 2200 : 2500;
 }
 
 interface RecommendationBuildContext {

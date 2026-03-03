@@ -12,6 +12,7 @@ import {
 import { guardAccess } from "../shared/lib/auth/permissions";
 import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
 import type { AppRole, User } from "../shared/types/domain";
+import { ProfileCard, AVATAR_EMOJIS } from "../shared/ui/ProfileCard";
 
 export function ProfilesPage() {
   const navigate = useNavigate();
@@ -21,9 +22,20 @@ export function ProfilesPage() {
   const [name, setName] = useState("");
   const [newRole, setNewRole] = useState<AppRole>("student");
   const [roleDrafts, setRoleDrafts] = useState<Record<string, AppRole>>({});
+  const [avatarDrafts, setAvatarDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Загрузка аватарок из localStorage
+  const getUserAvatar = useCallback((userId: string) => {
+    try {
+      const saved = localStorage.getItem(`ns.avatar.${userId}`);
+      return saved || avatarDrafts[userId] || "👤";
+    } catch {
+      return avatarDrafts[userId] || "👤";
+    }
+  }, [avatarDrafts]);
 
   const hasProfiles = users.length > 0;
   const canCreate = name.trim().length >= 2;
@@ -273,94 +285,22 @@ export function ProfilesPage() {
         </p>
       )}
 
-      <ul className="profiles-list">
-        {users.map((user) => {
-          const currentRole = normalizeUserRole(user.role);
-          const draftRole = roleDrafts[user.id] ?? currentRole;
-          const isLastTeacher = isTeacherRole(currentRole) && teachersCount <= 1;
-          const roleChangeBlocked = isLastTeacher && !isTeacherRole(draftRole);
-
-          return (
-            <li key={user.id} className="profile-item">
-              <div>
-                <p className="profile-name">{user.name}</p>
-                <p className="profile-date">
-                  Создан: {new Date(user.createdAt).toLocaleDateString("ru-RU")}
-                </p>
-                <span className="role-pill">{appRoleLabel(currentRole)}</span>
-                <div className="profile-role-controls">
-                  <select
-                    value={draftRole}
-                    onChange={(event) =>
-                      setRoleDrafts((current) => ({
-                        ...current,
-                        [user.id]: event.target.value as AppRole
-                      }))
-                    }
-                    data-testid={`profile-role-edit-${user.id}`}
-                    disabled={!canUpdateProfileRoles}
-                  >
-                    <option value="student">Ученик</option>
-                    <option value="teacher">Учитель</option>
-                    <option value="home">Домашний</option>
-                  </select>
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={() => void handleSaveRole(user)}
-                    disabled={
-                      !canUpdateProfileRoles || draftRole === currentRole || roleChangeBlocked
-                    }
-                    data-testid={`save-profile-role-${user.id}`}
-                  >
-                    Сохранить роль
-                  </button>
-                </div>
-                {!canUpdateProfileRoles ? (
-                  <p className="profile-date">Смена роли доступна только для роли «Учитель».</p>
-                ) : null}
-                {isLastTeacher ? (
-                  <p className="profile-date">
-                    Это последний учитель. Сначала назначьте другого пользователя учителем.
-                  </p>
-                ) : null}
-              </div>
-              <div className="action-row">
-                {access.profiles.activate ? (
-                  <button
-                    type="button"
-                    className={
-                      user.id === activeUserId ? "btn-secondary is-active" : "btn-secondary"
-                    }
-                    onClick={() => handleSetActive(user)}
-                  >
-                    {user.id === activeUserId ? "Активен" : "Сделать активным"}
-                  </button>
-                ) : null}
-                {access.profiles.edit ? (
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={() => void handleRename(user)}
-                  >
-                    Переименовать
-                  </button>
-                ) : null}
-                {access.profiles.edit ? (
-                  <button
-                    type="button"
-                    className="btn-danger"
-                    onClick={() => void handleDelete(user)}
-                    disabled={isLastTeacher}
-                  >
-                    Удалить
-                  </button>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Новые карточки профилей */}
+      <div className="profiles-grid" data-testid="profiles-list">
+        {users.map((user) => (
+          <ProfileCard
+            key={user.id}
+            user={user}
+            isActive={user.id === activeUserId}
+            canEdit={access.profiles.edit}
+            canActivate={access.profiles.activate}
+            onActivate={handleSetActive}
+            onRename={handleRename}
+            onDelete={handleDelete}
+            avatar={getUserAvatar(user.id)}
+          />
+        ))}
+      </div>
 
       {hasProfiles ? (
         <div className="action-row">

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     aggregateDailyTimed: vi.fn(),
     aggregateDailyReaction: vi.fn(),
     aggregateDailyNBack: vi.fn(),
+    aggregateDailyMemoryGrid: vi.fn(),
     aggregateDailyDecisionRush: vi.fn(),
     aggregateDailySprintMath: vi.fn(),
     aggregateDailyByModeId: vi.fn(),
@@ -54,6 +55,7 @@ describe("StatsPage sprint filters", () => {
     mocks.sessionRepository.aggregateDailyTimed.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailyReaction.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailyNBack.mockResolvedValue([]);
+    mocks.sessionRepository.aggregateDailyMemoryGrid.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailyDecisionRush.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailySprintMath.mockResolvedValue([
       {
