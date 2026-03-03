@@ -22,6 +22,7 @@ import { userRepository } from "../entities/user/userRepository";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import {
   DECISION_RUSH_MODES,
+  MEMORY_GRID_MODES,
   NBACK_MODES,
   REACTION_MODES,
   SCHULTE_MODES,
@@ -44,6 +45,7 @@ const GROUP_MODULES: Array<{ id: TrainingModuleId; title: string }> = [
   { id: "sprint_math", title: "Sprint Math" },
   { id: "reaction", title: "Reaction" },
   { id: "n_back", title: "N-Back Lite" },
+  { id: "memory_grid", title: "Memory Grid" },
   { id: "decision_rush", title: "Decision Rush" }
 ];
 
@@ -100,6 +102,9 @@ export function StatsGroupPage() {
     }
     if (moduleId === "n_back") {
       return NBACK_MODES;
+    }
+    if (moduleId === "memory_grid") {
+      return MEMORY_GRID_MODES;
     }
     if (moduleId === "decision_rush") {
       return DECISION_RUSH_MODES;

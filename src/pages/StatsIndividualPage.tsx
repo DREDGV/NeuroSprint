@@ -18,6 +18,7 @@ import { userRepository } from "../entities/user/userRepository";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import {
   isDecisionRushMode,
+  isMemoryGridMode,
   isNBackMode,
   isReactionMode,
   isSprintMathMode,
@@ -31,6 +32,7 @@ import type {
   ClassicDailyPoint,
   DecisionRushDailyPoint,
   GroupMetric,
+  MemoryGridDailyPoint,
   ModeMetricSnapshot,
   ModeRecommendation,
   NBackDailyPoint,
@@ -44,7 +46,7 @@ import type {
 } from "../shared/types/domain";
 
 const STATS_TRAINING_MODES = TRAINING_MODES.filter(
-  (mode) => mode.moduleId !== "memory_grid" && mode.moduleId !== "pattern_recognition"
+  (mode) => mode.moduleId !== "pattern_recognition"
 );
 
 function calculateStability(values: number[]): number | null {
@@ -103,6 +105,7 @@ export function StatsIndividualPage() {
   const [dailyTimed, setDailyTimed] = useState<TimedDailyPoint[]>([]);
   const [dailyReaction, setDailyReaction] = useState<ReactionDailyPoint[]>([]);
   const [dailyNBack, setDailyNBack] = useState<NBackDailyPoint[]>([]);
+  const [dailyMemoryGrid, setDailyMemoryGrid] = useState<MemoryGridDailyPoint[]>([]);
   const [dailyDecision, setDailyDecision] = useState<DecisionRushDailyPoint[]>([]);
   const [dailySprintMath, setDailySprintMath] = useState<SprintMathDailyPoint[]>([]);
   const [recentSessions, setRecentSessions] = useState<Session[]>([]);
@@ -170,6 +173,7 @@ export function StatsIndividualPage() {
           setDailyClassic([]);
           setDailyReaction([]);
           setDailyNBack([]);
+          setDailyMemoryGrid([]);
           setDailyDecision([]);
           setDailySprintMath([]);
         } else if (isSprintMathMode(modeId)) {
@@ -177,6 +181,7 @@ export function StatsIndividualPage() {
           setDailyTimed([]);
           setDailyReaction([]);
           setDailyNBack([]);
+          setDailyMemoryGrid([]);
           setDailyDecision([]);
           setDailyClassic([]);
         } else if (isReactionMode(modeId)) {
@@ -184,6 +189,7 @@ export function StatsIndividualPage() {
           setDailyTimed([]);
           setDailyClassic([]);
           setDailyNBack([]);
+          setDailyMemoryGrid([]);
           setDailyDecision([]);
           setDailySprintMath([]);
         } else if (isNBackMode(modeId)) {
@@ -191,6 +197,15 @@ export function StatsIndividualPage() {
           setDailyTimed([]);
           setDailyClassic([]);
           setDailyReaction([]);
+          setDailyMemoryGrid([]);
+          setDailyDecision([]);
+          setDailySprintMath([]);
+        } else if (isMemoryGridMode(modeId)) {
+          setDailyMemoryGrid(daily as MemoryGridDailyPoint[]);
+          setDailyTimed([]);
+          setDailyClassic([]);
+          setDailyReaction([]);
+          setDailyNBack([]);
           setDailyDecision([]);
           setDailySprintMath([]);
         } else if (isDecisionRushMode(modeId)) {
@@ -199,12 +214,14 @@ export function StatsIndividualPage() {
           setDailyClassic([]);
           setDailyReaction([]);
           setDailyNBack([]);
+          setDailyMemoryGrid([]);
           setDailySprintMath([]);
         } else {
           setDailyClassic(daily as ClassicDailyPoint[]);
           setDailyTimed([]);
           setDailyReaction([]);
           setDailyNBack([]);
+          setDailyMemoryGrid([]);
           setDailyDecision([]);
           setDailySprintMath([]);
         }
@@ -449,6 +466,17 @@ export function StatsIndividualPage() {
         nameC: "Темп"
       }));
     }
+    if (isMemoryGridMode(modeId)) {
+      return dailyMemoryGrid.map((entry) => ({
+        date: entry.date,
+        valueA: Number((entry.accuracy * 100).toFixed(1)),
+        valueB: Number(entry.avgScore.toFixed(2)),
+        valueC: Number(entry.avgRecallTimeMs.toFixed(0)),
+        nameA: "Точность (%)",
+        nameB: "Средний score",
+        nameC: "Время воспроизведения (мс)"
+      }));
+    }
     if (isDecisionRushMode(modeId)) {
       return dailyDecision.map((entry) => ({
         date: entry.date,
@@ -480,7 +508,16 @@ export function StatsIndividualPage() {
       nameB: "Среднее время (сек)",
         nameC: ""
       }));
-  }, [dailyClassic, dailyDecision, dailyNBack, dailyReaction, dailySprintMath, dailyTimed, modeId]);
+  }, [
+    dailyClassic,
+    dailyDecision,
+    dailyMemoryGrid,
+    dailyNBack,
+    dailyReaction,
+    dailySprintMath,
+    dailyTimed,
+    modeId
+  ]);
 
   const sprintSummary = useMemo(() => {
     if (!isSprintMathMode(modeId) || recentSessions.length === 0) {
@@ -820,6 +857,7 @@ export function StatsIndividualPage() {
               {isSprintMathMode(modeId) ||
               isReactionMode(modeId) ||
               isNBackMode(modeId) ||
+              isMemoryGridMode(modeId) ||
               isDecisionRushMode(modeId) ? (
                 <Line
                   type="monotone"

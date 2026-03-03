@@ -660,6 +660,8 @@ export function StatsPage() {
             ? reactionChartData.map((point) => [point.date, point.avgScore])
             : mode === "n_back"
               ? nBackChartData.map((point) => [point.date, point.avgScore])
+              : mode === "memory_grid"
+                ? memoryGridChartData.map((point) => [point.date, point.avgScore])
               : mode === "decision_rush"
                 ? decisionChartData.map((point) => [point.date, point.avgScore])
             : sprintMathChartData.map((point) => [point.date, point.avgScore]);
@@ -668,6 +670,7 @@ export function StatsPage() {
   }, [
     classicChartData,
     decisionChartData,
+    memoryGridChartData,
     mode,
     nBackChartData,
     reactionChartData,
@@ -811,6 +814,36 @@ export function StatsPage() {
       };
     }
 
+    if (mode === "memory_grid") {
+      const values = memoryGridChartData.map((point) => point.avgScore);
+      const trend = splitForTrend(values);
+      const changePct = computeChangePercent(trend.previous, trend.current, true);
+      const bestPoint =
+        memoryGridChartData.length > 0
+          ? memoryGridChartData.reduce((best, point) =>
+              point.avgScore > best.avgScore ? point : best
+            )
+          : null;
+
+      return {
+        headline: buildProgressHeadline(
+          changePct,
+          "score в Memory Grid",
+          memoryGridChartData.length
+        ),
+        previousAvg: trend.previous,
+        currentAvg: trend.current,
+        changePct,
+        snapshot: bestPoint
+          ? {
+              label: `Лучший score: ${bestPoint.avgScore.toFixed(2)}`,
+              value: bestPoint.avgScore,
+              date: bestPoint.date
+            }
+          : null
+      };
+    }
+
     if (mode === "decision_rush") {
       const values = decisionChartData.map((point) => point.avgScore);
       const trend = splitForTrend(values);
@@ -867,6 +900,7 @@ export function StatsPage() {
   }, [
     classicChartData,
     decisionChartData,
+    memoryGridChartData,
     mode,
     nBackChartData,
     reactionChartData,
@@ -887,6 +921,9 @@ export function StatsPage() {
     if (mode === "n_back") {
       return nBackChartData.length === 0;
     }
+    if (mode === "memory_grid") {
+      return memoryGridChartData.length === 0;
+    }
     if (mode === "decision_rush") {
       return decisionChartData.length === 0;
     }
@@ -894,6 +931,7 @@ export function StatsPage() {
   }, [
     classicChartData.length,
     decisionChartData.length,
+    memoryGridChartData.length,
     mode,
     nBackChartData.length,
     reactionChartData.length,
@@ -955,6 +993,14 @@ export function StatsPage() {
           data-testid="stats-mode-nback"
         >
           N-Back
+        </button>
+        <button
+          type="button"
+          className={mode === "memory_grid" ? "btn-secondary is-active" : "btn-secondary"}
+          onClick={() => setMode("memory_grid")}
+          data-testid="stats-mode-memory-grid"
+        >
+          Memory Grid
         </button>
         <button
           type="button"
@@ -1218,6 +1264,52 @@ export function StatsPage() {
                   ? nBackData.reduce((sum, point) => sum + point.speed * point.count, 0) /
                       nBackData.reduce((sum, point) => sum + point.count, 0)
                   : null
+              )}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {mode === "memory_grid" ? (
+        <section className="setup-block" data-testid="stats-memory-grid-summary">
+          <h3>Memory Grid: итоги</h3>
+          <div className="stats-grid compact">
+            <StatCard
+              title="Сессий"
+              value={String(memoryGridData.reduce((sum, point) => sum + point.count, 0))}
+            />
+            <StatCard
+              title="Точность"
+              value={formatMetric(
+                memoryGridData.length > 0
+                  ? (memoryGridData.reduce((sum, point) => sum + point.accuracy * point.count, 0) /
+                      memoryGridData.reduce((sum, point) => sum + point.count, 0)) *
+                      100
+                  : null,
+                1,
+                "%"
+              )}
+            />
+            <StatCard
+              title="Средний score"
+              value={formatMetric(
+                memoryGridData.length > 0
+                  ? memoryGridData.reduce((sum, point) => sum + point.avgScore * point.count, 0) /
+                      memoryGridData.reduce((sum, point) => sum + point.count, 0)
+                  : null
+              )}
+            />
+            <StatCard
+              title="Среднее время воспроизведения"
+              value={formatMetric(
+                memoryGridData.length > 0
+                  ? memoryGridData.reduce(
+                      (sum, point) => sum + point.avgRecallTimeMs * point.count,
+                      0
+                    ) / memoryGridData.reduce((sum, point) => sum + point.count, 0)
+                  : null,
+                0,
+                " мс"
               )}
             />
           </div>
@@ -1561,6 +1653,36 @@ export function StatsPage() {
                   stroke="#f2a93b"
                   strokeWidth={3}
                   dot={{ r: 4 }}
+                />
+              </LineChart>
+            ) : mode === "memory_grid" ? (
+              <LineChart data={memoryGridChartData}>
+                <XAxis dataKey="dateShort" />
+                <YAxis />
+                <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
+                <Line
+                  type="monotone"
+                  dataKey="accuracyPct"
+                  name="Точность (%)"
+                  stroke="#1e7f71"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avgScore"
+                  name="Средний score"
+                  stroke="#f2a93b"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avgRecallTimeMs"
+                  name="Время воспроизведения (мс)"
+                  stroke="#2e62c9"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
                 />
               </LineChart>
             ) : mode === "decision_rush" ? (

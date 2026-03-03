@@ -20,6 +20,32 @@ interface MemoryGridSessionNavState {
   setup: MemoryGridSetup;
 }
 
+function parseModeOverrides(
+  modeParam: string | null
+): Partial<Pick<MemoryGridSetup, "mode" | "difficulty" | "gridSize">> | null {
+  if (!modeParam) {
+    return null;
+  }
+
+  if (modeParam === "rush" || modeParam === "classic") {
+    return { mode: modeParam };
+  }
+
+  if (!modeParam.startsWith("memory_grid_")) {
+    return null;
+  }
+
+  const mode = modeParam.includes("_rush") ? "rush" : "classic";
+  const difficulty = modeParam.includes("_kids")
+    ? "kids"
+    : modeParam.includes("_pro")
+      ? "pro"
+      : "standard";
+  const gridSize = modeParam.includes("_4x4") ? 4 : difficulty === "pro" ? 4 : 3;
+
+  return { mode, difficulty, gridSize };
+}
+
 function toggleFullScreen(): void {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(() => {
@@ -38,13 +64,28 @@ export function MemoryGridSetupPage() {
   const [setup, setSetup] = useState<MemoryGridSetup>(() => getMemoryGridSetup());
 
   useEffect(() => {
-    const modeParam = searchParams.get("mode");
-    if (modeParam === "rush" && setup.mode !== "rush") {
-      setSetup((current) => normalizeMemoryGridSetup({ ...current, mode: "rush" }));
-    } else if (modeParam === "classic" && setup.mode !== "classic") {
-      setSetup((current) => normalizeMemoryGridSetup({ ...current, mode: "classic" }));
+    const overrides = parseModeOverrides(searchParams.get("mode"));
+    if (!overrides) {
+      return;
     }
-  }, [searchParams, setup.mode]);
+
+    setSetup((current) => {
+      const next = normalizeMemoryGridSetup({
+        ...current,
+        ...overrides
+      });
+      if (
+        next.mode === current.mode &&
+        next.difficulty === current.difficulty &&
+        next.gridSize === current.gridSize &&
+        next.startLevel === current.startLevel &&
+        next.durationSec === current.durationSec
+      ) {
+        return current;
+      }
+      return next;
+    });
+  }, [searchParams]);
 
   function startSession(): void {
     const normalized = normalizeMemoryGridSetup(setup);
