@@ -12,6 +12,7 @@ import type {
   DailyCompareBandPoint,
   DailyProgressSummary,
   DecisionRushDailyPoint,
+  MemoryGridDailyPoint,
   GroupMetric,
   ModeRecommendation,
   NBackDailyPoint,
@@ -234,6 +235,43 @@ export function buildDecisionRushDailyPoints(sessions: Session[]): DecisionRushD
       avgScore,
       reactionP90Ms,
       bestComboAvg,
+      count: values.length
+    });
+  }
+
+  return points.sort(byDateAsc);
+}
+
+export function buildMemoryGridDailyPoints(sessions: Session[]): MemoryGridDailyPoint[] {
+  const grouped = new Map<string, Session[]>();
+  for (const session of sessions) {
+    if (session.mode !== "memory_grid") {
+      continue;
+    }
+
+    const bucket = grouped.get(session.localDate);
+    if (bucket) {
+      bucket.push(session);
+    } else {
+      grouped.set(session.localDate, [session]);
+    }
+  }
+
+  const points: MemoryGridDailyPoint[] = [];
+  for (const [date, values] of grouped.entries()) {
+    const accuracy = values.reduce((sum, entry) => sum + entry.accuracy, 0) / values.length;
+    const avgScore = values.reduce((sum, entry) => sum + entry.score, 0) / values.length;
+    const avgRecallTimeMs =
+      values.reduce((sum, entry) => sum + Math.max(0, entry.durationMs), 0) / values.length;
+    const spanMaxAvg =
+      values.reduce((sum, entry) => sum + (entry.difficulty?.numbersCount ?? 0), 0) / values.length;
+
+    points.push({
+      date,
+      accuracy,
+      avgScore,
+      avgRecallTimeMs,
+      spanMaxAvg,
       count: values.length
     });
   }
@@ -671,6 +709,15 @@ export const sessionRepository = {
     return buildDecisionRushDailyPoints(sessions);
   },
 
+  async aggregateDailyMemoryGrid(userId: string): Promise<MemoryGridDailyPoint[]> {
+    const sessions = await db.sessions
+      .where("userId")
+      .equals(userId)
+      .and((session) => session.mode === "memory_grid")
+      .toArray();
+    return buildMemoryGridDailyPoints(sessions);
+  },
+
   async aggregateDailyPattern(userId: string): Promise<PatternDailyPoint[]> {
     const sessions = await db.sessions
       .where("userId")
@@ -690,6 +737,7 @@ export const sessionRepository = {
     | ReactionDailyPoint[]
     | NBackDailyPoint[]
     | DecisionRushDailyPoint[]
+    | MemoryGridDailyPoint[]
     | PatternDailyPoint[]
   > {
     const sessions = await db.sessions
@@ -727,6 +775,22 @@ export const sessionRepository = {
       modeId === "decision_pro"
     ) {
       return buildDecisionRushDailyPoints(sessions);
+    }
+    if (
+      modeId === "memory_grid_classic" ||
+      modeId === "memory_grid_classic_kids" ||
+      modeId === "memory_grid_classic_pro" ||
+      modeId === "memory_grid_classic_4x4" ||
+      modeId === "memory_grid_classic_kids_4x4" ||
+      modeId === "memory_grid_classic_pro_4x4" ||
+      modeId === "memory_grid_rush" ||
+      modeId === "memory_grid_rush_kids" ||
+      modeId === "memory_grid_rush_pro" ||
+      modeId === "memory_grid_rush_4x4" ||
+      modeId === "memory_grid_rush_kids_4x4" ||
+      modeId === "memory_grid_rush_pro_4x4"
+    ) {
+      return buildMemoryGridDailyPoints(sessions);
     }
     if (
       modeId === "pattern_classic" ||

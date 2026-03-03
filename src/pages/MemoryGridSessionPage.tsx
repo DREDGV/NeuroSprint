@@ -29,6 +29,14 @@ interface MemoryGridSessionNavState {
   setup?: MemoryGridSetup;
 }
 
+function toggleFullScreen(): void {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
 function formatMs(ms: number): string {
   return `${Math.max(0, Math.round(ms / 1000))} сек`;
 }
@@ -436,16 +444,28 @@ export function MemoryGridSessionPage() {
             Memory Grid Rush
           </h2>
           <p className="memory-grid-subtitle" style={{ textAlign: 'center' }}>
-            {setup.mode === "classic" ? "Classic" : "Rush"} • {setup.gridSize}×{setup.gridSize} • Ур. {setup.startLevel}
+            {setup.mode === "classic" ? "Classic" : "Rush"} • {setup.difficulty === "kids" ? "Kids" : setup.difficulty === "pro" ? "Pro" : "Standard"} • {setup.gridSize}×{setup.gridSize} • Ур. {setup.startLevel}
           </p>
         </div>
         
-        {isRush && (
-          <div className="memory-grid-rush-timer">
-            <span className="timer-icon">⏱️</span>
-            <span className="timer-value">{formatMs(Math.max(0, rushDurationMs - sessionElapsedMs))}</span>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={toggleFullScreen}
+            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', padding: '8px 12px' }}
+            title="Полноэкранный режим"
+          >
+            ⛶
+          </button>
+          
+          {isRush && (
+            <div className="memory-grid-rush-timer">
+              <span className="timer-icon">⏱️</span>
+              <span className="timer-value">{formatMs(Math.max(0, rushDurationMs - sessionElapsedMs))}</span>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Stats Row */}

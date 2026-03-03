@@ -198,6 +198,15 @@ export interface DecisionRushDailyPoint {
   count: number;
 }
 
+export interface MemoryGridDailyPoint {
+  date: string;
+  accuracy: number;
+  avgScore: number;
+  avgRecallTimeMs: number;
+  spanMaxAvg: number;
+  count: number;
+}
+
 export interface DailyProgressSummary {
   date: string;
   sessionsTotal: number;

@@ -20,6 +20,18 @@ interface MemoryGridSessionNavState {
   setup: MemoryGridSetup;
 }
 
+function toggleFullScreen(): void {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {
+      // Игнорируем ошибки если браузер не поддерживает
+    });
+  } else {
+    document.exitFullscreen().catch(() => {
+      // Игнорируем ошибки
+    });
+  }
+}
+
 export function MemoryGridSetupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -60,6 +72,17 @@ export function MemoryGridSetupPage() {
         <p><strong>3.</strong> После показа воспроизведите последовательность кликами.</p>
         <p><strong>4.</strong> Classic: ошибка = конец игры. Rush: 60 сек на максимум уровней.</p>
       </InfoHint>
+
+      <div className="action-row" style={{ marginBottom: '16px' }}>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={toggleFullScreen}
+          data-testid="memory-grid-fullscreen-btn"
+        >
+          <span>⛶</span> Полноэкранный режим
+        </button>
+      </div>
 
       <section className="setup-block">
         <h3>Настройки сессии</h3>

@@ -16,9 +16,17 @@ const NBACK_MODE_IDS: TrainingModeId[] = [
 ];
 const MEMORY_GRID_MODE_IDS: TrainingModeId[] = [
   "memory_grid_classic",
+  "memory_grid_classic_kids",
+  "memory_grid_classic_pro",
   "memory_grid_classic_4x4",
+  "memory_grid_classic_kids_4x4",
+  "memory_grid_classic_pro_4x4",
   "memory_grid_rush",
-  "memory_grid_rush_4x4"
+  "memory_grid_rush_kids",
+  "memory_grid_rush_pro",
+  "memory_grid_rush_4x4",
+  "memory_grid_rush_kids_4x4",
+  "memory_grid_rush_pro_4x4"
 ];
 const DECISION_RUSH_MODE_IDS: TrainingModeId[] = [
   "decision_kids",
