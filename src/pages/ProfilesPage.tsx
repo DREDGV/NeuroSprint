@@ -195,7 +195,7 @@ export function ProfilesPage() {
     navigate("/training");
   }
 
-  async function handleSaveRole(user: User) {
+  async function handleSaveRole(user: User, newRole: AppRole) {
     if (
       !guardAccess(
         canUpdateProfileRoles,
@@ -205,14 +205,13 @@ export function ProfilesPage() {
     ) {
       return;
     }
-    const nextRole = roleDrafts[user.id] ?? normalizeUserRole(user.role);
     try {
-      await userRepository.updateRole(user.id, nextRole);
+      await userRepository.updateRole(user.id, newRole);
       if (activeUserId === user.id) {
-        saveAppRole(nextRole);
+        saveAppRole(newRole);
       }
       await loadUsers();
-      setStatus(`Роль профиля "${user.name}" изменена на «${appRoleLabel(nextRole)}».`);
+      setStatus(`Роль профиля "${user.name}" изменена на «${appRoleLabel(newRole)}».`);
     } catch (caught) {
       console.error("profile role update failed", caught);
       setError(
@@ -356,11 +355,13 @@ export function ProfilesPage() {
             user={user}
             isActive={user.id === activeUserId}
             canEdit={canEditUser(user)}
+            canUpdateRole={canUpdateProfileRoles}
             canActivate={access.profiles.activate}
             onActivate={handleSetActive}
             onRename={handleRename}
             onDelete={handleDelete}
             onTrain={handleTrain}
+            onUpdateRole={handleSaveRole}
             avatar={getUserAvatar(user.id)}
           />
         ))}
