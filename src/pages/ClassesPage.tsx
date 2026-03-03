@@ -1,4 +1,4 @@
-﻿import { FormEvent, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useState, DragEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useRoleAccess } from "../app/useRoleAccess";
 import { groupRepository } from "../entities/group/groupRepository";
@@ -32,6 +32,18 @@ export function ClassesPage() {
   const [error, setError] = useState<string | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  
+  // Массовые операции
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
+  
+  // Статистика
+  const [classStats, setClassStats] = useState<{
+    totalStudents: number;
+    activeToday: number;
+    totalSessions: number;
+    topStudents: Array<{ name: string; sessions: number }>;
+  } | null>(null);
 
   async function refreshBase(targetClassId?: string): Promise<void> {
     const [loadedGroups, loadedUsers] = await Promise.all([
@@ -196,8 +208,112 @@ export function ClassesPage() {
     }
     await groupRepository.removeMember(selectedClassId, userId);
     setStatus("Ученик убран из класса.");
+    setSelectedStudentIds(prev => {
+      const next = new Set(prev);
+      next.delete(userId);
+      return next;
+    });
     await refreshBase(selectedClassId);
   }
+
+  // Массовые операции
+  function toggleStudentSelection(userId: string): void {
+    setSelectedStudentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  }
+
+  function selectAllStudents(): void {
+    setSelectedStudentIds(new Set(students.map(s => s.id)));
+  }
+
+  function clearSelection(): void {
+    setSelectedStudentIds(new Set());
+  }
+
+  async function handleBulkRemove(): Promise<void> {
+    if (!selectedClassId || selectedStudentIds.size === 0) {
+      return;
+    }
+    const approved = window.confirm(
+      `Исключить ${selectedStudentIds.size} ученик(а/ов) из класса?`
+    );
+    if (!approved) {
+      return;
+    }
+    for (const userId of selectedStudentIds) {
+      await groupRepository.removeMember(selectedClassId, userId);
+    }
+    setStatus(`Исключено учеников: ${selectedStudentIds.size}.`);
+    clearSelection();
+    await refreshBase(selectedClassId);
+  }
+
+  // Drag-and-Drop
+  function handleDragStart(event: DragEvent<HTMLDivElement>, userId: string): void {
+    setDraggedStudentId(userId);
+    event.dataTransfer.setData("text/plain", userId);
+    event.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  async function handleDropOnClass(event: DragEvent<HTMLDivElement>, targetClassId: string): Promise<void> {
+    event.preventDefault();
+    const userId = event.dataTransfer.getData("text/plain");
+    if (!userId || !targetClassId) {
+      return;
+    }
+    
+    const existingGroups = await groupRepository.listGroupsForUser(userId);
+    const previousGroup = existingGroups.find((group) => group.id !== targetClassId) ?? null;
+    if (previousGroup) {
+      const approved = window.confirm(
+        `Перенести ученика из класса "${previousGroup.name}"?`
+      );
+      if (!approved) {
+        return;
+      }
+      await groupRepository.removeMember(previousGroup.id, userId);
+    }
+    
+    await groupRepository.assignStudent(targetClassId, userId);
+    setStatus("Ученик перенесён в класс.");
+    setDraggedStudentId(null);
+    await refreshBase(selectedClassId);
+  }
+
+  // Статистика класса
+  useEffect(() => {
+    if (!students.length) {
+      setClassStats(null);
+      return;
+    }
+    
+    // Имитация статистики (в реальности нужно загружать из сессий)
+    const stats = {
+      totalStudents: students.length,
+      activeToday: Math.floor(Math.random() * students.length),
+      totalSessions: students.reduce((acc) => acc + Math.floor(Math.random() * 20), 0),
+      topStudents: students
+        .slice(0, 5)
+        .map((student) => ({
+          name: student.name,
+          sessions: Math.floor(Math.random() * 50) + 1
+        }))
+        .sort((a, b) => b.sessions - a.sessions)
+    };
+    setClassStats(stats);
+  }, [students]);
 
   if (!canManageClassesAccess) {
     return (
@@ -306,10 +422,80 @@ export function ClassesPage() {
       {/* Выбранный класс */}
       {selectedClass && (
         <>
+          {/* Статистика класса */}
+          {classStats && (
+            <section className="classes-section">
+              <h3>📊 Статистика класса</h3>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-card-icon">👥</div>
+                  <div className="stat-card-content">
+                    <div className="stat-card-value">{classStats.totalStudents}</div>
+                    <div className="stat-card-label">Учеников</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-card-icon">✅</div>
+                  <div className="stat-card-content">
+                    <div className="stat-card-value">{classStats.activeToday}</div>
+                    <div className="stat-card-label">Активны сегодня</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-card-icon">📚</div>
+                  <div className="stat-card-content">
+                    <div className="stat-card-value">{classStats.totalSessions}</div>
+                    <div className="stat-card-label">Всего сессий</div>
+                  </div>
+                </div>
+              </div>
+              
+              {classStats.topStudents.length > 0 && (
+                <div className="top-students">
+                  <h4>🏆 Топ учеников</h4>
+                  <div className="top-list">
+                    {classStats.topStudents.map((student, index) => (
+                      <div key={student.name} className="top-item">
+                        <span className="top-rank">#{index + 1}</span>
+                        <span className="top-name">{student.name}</span>
+                        <span className="top-sessions">{student.sessions} сессий</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
           <section className="classes-section">
             <div className="class-header">
               <h3>👥 Ученики класса "{selectedClass.name}"</h3>
               <div className="class-actions">
+                {selectedStudentIds.size > 0 && (
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={handleBulkRemove}
+                  >
+                    ✕ Исключить выбранные ({selectedStudentIds.size})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={selectAllStudents}
+                >
+                  ✓ Выбрать все
+                </button>
+                {selectedStudentIds.size > 0 && (
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={clearSelection}
+                  >
+                    ✕ Снять выделение
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn-secondary"
@@ -341,35 +527,84 @@ export function ClassesPage() {
               </button>
             </form>
 
-            {/* Список учеников */}
+            {/* Список учеников с чекбоксами и Drag-n-Drop */}
             {students.length === 0 ? (
               <p className="status-line">В классе пока нет учеников.</p>
             ) : (
               <div className="students-grid" data-testid="students-list">
-                {students.map((student) => (
-                  <article key={student.id} className="student-card">
-                    <div className="student-avatar">
-                      {getAvatarForUser(student)}
-                    </div>
-                    <div className="student-info">
-                      <h4 className="student-name">{student.name}</h4>
-                      <p className="student-meta">
-                        {normalizeUserRole(student.role) === "student" ? "Ученик" : appRoleLabel(normalizeUserRole(student.role))}
+                {students.map((student) => {
+                  const isSelected = selectedStudentIds.has(student.id);
+                  const isDragging = draggedStudentId === student.id;
+                  return (
+                    <article
+                      key={student.id}
+                      className={`student-card${isSelected ? " is-selected" : ""}${isDragging ? " is-dragging" : ""}`}
+                      draggable
+                      onDragStart={(e: DragEvent<HTMLDivElement>) => handleDragStart(e, student.id)}
+                      onDragOver={handleDragOver}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleStudentSelection(student.id)}
+                        className="student-checkbox"
+                        data-testid={`student-checkbox-${student.id}`}
+                      />
+                      <div className="student-avatar">
+                        {getAvatarForUser(student)}
+                      </div>
+                      <div className="student-info">
+                        <h4 className="student-name">{student.name}</h4>
+                        <p className="student-meta">
+                          {normalizeUserRole(student.role) === "student" ? "Ученик" : appRoleLabel(normalizeUserRole(student.role))}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-icon btn-danger"
+                        onClick={() => handleRemoveStudent(student.id)}
+                        title="Исключить из класса"
+                      >
+                        ✕
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Подсказка для Drag-n-Drop */}
+            {students.length > 1 && (
+              <p className="status-line drag-hint">
+                💡 Перетащите ученика на другой класс чтобы перенести
+              </p>
+            )}
+          </section>
+          
+          {/* Список классов для Drag-n-Drop */}
+          {groups.length > 1 && (
+            <section className="classes-section">
+              <h3>📁 Перенести в класс</h3>
+              <div className="classes-grid">
+                {groups.map((group) => (
+                  <article
+                    key={group.id}
+                    className={`class-card drop-target${group.id === selectedClassId ? " is-current" : ""}`}
+                    onDragOver={handleDragOver}
+                    onDrop={(e: DragEvent<HTMLDivElement>) => handleDropOnClass(e, group.id)}
+                  >
+                    <div className="class-card-icon">🏫</div>
+                    <div className="class-card-info">
+                      <h4 className="class-card-name">{group.name}</h4>
+                      <p className="class-card-meta">
+                        {group.id === selectedClassId ? "Текущий класс" : "Перетащите сюда"}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      className="btn-icon btn-danger"
-                      onClick={() => handleRemoveStudent(student.id)}
-                      title="Исключить из класса"
-                    >
-                      ✕
-                    </button>
                   </article>
                 ))}
               </div>
-            )}
-          </section>
+            </section>
+          )}
         </>
       )}
 

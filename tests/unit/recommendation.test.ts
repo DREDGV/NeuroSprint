@@ -18,31 +18,47 @@ function createSession(
           modeId === "reaction_pair" ||
           modeId === "reaction_number"
         ? "reaction"
-        : modeId === "nback_1" || modeId === "nback_2"
+        : modeId.startsWith("nback_")
           ? "n_back"
-          : modeId === "sprint_add_sub" || modeId === "sprint_mixed"
-            ? "sprint_math"
-            : "classic";
+          : modeId.startsWith("memory_grid_")
+            ? "memory_grid"
+            : modeId === "sprint_add_sub" || modeId === "sprint_mixed"
+              ? "sprint_math"
+              : modeId.startsWith("decision_")
+                ? "decision_rush"
+                : "classic";
+
+  const taskId =
+    mode === "sprint_math"
+      ? "sprint_math"
+      : mode === "reaction"
+        ? "reaction"
+        : mode === "n_back"
+          ? "n_back"
+          : mode === "memory_grid"
+            ? "memory_grid"
+            : mode === "decision_rush"
+              ? "decision_rush"
+              : "schulte";
+
+  const moduleId =
+    mode === "sprint_math"
+      ? "sprint_math"
+      : mode === "reaction"
+        ? "reaction"
+        : mode === "n_back"
+          ? "n_back"
+          : mode === "memory_grid"
+            ? "memory_grid"
+            : mode === "decision_rush"
+              ? "decision_rush"
+              : "schulte";
 
   return {
     id,
     userId: "u1",
-    taskId:
-      mode === "sprint_math"
-        ? "sprint_math"
-        : mode === "reaction"
-          ? "reaction"
-          : mode === "n_back"
-            ? "n_back"
-            : "schulte",
-    moduleId:
-      mode === "sprint_math"
-        ? "sprint_math"
-        : mode === "reaction"
-          ? "reaction"
-          : mode === "n_back"
-            ? "n_back"
-            : "schulte",
+    taskId,
+    moduleId,
     modeId,
     mode,
     level: 3,
@@ -58,8 +74,8 @@ function createSession(
     correctCount: mode === "sprint_math" ? 20 : undefined,
     effectiveCorrect: mode === "timed" ? 18 : undefined,
     difficulty: {
-      gridSize: 5,
-      numbersCount: 25,
+      gridSize: modeId.includes("_4x4") ? 4 : 5,
+      numbersCount: mode === "memory_grid" ? 5 : 25,
       mode,
       timeLimitSec: mode === "timed" ? 60 : undefined,
       errorPenalty: mode === "timed" ? 0.5 : undefined
@@ -74,7 +90,7 @@ describe("recommendModeByPerformance", () => {
     expect(recommendation.confidence).toBeGreaterThan(0.5);
   });
 
-  it("recommends untrained mode first", () => {
+  it("recommends an untrained mode first", () => {
     const sessions: Session[] = [
       createSession("a1", "classic_plus", 40, 0.94, 24, "2026-02-25T10:00:00.000Z"),
       createSession("a2", "timed_plus", 32, 0.91, 22, "2026-02-25T11:00:00.000Z"),

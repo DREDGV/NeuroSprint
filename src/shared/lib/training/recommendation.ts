@@ -7,6 +7,11 @@ interface ModeRecommendationScore {
   sampleSize: number;
 }
 
+interface RecommendationBuildContext {
+  hasReactionHistory: boolean;
+  hasNBackHistory: boolean;
+}
+
 const MODE_IDS: TrainingModeId[] = [
   "classic_plus",
   "timed_plus",
@@ -22,6 +27,14 @@ const MODE_IDS: TrainingModeId[] = [
   "nback_2",
   "nback_2_4x4",
   "nback_3",
+  "memory_grid_classic",
+  "memory_grid_classic_kids",
+  "memory_grid_classic_pro",
+  "memory_grid_classic_4x4",
+  "memory_grid_rush",
+  "memory_grid_rush_kids",
+  "memory_grid_rush_pro",
+  "memory_grid_rush_4x4",
   "decision_kids",
   "decision_standard",
   "decision_pro"
@@ -78,17 +91,30 @@ function isDecisionModeId(modeId: TrainingModeId): boolean {
   );
 }
 
+function isMemoryGridModeId(modeId: TrainingModeId): boolean {
+  return (
+    modeId === "memory_grid_classic" ||
+    modeId === "memory_grid_classic_kids" ||
+    modeId === "memory_grid_classic_pro" ||
+    modeId === "memory_grid_classic_4x4" ||
+    modeId === "memory_grid_rush" ||
+    modeId === "memory_grid_rush_kids" ||
+    modeId === "memory_grid_rush_pro" ||
+    modeId === "memory_grid_rush_4x4"
+  );
+}
+
 function reactionLabel(modeId: TrainingModeId): string {
   if (modeId === "reaction_stroop") {
-    return "цвет и слово";
+    return "Цвет и слово";
   }
   if (modeId === "reaction_pair") {
-    return "пара";
+    return "Пара";
   }
   if (modeId === "reaction_number") {
-    return "число-цель";
+    return "Число-цель";
   }
-  return "сигнал";
+  return "Сигнал";
 }
 
 function nBackLabel(modeId: TrainingModeId): string {
@@ -115,6 +141,31 @@ function decisionLabel(modeId: TrainingModeId): string {
     return "Pro";
   }
   return "Standard";
+}
+
+function memoryGridLabel(modeId: TrainingModeId): string {
+  if (modeId.includes("_rush")) {
+    if (modeId.includes("_kids")) {
+      return "Rush Kids";
+    }
+    if (modeId.includes("_pro")) {
+      return "Rush Pro";
+    }
+    if (modeId.includes("_4x4")) {
+      return "Rush 4x4";
+    }
+    return "Rush";
+  }
+  if (modeId.includes("_kids")) {
+    return "Classic Kids";
+  }
+  if (modeId.includes("_pro")) {
+    return "Classic Pro";
+  }
+  if (modeId.includes("_4x4")) {
+    return "Classic 4x4";
+  }
+  return "Classic";
 }
 
 function reactionUntrainedPriority(modeId: TrainingModeId, hasReactionHistory: boolean): number {
@@ -153,6 +204,19 @@ function decisionUntrainedPriority(modeId: TrainingModeId): number {
   return 0.26;
 }
 
+function memoryGridUntrainedPriority(modeId: TrainingModeId): number {
+  if (modeId === "memory_grid_classic" || modeId === "memory_grid_classic_kids") {
+    return 0.35;
+  }
+  if (modeId === "memory_grid_rush" || modeId === "memory_grid_rush_kids") {
+    return 0.31;
+  }
+  if (modeId.includes("_4x4")) {
+    return 0.25;
+  }
+  return 0.28;
+}
+
 function reactionTargetMs(modeId: TrainingModeId): number {
   if (modeId === "reaction_stroop") {
     return 950;
@@ -186,9 +250,17 @@ function decisionTargetP90(modeId: TrainingModeId): number {
   return 900;
 }
 
-interface RecommendationBuildContext {
-  hasReactionHistory: boolean;
-  hasNBackHistory: boolean;
+function memoryGridTargetSpan(modeId: TrainingModeId): number {
+  if (modeId.includes("_pro")) {
+    return 7;
+  }
+  if (modeId.includes("_rush")) {
+    return 6;
+  }
+  if (modeId.includes("_kids")) {
+    return 4;
+  }
+  return 5;
 }
 
 function buildModeScore(
@@ -203,7 +275,7 @@ function buildModeScore(
       return {
         modeId,
         priority: reactionUntrainedPriority(modeId, context.hasReactionHistory),
-        reason: `Вариант Reaction «${reactionLabel(modeId)}» еще не тренировался: добавьте короткую сессию.`,
+        reason: `Вариант Reaction «${reactionLabel(modeId)}» ещё не тренировался: добавьте короткую сессию.`,
         sampleSize: 0
       };
     }
@@ -211,7 +283,7 @@ function buildModeScore(
       return {
         modeId,
         priority: nBackUntrainedPriority(modeId, context.hasNBackHistory),
-        reason: `Режим N-Back Lite (${nBackLabel(modeId)}) еще не тренировался: полезно добавить его сегодня.`,
+        reason: `Режим N-Back Lite (${nBackLabel(modeId)}) ещё не тренировался: полезно добавить его сегодня.`,
         sampleSize: 0
       };
     }
@@ -219,14 +291,22 @@ function buildModeScore(
       return {
         modeId,
         priority: decisionUntrainedPriority(modeId),
-        reason: `Decision Rush (${decisionLabel(modeId)}) еще не тренировался: добавьте одну короткую серию.`,
+        reason: `Decision Rush (${decisionLabel(modeId)}) ещё не тренировался: добавьте короткую серию.`,
+        sampleSize: 0
+      };
+    }
+    if (isMemoryGridModeId(modeId)) {
+      return {
+        modeId,
+        priority: memoryGridUntrainedPriority(modeId),
+        reason: `Memory Grid (${memoryGridLabel(modeId)}) ещё не тренировался: добавьте одну попытку.`,
         sampleSize: 0
       };
     }
     return {
       modeId,
       priority: 0.95,
-      reason: "Режим еще не тренировался: полезно добавить его сегодня.",
+      reason: "Режим ещё не тренировался: полезно добавить его сегодня.",
       sampleSize: 0
     };
   }
@@ -285,6 +365,17 @@ function buildModeScore(
     )}%, P90 ${Math.round(avgP90)} мс, тренд score ${growthPct.toFixed(1)}%.`;
   }
 
+  if (isMemoryGridModeId(modeId)) {
+    const avgSpan =
+      recentDesc.reduce((sum, entry) => sum + (entry.difficulty?.numbersCount ?? 0), 0) /
+      recentDesc.length;
+    const spanWeakness = clamp((memoryGridTargetSpan(modeId) - avgSpan) / 4, 0, 1);
+    priority += spanWeakness * 0.25;
+    reason = `Memory Grid (${memoryGridLabel(modeId)}): точность ${(avgAccuracy * 100).toFixed(
+      1
+    )}%, средний span ${avgSpan.toFixed(1)}, тренд score ${growthPct.toFixed(1)}%.`;
+  }
+
   return {
     modeId,
     priority,
@@ -308,12 +399,12 @@ export function recommendModeByPerformance(sessions: Session[]): ModeRecommendat
   const hasReactionHistory = sessions.some((session) => isReactionModeId(session.modeId));
   const hasNBackHistory = sessions.some((session) => isNBackModeId(session.modeId));
 
-  for (const session of sessions) {
+  sessions.forEach((session) => {
     const bucket = byMode.get(session.modeId);
     if (bucket) {
       bucket.push(session);
     }
-  }
+  });
 
   const ranked = MODE_IDS.map((modeId) =>
     buildModeScore(modeId, byMode.get(modeId) ?? [], {
