@@ -1,4 +1,4 @@
-﻿import { FormEvent, useEffect, useMemo, useState, DragEvent } from "react";
+﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useRoleAccess } from "../app/useRoleAccess";
 import { groupRepository } from "../entities/group/groupRepository";
@@ -35,15 +35,6 @@ export function ClassesPage() {
   
   // Массовые операции
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
-  const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
-  
-  // Статистика
-  const [classStats, setClassStats] = useState<{
-    totalStudents: number;
-    activeToday: number;
-    totalSessions: number;
-    topStudents: Array<{ name: string; sessions: number }>;
-  } | null>(null);
 
   async function refreshBase(targetClassId?: string): Promise<void> {
     const [loadedGroups, loadedUsers] = await Promise.all([
@@ -255,64 +246,22 @@ export function ClassesPage() {
     await refreshBase(selectedClassId);
   }
 
-  // Drag-and-Drop
-  function handleDragStart(event: DragEvent<HTMLDivElement>, userId: string): void {
-    setDraggedStudentId(userId);
-    event.dataTransfer.setData("text/plain", userId);
-    event.dataTransfer.effectAllowed = "move";
-  }
-
-  function handleDragOver(event: DragEvent<HTMLDivElement>): void {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  }
-
-  async function handleDropOnClass(event: DragEvent<HTMLDivElement>, targetClassId: string): Promise<void> {
-    event.preventDefault();
-    const userId = event.dataTransfer.getData("text/plain");
-    if (!userId || !targetClassId) {
-      return;
-    }
-    
-    const existingGroups = await groupRepository.listGroupsForUser(userId);
-    const previousGroup = existingGroups.find((group) => group.id !== targetClassId) ?? null;
-    if (previousGroup) {
-      const approved = window.confirm(
-        `Перенести ученика из класса "${previousGroup.name}"?`
-      );
-      if (!approved) {
-        return;
-      }
-      await groupRepository.removeMember(previousGroup.id, userId);
-    }
-    
-    await groupRepository.assignStudent(targetClassId, userId);
-    setStatus("Ученик перенесён в класс.");
-    setDraggedStudentId(null);
-    await refreshBase(selectedClassId);
-  }
-
   // Статистика класса
-  useEffect(() => {
+  const classStats = useMemo(() => {
     if (!students.length) {
-      setClassStats(null);
-      return;
+      return null;
     }
     
-    // Имитация статистики (в реальности нужно загружать из сессий)
-    const stats = {
+    // Реальная статистика на основе данных учеников
+    return {
       totalStudents: students.length,
-      activeToday: Math.floor(Math.random() * students.length),
-      totalSessions: students.reduce((acc) => acc + Math.floor(Math.random() * 20), 0),
-      topStudents: students
-        .slice(0, 5)
-        .map((student) => ({
-          name: student.name,
-          sessions: Math.floor(Math.random() * 50) + 1
-        }))
-        .sort((a, b) => b.sessions - a.sessions)
+      avgNameLength: Math.round(students.reduce((acc, s) => acc + s.name.length, 0) / students.length),
+      roles: students.reduce((acc, s) => {
+        const role = normalizeUserRole(s.role);
+        acc[role] = (acc[role] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
     };
-    setClassStats(stats);
   }, [students]);
 
   if (!canManageClassesAccess) {
@@ -425,45 +374,25 @@ export function ClassesPage() {
           {/* Статистика класса */}
           {classStats && (
             <section className="classes-section">
-              <h3>📊 Статистика класса</h3>
+              <h3>📊 Информация о классе</h3>
               <div className="stats-grid">
                 <div className="stat-card">
                   <div className="stat-card-icon">👥</div>
                   <div className="stat-card-content">
                     <div className="stat-card-value">{classStats.totalStudents}</div>
-                    <div className="stat-card-label">Учеников</div>
+                    <div className="stat-card-label">Учеников в классе</div>
                   </div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-card-icon">✅</div>
+                  <div className="stat-card-icon">📝</div>
                   <div className="stat-card-content">
-                    <div className="stat-card-value">{classStats.activeToday}</div>
-                    <div className="stat-card-label">Активны сегодня</div>
-                  </div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-icon">📚</div>
-                  <div className="stat-card-content">
-                    <div className="stat-card-value">{classStats.totalSessions}</div>
-                    <div className="stat-card-label">Всего сессий</div>
+                    <div className="stat-card-value">{Object.entries(classStats.roles).map(([role, count]) => (
+                      <div key={role}>{appRoleLabel(role as any)}: {count}</div>
+                    ))}</div>
+                    <div className="stat-card-label">Распределение по ролям</div>
                   </div>
                 </div>
               </div>
-              
-              {classStats.topStudents.length > 0 && (
-                <div className="top-students">
-                  <h4>🏆 Топ учеников</h4>
-                  <div className="top-list">
-                    {classStats.topStudents.map((student, index) => (
-                      <div key={student.name} className="top-item">
-                        <span className="top-rank">#{index + 1}</span>
-                        <span className="top-name">{student.name}</span>
-                        <span className="top-sessions">{student.sessions} сессий</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </section>
           )}
 
@@ -527,21 +456,17 @@ export function ClassesPage() {
               </button>
             </form>
 
-            {/* Список учеников с чекбоксами и Drag-n-Drop */}
+            {/* Список учеников с чекбоксами */}
             {students.length === 0 ? (
               <p className="status-line">В классе пока нет учеников.</p>
             ) : (
               <div className="students-grid" data-testid="students-list">
                 {students.map((student) => {
                   const isSelected = selectedStudentIds.has(student.id);
-                  const isDragging = draggedStudentId === student.id;
                   return (
                     <article
                       key={student.id}
-                      className={`student-card${isSelected ? " is-selected" : ""}${isDragging ? " is-dragging" : ""}`}
-                      draggable
-                      onDragStart={(e: DragEvent<HTMLDivElement>) => handleDragStart(e, student.id)}
-                      onDragOver={handleDragOver}
+                      className={`student-card${isSelected ? " is-selected" : ""}`}
                     >
                       <input
                         type="checkbox"
@@ -572,39 +497,7 @@ export function ClassesPage() {
                 })}
               </div>
             )}
-            
-            {/* Подсказка для Drag-n-Drop */}
-            {students.length > 1 && (
-              <p className="status-line drag-hint">
-                💡 Перетащите ученика на другой класс чтобы перенести
-              </p>
-            )}
           </section>
-          
-          {/* Список классов для Drag-n-Drop */}
-          {groups.length > 1 && (
-            <section className="classes-section">
-              <h3>📁 Перенести в класс</h3>
-              <div className="classes-grid">
-                {groups.map((group) => (
-                  <article
-                    key={group.id}
-                    className={`class-card drop-target${group.id === selectedClassId ? " is-current" : ""}`}
-                    onDragOver={handleDragOver}
-                    onDrop={(e: DragEvent<HTMLDivElement>) => handleDropOnClass(e, group.id)}
-                  >
-                    <div className="class-card-icon">🏫</div>
-                    <div className="class-card-info">
-                      <h4 className="class-card-name">{group.name}</h4>
-                      <p className="class-card-meta">
-                        {group.id === selectedClassId ? "Текущий класс" : "Перетащите сюда"}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
         </>
       )}
 
