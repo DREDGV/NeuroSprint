@@ -20,6 +20,16 @@ interface DecisionRushSessionNavState {
   setup: DecisionRushSetup;
 }
 
+function levelLabel(level: DecisionRushLevel): string {
+  if (level === "kids") {
+    return "Легко";
+  }
+  if (level === "pro") {
+    return "Эксперт";
+  }
+  return "Стандарт";
+}
+
 export function DecisionRushSetupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -79,9 +89,9 @@ export function DecisionRushSetupPage() {
             }
             data-testid="decision-level-select"
           >
-            <option value="kids">Kids</option>
-            <option value="standard">Standard</option>
-            <option value="pro">Pro</option>
+            <option value="kids">Легко (Kids)</option>
+            <option value="standard">Стандарт</option>
+            <option value="pro">Эксперт (Pro)</option>
           </select>
 
           <label htmlFor="decision-duration">Длительность</label>
@@ -107,7 +117,7 @@ export function DecisionRushSetupPage() {
 
       <section className="session-brief" data-testid="decision-session-brief">
         <h3>Перед стартом</h3>
-        <p>Уровень: {setup.level}</p>
+        <p>Уровень: {levelLabel(setup.level)}</p>
         <p>Длительность: {setup.durationSec} сек</p>
         <p>Базовый темп: ~{initialDecisionIntervalMs(setup.level)} мс на шаг</p>
         <p>Режим: {modeIdFromDecisionLevel(setup.level)}</p>
@@ -132,4 +142,3 @@ export function DecisionRushSetupPage() {
     </section>
   );
 }
-

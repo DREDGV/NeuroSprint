@@ -1830,37 +1830,64 @@ textarea:focus-visible {
   background: linear-gradient(160deg, #f7fcfa 0%, #eef7f3 100%);
   border: 2px solid #c8dfd6;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+  min-height: min(92vw, 420px);
 }
 
 .memory-grid-cell {
   aspect-ratio: 1 / 1;
   border-radius: 14px;
-  border: 2px solid #c8dfd6;
-  background: transparent;
+  border: 2px solid #d1d5db;
+  background: rgba(255, 255, 255, 0.8);
   display: grid;
   place-items: center;
   font-size: clamp(1.5rem, 4vw, 2.2rem);
   font-weight: 900;
-  color: #1c5f52;
-  transition: all 0.2s ease;
+  color: #6b7280;
+  transition: all 0.15s ease;
   position: relative;
   overflow: hidden;
   min-height: 60px;
 }
 
+.memory-grid-cell::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: linear-gradient(145deg, #ffffff 0%, #f3f4f6 100%);
+  border-radius: 11px;
+  z-index: 0;
+}
+
+.memory-grid-cell > * {
+  position: relative;
+  z-index: 1;
+}
+
 .memory-grid-cell.is-wrong {
-  background: rgba(239, 68, 68, 0.3) !important;
+  background: rgba(239, 68, 68, 0.2) !important;
   border-color: #ef4444 !important;
   animation: shake 0.5s ease;
 }
 
+.memory-grid-cell.is-wrong::before {
+  background: linear-gradient(145deg, #fee2e2 0%, #fecaca 100%) !important;
+}
+
 .memory-grid-cell.is-correct {
-  background: rgba(16, 185, 129, 0.3) !important;
+  background: rgba(16, 185, 129, 0.2) !important;
   border-color: #10b981 !important;
+}
+
+.memory-grid-cell.is-correct::before {
+  background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%) !important;
 }
 
 .memory-grid-cell.is-hint {
   transition: opacity 0.1s ease, background-color 0.1s ease;
+}
+
+.memory-grid-cell.is-hint::before {
+  background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%) !important;
 }
 
 @keyframes shake {

@@ -111,12 +111,12 @@ function phaseLabel(value: DecisionRushTrialResult["phase"] | DecisionRushTrial[
 
 function levelLabel(level: DecisionRushSetup["level"]): string {
   if (level === "kids") {
-    return "Kids";
+    return "Легко";
   }
   if (level === "pro") {
-    return "Pro";
+    return "Эксперт";
   }
-  return "Standard";
+  return "Стандарт";
 }
 
 function levelNumber(level: DecisionRushSetup["level"]): number {
@@ -308,6 +308,15 @@ export function DecisionRushSessionPage() {
         : liveAnswerState === "pending"
           ? "decision-stimulus-card is-pending"
           : "decision-stimulus-card";
+  const liveStateText = !isRunning
+    ? finished
+      ? "Сессия завершена. Посмотрите результат ниже."
+      : "Нажмите «Старт», чтобы начать серию."
+    : isPaused
+      ? "Пауза: нажмите «Продолжить»."
+      : currentAnswerLocked
+        ? "Ответ принят, готовим следующий стимул..."
+        : "Можно отвечать: выберите «ДА» или «НЕТ».";
 
   function clearLoop(): void {
     if (loopTimerRef.current != null) {
@@ -396,7 +405,7 @@ export function DecisionRushSessionPage() {
     if (trial.phase !== "warmup") {
       setLastAnswerLabel(correct ? "Последний ответ: верно" : "Последний ответ: ошибка");
     } else {
-      setLastAnswerLabel("Разминка: ответ принят");
+      setLastAnswerLabel("Разминка: ответ принят (без влияния на score)");
     }
     pendingAnswerRef.current = null;
     pendingAnswerAtRef.current = null;
@@ -626,7 +635,7 @@ export function DecisionRushSessionPage() {
     const now = Date.now();
     pendingAnswerAtRef.current = now;
     setLiveAnswerState("pending");
-    setLastAnswerLabel(value === "yes" ? "Ответ: ДА" : "Ответ: НЕТ");
+    setLastAnswerLabel(value === "yes" ? "Ответ принят: ДА" : "Ответ принят: НЕТ");
     advanceAfterAnswer(now);
   }
 
@@ -819,6 +828,7 @@ export function DecisionRushSessionPage() {
             </div>
             <span className="decision-step-value">{trialRemainingMs} мс на шаг</span>
           </div>
+          <p className="status-line" data-testid="decision-live-state">{liveStateText}</p>
           {lastAnswerLabel ? <p className={lastAnswerClass}>{lastAnswerLabel}</p> : null}
         </div>
 

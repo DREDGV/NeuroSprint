@@ -116,7 +116,12 @@ function TrainingModuleCard({ module, color, gradient, icon, bgLight }: Training
 
   return (
     <article className="training-module-card" style={{ "--card-bg-light": bgLight } as React.CSSProperties}>
-      <Link to={primaryRoute} className="module-card-link" style={{ "--card-color": color } as React.CSSProperties}>
+      <Link
+        to={primaryRoute}
+        className="module-card-link"
+        style={{ "--card-color": color } as React.CSSProperties}
+        data-testid={`training-open-${module.id}`}
+      >
         <div className="module-card-icon" style={{ background: gradient }}>
           {icon}
         </div>
@@ -132,7 +137,11 @@ function TrainingModuleCard({ module, color, gradient, icon, bgLight }: Training
       </Link>
       {preSessionRoute && (
         <div className="module-card-footer">
-          <Link className="module-presession-link" to={preSessionRoute}>
+          <Link
+            className="module-presession-link"
+            to={preSessionRoute}
+            data-testid={`training-plan-${module.id}`}
+          >
             <span>📋</span> План дня
           </Link>
         </div>

@@ -508,7 +508,6 @@ export function MemoryGridSessionPage() {
             const isWrong = wrongCells.has(index);
             const isCorrect = correctCells.has(index);
             const isHint = hintCell === index;
-            const cellColor = getCellColor(index);
             return (
               <div
                 key={index}
@@ -518,15 +517,12 @@ export function MemoryGridSessionPage() {
                   playSound('click');
                 }}
                 style={{
-                  backgroundColor: isActive ? cellColor : isSelected ? cellColor + "40" : isWrong ? "rgba(239, 68, 68, 0.3)" : isCorrect ? "rgba(16, 185, 129, 0.3)" : isHint ? `rgba(59, 130, 246, ${hintOpacity})` : "transparent",
-                  borderColor: isActive || isSelected ? cellColor : isWrong ? "#ef4444" : isCorrect ? "#10b981" : isHint ? `rgba(59, 130, 246, ${Math.max(0.2, hintOpacity * 2)})` : "#c8dfd6",
-                  cursor: phase === "recalling" ? "pointer" : "default",
                   opacity: isHint ? (0.4 + hintOpacity * 2.4) : 1,
-                  transition: 'opacity 0.1s ease, background-color 0.1s ease, border-color 0.1s ease'
+                  transition: 'opacity 0.1s ease, background-color 0.15s ease, border-color 0.15s ease'
                 }}
                 data-testid={isActive ? "memory-grid-active-cell" : undefined}
               >
-                {isActive && <span className="nback-cell-content">●</span>}
+                {isActive && <span className="nback-cell-content" style={{ color: '#3b82f6' }}>●</span>}
                 {isWrong && <span className="nback-cell-content" style={{ color: "#ef4444" }}>✕</span>}
                 {isCorrect && <span className="nback-cell-content" style={{ color: "#10b981" }}>✓</span>}
               </div>
