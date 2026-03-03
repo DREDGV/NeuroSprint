@@ -7,6 +7,13 @@ import { userRepository } from "../entities/user/userRepository";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import type { ClassGroup, User } from "../shared/types/domain";
 
+const AVATAR_EMOJIS = ["👤", "👦", "👧", "👨", "👩", "🧑", "🎓", "👨‍🎓", "👩‍🎓"];
+
+function getAvatarForUser(user: User): string {
+  const hash = user.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return AVATAR_EMOJIS[hash % AVATAR_EMOJIS.length];
+}
+
 export function ClassesPage() {
   const access = useRoleAccess();
   const canManageClassesAccess = access.classes.manage;
@@ -23,6 +30,8 @@ export function ClassesPage() {
   const [existingUserId, setExistingUserId] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   async function refreshBase(targetClassId?: string): Promise<void> {
     const [loadedGroups, loadedUsers] = await Promise.all([
@@ -151,6 +160,7 @@ export function ClassesPage() {
     }
 
     setBulkNames("");
+    setShowBulkModal(false);
     setStatus(`Добавлено учеников: ${names.length}.`);
     setError(null);
     await refreshBase(selectedClassId);
@@ -174,6 +184,7 @@ export function ClassesPage() {
 
     await groupRepository.assignStudent(selectedClassId, existingUserId);
     setExistingUserId("");
+    setShowAssignModal(false);
     setStatus("Ученик назначен в класс.");
     setError(null);
     await refreshBase(selectedClassId);
@@ -191,7 +202,7 @@ export function ClassesPage() {
   if (!canManageClassesAccess) {
     return (
       <section className="panel" data-testid="classes-page">
-        <h2>Классы</h2>
+        <h2>📚 Классы</h2>
         <p className="status-line">Раздел доступен только для роли «Учитель».</p>
         <div className="action-row">
           <Link className="btn-secondary" to="/settings">
@@ -206,143 +217,223 @@ export function ClassesPage() {
   }
 
   return (
-    <section className="panel" data-testid="classes-page">
-      <h2>Классы</h2>
-      <p>Ручное управление классами и составом учеников.</p>
+    <section className="panel classes-page" data-testid="classes-page">
+      <header className="classes-header">
+        <h2>📚 Классы</h2>
+        <p className="classes-subtitle">Управление классами и учениками</p>
+      </header>
 
-      <form className="inline-form" onSubmit={handleCreateClass}>
-        <label htmlFor="new-class-name">Новый класс</label>
-        <input
-          id="new-class-name"
-          value={newClassName}
-          onChange={(event) => setNewClassName(event.target.value)}
-          placeholder="Например, 4Б"
-          data-testid="class-name-input"
-        />
-        <button type="submit" className="btn-primary" data-testid="create-class-btn">
-          Создать класс
-        </button>
-      </form>
-
-      <div className="settings-form">
-        <label htmlFor="class-select">Выбранный класс</label>
-        <select
-          id="class-select"
-          value={selectedClassId}
-          onChange={(event) => {
-            const nextClassId = event.target.value;
-            navigate(nextClassId ? `/classes/${nextClassId}` : "/classes");
-            setSelectedClassId(nextClassId);
-          }}
-          data-testid="class-select"
-        >
-          <option value="">Выберите класс</option>
-          {groups.map((group) => (
-            <option key={group.id} value={group.id}>
-              {group.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {selectedClass ? (
-        <div className="action-row">
-          <button type="button" className="btn-secondary" onClick={() => void handleRenameClass()}>
-            Переименовать класс
+      {/* Создание класса */}
+      <section className="classes-section">
+        <h3>➕ Новый класс</h3>
+        <form className="classes-form" onSubmit={handleCreateClass}>
+          <input
+            type="text"
+            value={newClassName}
+            onChange={(event) => setNewClassName(event.target.value)}
+            placeholder="Например, 4Б или 10А"
+            className="classes-input"
+            data-testid="class-name-input"
+          />
+          <button type="submit" className="btn-primary" data-testid="create-class-btn">
+            Создать
           </button>
-          <button type="button" className="btn-danger" onClick={() => void handleDeleteClass()}>
-            Удалить класс
-          </button>
-        </div>
-      ) : null}
+        </form>
+      </section>
 
-      {selectedClass ? (
-        <section className="setup-block">
-          <h3>Добавить ученика в {selectedClass.name}</h3>
+      {/* Список классов */}
+      <section className="classes-section">
+        <h3>📋 Мои классы</h3>
+        {groups.length === 0 ? (
+          <p className="status-line">Пока нет классов. Создайте первый класс выше.</p>
+        ) : (
+          <div className="classes-grid" data-testid="classes-list">
+            {groups.map((group) => {
+              const studentCount = students.filter((s) => 
+                group.id === selectedClassId ? true : false
+              ).length;
+              return (
+                <article
+                  key={group.id}
+                  className={`class-card${group.id === selectedClassId ? " is-selected" : ""}`}
+                  onClick={() => {
+                    setSelectedClassId(group.id);
+                    navigate(`/classes/${group.id}`);
+                    refreshBase(group.id);
+                  }}
+                  data-testid={`class-card-${group.id}`}
+                >
+                  <div className="class-card-icon">🏫</div>
+                  <div className="class-card-info">
+                    <h4 className="class-card-name">{group.name}</h4>
+                    <p className="class-card-meta">
+                      Создан: {new Date(group.createdAt).toLocaleDateString("ru-RU")}
+                    </p>
+                  </div>
+                  <div className="class-card-actions">
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedClassId(group.id);
+                        handleRenameClass();
+                      }}
+                      title="Переименовать"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-icon btn-danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedClassId(group.id);
+                        handleDeleteClass();
+                      }}
+                      title="Удалить"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
-          <form className="inline-form" onSubmit={handleCreateStudent}>
-            <label htmlFor="student-name">Имя ученика</label>
-            <input
-              id="student-name"
-              value={studentName}
-              onChange={(event) => setStudentName(event.target.value)}
-              placeholder="Например, Лёва"
-              data-testid="student-name-input"
+      {/* Выбранный класс */}
+      {selectedClass && (
+        <>
+          <section className="classes-section">
+            <div className="class-header">
+              <h3>👥 Ученики класса "{selectedClass.name}"</h3>
+              <div className="class-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowBulkModal(true)}
+                >
+                  ➕ Массовое добавление
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowAssignModal(true)}
+                >
+                  👤 Добавить существующего
+                </button>
+              </div>
+            </div>
+
+            {/* Быстрое добавление */}
+            <form className="classes-form" onSubmit={handleCreateStudent}>
+              <input
+                type="text"
+                value={studentName}
+                onChange={(event) => setStudentName(event.target.value)}
+                placeholder="Имя ученика"
+                className="classes-input"
+              />
+              <button type="submit" className="btn-primary">
+                Добавить
+              </button>
+            </form>
+
+            {/* Список учеников */}
+            {students.length === 0 ? (
+              <p className="status-line">В классе пока нет учеников.</p>
+            ) : (
+              <div className="students-grid" data-testid="students-list">
+                {students.map((student) => (
+                  <article key={student.id} className="student-card">
+                    <div className="student-avatar">
+                      {getAvatarForUser(student)}
+                    </div>
+                    <div className="student-info">
+                      <h4 className="student-name">{student.name}</h4>
+                      <p className="student-meta">
+                        {normalizeUserRole(student.role) === "student" ? "Ученик" : appRoleLabel(normalizeUserRole(student.role))}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-icon btn-danger"
+                      onClick={() => handleRemoveStudent(student.id)}
+                      title="Исключить из класса"
+                    >
+                      ✕
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {/* Модальное окно массового добавления */}
+      {showBulkModal && (
+        <div className="modal-overlay" onClick={() => setShowBulkModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>➕ Массовое добавление учеников</h3>
+            <p className="status-line">Введите имена, каждое с новой строки:</p>
+            <textarea
+              value={bulkNames}
+              onChange={(event) => setBulkNames(event.target.value)}
+              placeholder="Иванов Иван&#10;Петров Пётр&#10;Сидоров Сидор"
+              className="bulk-textarea"
+              rows={8}
             />
-            <button type="submit" className="btn-primary" data-testid="create-student-btn">
-              Создать ученика
-            </button>
-          </form>
+            <div className="modal-actions">
+              <button type="button" className="btn-ghost" onClick={() => setShowBulkModal(false)}>
+                Отмена
+              </button>
+              <button type="button" className="btn-primary" onClick={handleBulkCreate}>
+                Добавить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-          <div className="settings-form">
-            <label htmlFor="existing-user-select">Добавить существующего ученика</label>
+      {/* Модальное окно назначения существующего */}
+      {showAssignModal && (
+        <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>👤 Добавить существующего ученика</h3>
             <select
-              id="existing-user-select"
               value={existingUserId}
               onChange={(event) => setExistingUserId(event.target.value)}
+              className="classes-select"
             >
               <option value="">Выберите ученика</option>
               {usersAvailableToAssign.map((user) => (
                 <option key={user.id} value={user.id}>
-                  {user.name} ({appRoleLabel(normalizeUserRole(user.role))})
+                  {user.name}
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => void handleAssignExistingStudent()}
-              data-testid="assign-existing-student-btn"
-            >
-              Добавить в класс
-            </button>
+            <div className="modal-actions">
+              <button type="button" className="btn-ghost" onClick={() => setShowAssignModal(false)}>
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleAssignExistingStudent}
+                disabled={!existingUserId}
+              >
+                Добавить
+              </button>
+            </div>
           </div>
-
-          <div className="settings-form">
-            <label htmlFor="bulk-students">Массовое добавление (по строкам)</label>
-            <textarea
-              id="bulk-students"
-              className="bulk-textarea"
-              rows={5}
-              value={bulkNames}
-              onChange={(event) => setBulkNames(event.target.value)}
-              placeholder={"Иван\nМария\nЕгор"}
-            />
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => void handleBulkCreate()}
-              data-testid="bulk-add-students-btn"
-            >
-              Добавить списком
-            </button>
-          </div>
-
-          <h3>Состав класса</h3>
-          <ul className="profiles-list scrollable" data-testid="class-students-list">
-            {students.map((student) => (
-              <li key={student.id} className="profile-item">
-                <div>
-                  <p className="profile-name">{student.name}</p>
-                  <span className="role-pill">{appRoleLabel(normalizeUserRole(student.role))}</span>
-                </div>
-                <button
-                  type="button"
-                  className="btn-danger"
-                  onClick={() => void handleRemoveStudent(student.id)}
-                >
-                  Убрать из класса
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <p className="status-line">Создайте класс, чтобы управлять составом учеников.</p>
+        </div>
       )}
 
-      {status ? <p className="status-line">{status}</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
+      {status && <p className="status-line success">{status}</p>}
+      {error && <p className="status-line error">{error}</p>}
     </section>
   );
 }

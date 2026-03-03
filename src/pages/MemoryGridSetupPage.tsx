@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   getMemoryGridSetup,
@@ -26,36 +26,48 @@ function parseModeOverrides(
   if (!modeParam) {
     return null;
   }
-
   if (modeParam === "rush" || modeParam === "classic") {
     return { mode: modeParam };
   }
-
   if (!modeParam.startsWith("memory_grid_")) {
     return null;
   }
 
-  const mode = modeParam.includes("_rush") ? "rush" : "classic";
-  const difficulty = modeParam.includes("_kids")
+  const mode: MemoryGridMode = modeParam.includes("_rush") ? "rush" : "classic";
+  const difficulty: MemoryGridDifficulty = modeParam.includes("_kids")
     ? "kids"
     : modeParam.includes("_pro")
       ? "pro"
       : "standard";
-  const gridSize = modeParam.includes("_4x4") ? 4 : difficulty === "pro" ? 4 : 3;
+  const gridSize: MemoryGridSize = modeParam.includes("_4x4") ? 4 : 3;
 
   return { mode, difficulty, gridSize };
 }
 
-function toggleFullScreen(): void {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {
-      // Игнорируем ошибки если браузер не поддерживает
-    });
-  } else {
-    document.exitFullscreen().catch(() => {
-      // Игнорируем ошибки
-    });
+function availableLevels(difficulty: MemoryGridDifficulty): MemoryGridLevel[] {
+  const [min, max] = DIFFICULTY_PRESETS[difficulty].levelRange;
+  const levels: MemoryGridLevel[] = [];
+  for (let level = min; level <= max; level += 1) {
+    levels.push(level as MemoryGridLevel);
   }
+  return levels;
+}
+
+function levelHint(level: number): string {
+  if (level <= 2) {
+    return "очень легко";
+  }
+  if (level <= 4) {
+    return "базовый темп";
+  }
+  if (level <= 6) {
+    return "повышенная сложность";
+  }
+  return "продвинутый";
+}
+
+function modeTitle(mode: MemoryGridMode): string {
+  return mode === "classic" ? "Classic" : "Rush";
 }
 
 export function MemoryGridSetupPage() {
@@ -68,24 +80,11 @@ export function MemoryGridSetupPage() {
     if (!overrides) {
       return;
     }
-
-    setSetup((current) => {
-      const next = normalizeMemoryGridSetup({
-        ...current,
-        ...overrides
-      });
-      if (
-        next.mode === current.mode &&
-        next.difficulty === current.difficulty &&
-        next.gridSize === current.gridSize &&
-        next.startLevel === current.startLevel &&
-        next.durationSec === current.durationSec
-      ) {
-        return current;
-      }
-      return next;
-    });
+    setSetup((current) => normalizeMemoryGridSetup({ ...current, ...overrides }));
   }, [searchParams]);
+
+  const preset = DIFFICULTY_PRESETS[setup.difficulty];
+  const levels = useMemo(() => availableLevels(setup.difficulty), [setup.difficulty]);
 
   function startSession(): void {
     const normalized = normalizeMemoryGridSetup(setup);
@@ -93,6 +92,34 @@ export function MemoryGridSetupPage() {
     navigate("/training/memory-grid/session", {
       state: { setup: normalized } satisfies MemoryGridSessionNavState
     });
+  }
+
+  function applyMode(mode: MemoryGridMode): void {
+    setSetup((current) => normalizeMemoryGridSetup({ ...current, mode }));
+  }
+
+  function applyDifficulty(difficulty: MemoryGridDifficulty): void {
+    const nextPreset = DIFFICULTY_PRESETS[difficulty];
+    setSetup((current) =>
+      normalizeMemoryGridSetup({
+        ...current,
+        difficulty,
+        gridSize: nextPreset.gridSizes[0],
+        startLevel: nextPreset.levelRange[0]
+      })
+    );
+  }
+
+  function applyGridSize(gridSize: MemoryGridSize): void {
+    setSetup((current) => normalizeMemoryGridSetup({ ...current, gridSize }));
+  }
+
+  function applyStartLevel(startLevel: MemoryGridLevel): void {
+    setSetup((current) => normalizeMemoryGridSetup({ ...current, startLevel }));
+  }
+
+  function applyDuration(durationSec: 60 | 90 | 120): void {
+    setSetup((current) => normalizeMemoryGridSetup({ ...current, durationSec }));
   }
 
   function resetDefaults(): void {
@@ -103,119 +130,103 @@ export function MemoryGridSetupPage() {
     <section className="panel" data-testid="memory-grid-setup-page">
       <h2>Memory Grid Rush</h2>
       <p>
-        Тренировка рабочей памяти: запоминайте последовательность подсвеченных клеток
-        и воспроизводите её в правильном порядке.
+        Запоминайте последовательность подсвеченных клеток и повторяйте её в правильном порядке.
+        Тренажер развивает рабочую память, внимание и скорость переключения.
       </p>
 
       <InfoHint title="Как играть" testId="memory-grid-setup-hint">
-        <p><strong>1.</strong> Выберите режим сложности и размер сетки.</p>
-        <p><strong>2.</strong> Смотрите на последовательность подсвеченных клеток.</p>
-        <p><strong>3.</strong> После показа воспроизведите последовательность кликами.</p>
-        <p><strong>4.</strong> Classic: ошибка = конец игры. Rush: 60 сек на максимум уровней.</p>
+        <p>
+          <strong>1.</strong> Выберите режим и сложность.
+        </p>
+        <p>
+          <strong>2.</strong> Запомните порядок подсветки клеток.
+        </p>
+        <p>
+          <strong>3.</strong> Нажмите клетки в том же порядке.
+        </p>
+        <p>
+          <strong>Classic:</strong> ошибка завершает сессию.
+          <br />
+          <strong>Rush:</strong> игра идет по таймеру, важно пройти больше уровней.
+        </p>
       </InfoHint>
 
-      <div className="action-row" style={{ marginBottom: '16px' }}>
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={toggleFullScreen}
-          data-testid="memory-grid-fullscreen-btn"
-        >
-          <span>⛶</span> Полноэкранный режим
-        </button>
-      </div>
+      <section className="setup-block">
+        <h3>Режим</h3>
+        <div className="segmented-row">
+          <button
+            type="button"
+            className={setup.mode === "classic" ? "btn-secondary is-active" : "btn-secondary"}
+            onClick={() => applyMode("classic")}
+            data-testid="memory-grid-mode-classic"
+          >
+            Classic
+          </button>
+          <button
+            type="button"
+            className={setup.mode === "rush" ? "btn-secondary is-active" : "btn-secondary"}
+            onClick={() => applyMode("rush")}
+            data-testid="memory-grid-mode-rush"
+          >
+            Rush
+          </button>
+        </div>
+      </section>
 
       <section className="setup-block">
-        <h3>Настройки сессии</h3>
+        <h3>Параметры сессии</h3>
         <div className="settings-form">
-          <label htmlFor="memory-grid-difficulty">Режим сложности</label>
+          <label htmlFor="memory-grid-difficulty">Сложность</label>
           <select
             id="memory-grid-difficulty"
             value={setup.difficulty}
-            onChange={(event) => {
-              const newDifficulty = event.target.value as MemoryGridDifficulty;
-              const preset = DIFFICULTY_PRESETS[newDifficulty];
-              setSetup((current) =>
-                normalizeMemoryGridSetup({
-                  ...current,
-                  difficulty: newDifficulty,
-                  gridSize: preset.gridSizes[0],
-                  startLevel: preset.levelRange[0]
-                })
-              );
-            }}
+            onChange={(event) => applyDifficulty(event.target.value as MemoryGridDifficulty)}
             data-testid="memory-grid-difficulty-select"
           >
-            {Object.entries(DIFFICULTY_PRESETS).map(([key, preset]) => (
+            {Object.entries(DIFFICULTY_PRESETS).map(([key, value]) => (
               <option key={key} value={key}>
-                {preset.title} — {preset.recommended}
+                {value.title} - {value.recommended}
               </option>
             ))}
           </select>
-          
-          <p className="status-line" style={{ fontSize: '0.85rem', marginTop: '-8px' }}>
-            {DIFFICULTY_PRESETS[setup.difficulty].description}
-          </p>
+          <p className="status-line">{preset.description}</p>
 
-          <label htmlFor="memory-grid-size">Размер сетки</label>
+          <label htmlFor="memory-grid-size">Сетка</label>
           <select
             id="memory-grid-size"
             value={setup.gridSize}
-            onChange={(event) =>
-              setSetup((current) =>
-                normalizeMemoryGridSetup({
-                  ...current,
-                  gridSize: Number(event.target.value) as MemoryGridSize
-                })
-              )
-            }
+            onChange={(event) => applyGridSize(Number(event.target.value) as MemoryGridSize)}
             data-testid="memory-grid-size-select"
           >
-            {DIFFICULTY_PRESETS[setup.difficulty].gridSizes.map((size) => (
+            {preset.gridSizes.map((size) => (
               <option key={size} value={size}>
-                {size} × {size} ({size * size} клеток)
+                {size}x{size} ({size * size} клеток)
               </option>
             ))}
           </select>
 
-          <label htmlFor="memory-grid-level">Начальный уровень</label>
+          <label htmlFor="memory-grid-level">Стартовый уровень</label>
           <select
             id="memory-grid-level"
             value={setup.startLevel}
-            onChange={(event) =>
-              setSetup((current) =>
-                normalizeMemoryGridSetup({
-                  ...current,
-                  startLevel: Number(event.target.value) as MemoryGridLevel
-                })
-              )
-            }
+            onChange={(event) => applyStartLevel(Number(event.target.value) as MemoryGridLevel)}
             data-testid="memory-grid-level-select"
           >
-            {Array.from(
-              { length: DIFFICULTY_PRESETS[setup.difficulty].levelRange[1] - DIFFICULTY_PRESETS[setup.difficulty].levelRange[0] + 1 },
-              (_, i) => i + DIFFICULTY_PRESETS[setup.difficulty].levelRange[0]
-            ).map((level) => (
+            {levels.map((level) => (
               <option key={level} value={level}>
-                {level} ({level + 1} кл.
-                {level <= 2 ? ' - очень легко' : level <= 4 ? ' - нормально' : level <= 6 ? ' - сложно' : ' - эксперт'})
+                {level}: {level + 1} клеток ({levelHint(level)})
               </option>
             ))}
           </select>
 
-          {setup.mode === "rush" && (
+          {setup.mode === "rush" ? (
             <>
               <label htmlFor="memory-grid-duration">Длительность</label>
               <select
                 id="memory-grid-duration"
                 value={setup.durationSec}
                 onChange={(event) =>
-                  setSetup((current) =>
-                    normalizeMemoryGridSetup({
-                      ...current,
-                      durationSec: Number(event.target.value) as 60 | 90 | 120
-                    })
-                  )
+                  applyDuration(Number(event.target.value) as 60 | 90 | 120)
                 }
                 data-testid="memory-grid-duration-select"
               >
@@ -224,16 +235,29 @@ export function MemoryGridSetupPage() {
                 <option value={120}>120 сек</option>
               </select>
             </>
-          )}
+          ) : null}
         </div>
       </section>
 
       <section className="session-brief" data-testid="memory-grid-session-brief">
-        <h3>Параметры перед стартом</h3>
-        <p>Режим: <strong>{setup.mode === "classic" ? "Classic" : "Rush"}</strong></p>
-        <p>Сетка: <strong>{setup.gridSize}×{setup.gridSize}</strong></p>
-        <p>Начальный уровень: <strong>{setup.startLevel} ({setup.startLevel + 1} кл.)</strong></p>
-        {setup.mode === "rush" && <p>Длительность: <strong>{setup.durationSec} сек</strong></p>}
+        <h3>Перед стартом</h3>
+        <p>
+          Режим: <strong>{modeTitle(setup.mode)}</strong>
+        </p>
+        <p>
+          Сложность: <strong>{preset.title}</strong>
+        </p>
+        <p>
+          Сетка: <strong>{setup.gridSize}x{setup.gridSize}</strong>
+        </p>
+        <p>
+          Уровень старта: <strong>{setup.startLevel}</strong>
+        </p>
+        {setup.mode === "rush" ? (
+          <p>
+            Длительность: <strong>{setup.durationSec} сек</strong>
+          </p>
+        ) : null}
       </section>
 
       <div className="action-row">
