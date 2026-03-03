@@ -23,6 +23,7 @@ import type {
   DailyChallengeTrendPoint,
   DailyCompareBandPoint,
   DecisionRushDailyPoint,
+  MemoryGridDailyPoint,
   NBackDailyPoint,
   ReactionDailyPoint,
   SprintMathDailyPoint,
@@ -36,6 +37,7 @@ type StatsMode =
   | "sprint_math"
   | "reaction"
   | "n_back"
+  | "memory_grid"
   | "decision_rush";
 type SprintModeFilter = "all" | "sprint_add_sub" | "sprint_mixed";
 type SprintSubmode = "sprint_add_sub" | "sprint_mixed";
@@ -198,6 +200,29 @@ function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): 
     };
   }
 
+  if (mode === "memory_grid") {
+    return {
+      modeIds: [
+        "memory_grid_classic",
+        "memory_grid_classic_kids",
+        "memory_grid_classic_pro",
+        "memory_grid_classic_4x4",
+        "memory_grid_classic_kids_4x4",
+        "memory_grid_classic_pro_4x4",
+        "memory_grid_rush",
+        "memory_grid_rush_kids",
+        "memory_grid_rush_pro",
+        "memory_grid_rush_4x4",
+        "memory_grid_rush_kids_4x4",
+        "memory_grid_rush_pro_4x4"
+      ],
+      metric: "score",
+      title: "Сравнение по score (Memory Grid)",
+      metricSuffix: "",
+      digits: 2
+    };
+  }
+
   if (mode === "decision_rush") {
     return {
       modeIds: ["decision_kids", "decision_standard", "decision_pro"],
@@ -337,6 +362,7 @@ export function StatsPage() {
   const [timedData, setTimedData] = useState<TimedDailyPoint[]>([]);
   const [reactionData, setReactionData] = useState<ReactionDailyPoint[]>([]);
   const [nBackData, setNBackData] = useState<NBackDailyPoint[]>([]);
+  const [memoryGridData, setMemoryGridData] = useState<MemoryGridDailyPoint[]>([]);
   const [decisionData, setDecisionData] = useState<DecisionRushDailyPoint[]>([]);
   const [sprintAllData, setSprintAllData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintAddSubData, setSprintAddSubData] = useState<SprintMathDailyPoint[]>([]);
@@ -366,6 +392,7 @@ export function StatsPage() {
       setTimedData([]);
       setReactionData([]);
       setNBackData([]);
+      setMemoryGridData([]);
       setDecisionData([]);
       setSprintAllData([]);
       setSprintAddSubData([]);
@@ -382,12 +409,24 @@ export function StatsPage() {
       sessionRepository.aggregateDailyTimed(activeUserId),
       sessionRepository.aggregateDailyReaction(activeUserId),
       sessionRepository.aggregateDailyNBack(activeUserId),
+      sessionRepository.aggregateDailyMemoryGrid(activeUserId),
       sessionRepository.aggregateDailyDecisionRush(activeUserId),
       sessionRepository.aggregateDailySprintMath(activeUserId),
       sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_add_sub"),
       sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_mixed")
     ])
-      .then(([classic, timed, reaction, nBack, decision, sprintAll, sprintAddSub, sprintMixed]) => {
+      .then(
+        ([
+          classic,
+          timed,
+          reaction,
+          nBack,
+          memoryGrid,
+          decision,
+          sprintAll,
+          sprintAddSub,
+          sprintMixed
+        ]) => {
         if (cancelled) {
           return;
         }
@@ -395,6 +434,7 @@ export function StatsPage() {
         setTimedData(timed);
         setReactionData(reaction);
         setNBackData(nBack);
+        setMemoryGridData(memoryGrid);
         setDecisionData(decision);
         setSprintAllData(sprintAll);
         setSprintAddSubData(sprintAddSub as SprintMathDailyPoint[]);
@@ -559,6 +599,18 @@ export function StatsPage() {
         avgScore: Number(entry.avgScore.toFixed(2))
       })),
     [nBackData]
+  );
+
+  const memoryGridChartData = useMemo(
+    () =>
+      memoryGridData.map((entry) => ({
+        date: entry.date,
+        dateShort: formatDateShort(entry.date),
+        accuracyPct: Number((entry.accuracy * 100).toFixed(1)),
+        avgScore: Number(entry.avgScore.toFixed(2)),
+        avgRecallTimeMs: Number(entry.avgRecallTimeMs.toFixed(0))
+      })),
+    [memoryGridData]
   );
 
   const decisionChartData = useMemo(

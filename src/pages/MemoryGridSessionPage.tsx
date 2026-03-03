@@ -556,7 +556,7 @@ export function MemoryGridSessionPage() {
           </div>
         )}
 
-        <p className="status-line" data-testid="memory-grid-status">
+        <p className="status-line" data-testid="memory-grid-status" style={{ minHeight: '24px', height: '24px' }}>
           {phase === "showing" && `Запомните ${currentLevel} клеток...`}
           {phase === "recalling" && `Воспроизведите ${currentLevel} клеток (попыток: ${attemptCount})`}
           {phase === "finished" && "Результаты ниже"}
