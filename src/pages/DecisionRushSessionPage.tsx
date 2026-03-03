@@ -356,6 +356,7 @@ export function DecisionRushSessionPage() {
 
   function resetRuntimeState(): void {
     clearLoop();
+    clearTransitionTimer();
     clearFeedbackTimer();
     startedAtRef.current = null;
     pausedAtRef.current = null;
@@ -369,10 +370,12 @@ export function DecisionRushSessionPage() {
     runningRef.current = false;
     pausedRef.current = false;
     finishedRef.current = false;
+    transitioningRef.current = false;
     intervalRef.current = clampDecisionInterval(
       Math.round(initialDecisionIntervalMs(setup.level) * tempoMultiplierRef.current)
     );
     setIsPaused(false);
+    setIsTransitioning(false);
     setIntervalMs(intervalRef.current);
     setLiveAnswerState(null);
   }
@@ -434,6 +437,8 @@ export function DecisionRushSessionPage() {
   }
 
   function startNextTrial(nowMs: number): void {
+    transitioningRef.current = false;
+    setIsTransitioning(false);
     const startedAt = startedAtRef.current ?? nowMs;
     const elapsed = Math.max(0, nowMs - startedAt);
     const phase = resolveDecisionPhase(elapsed, setup.durationSec);
@@ -448,6 +453,21 @@ export function DecisionRushSessionPage() {
     setCurrentTrial(trial);
     setTrialIndex(trialIndexRef.current);
     setTickMs(nowMs);
+  }
+
+  function scheduleNextTrial(): void {
+    clearTransitionTimer();
+    transitioningRef.current = true;
+    setIsTransitioning(true);
+    transitionTimerRef.current = window.setTimeout(() => {
+      transitionTimerRef.current = null;
+      if (!runningRef.current || finishedRef.current || pausedRef.current) {
+        transitioningRef.current = false;
+        setIsTransitioning(false);
+        return;
+      }
+      startNextTrial(Date.now());
+    }, DECISION_TRANSITION_MS);
   }
 
   function advanceAfterAnswer(nowMs: number): void {
@@ -467,7 +487,7 @@ export function DecisionRushSessionPage() {
     }
 
     commitCurrentTrial(nowMs);
-    startNextTrial(nowMs);
+    scheduleNextTrial();
   }
 
   function startLoop(): void {
@@ -477,6 +497,9 @@ export function DecisionRushSessionPage() {
       setTickMs(now);
 
       if (!runningRef.current || finishedRef.current || pausedRef.current) {
+        return;
+      }
+      if (transitioningRef.current) {
         return;
       }
       const startedAt = startedAtRef.current;
@@ -504,6 +527,9 @@ export function DecisionRushSessionPage() {
       return;
     }
 
+    clearTransitionTimer();
+    transitioningRef.current = false;
+    setIsTransitioning(false);
     commitCurrentTrial(nowMs);
     currentTrialRef.current = null;
     setCurrentTrial(null);
@@ -558,6 +584,9 @@ export function DecisionRushSessionPage() {
     const now = Date.now();
     pausedRef.current = true;
     pausedAtRef.current = now;
+    clearTransitionTimer();
+    transitioningRef.current = false;
+    setIsTransitioning(false);
     setIsPaused(true);
     setTickMs(now);
     setLastAnswerLabel("Пауза");

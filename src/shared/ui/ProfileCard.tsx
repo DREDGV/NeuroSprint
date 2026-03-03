@@ -28,6 +28,7 @@ interface ProfileCardProps {
   onActivate: (user: User) => void;
   onRename: (user: User) => void;
   onDelete: (user: User) => void;
+  onTrain?: (user: User) => void;
   avatar?: string;
 }
 
@@ -39,6 +40,7 @@ export function ProfileCard({
   onActivate,
   onRename,
   onDelete,
+  onTrain,
   avatar = "👤"
 }: ProfileCardProps) {
   const roleColor = ROLE_COLORS[user.role as AppRole] || ROLE_COLORS.student;
@@ -71,6 +73,18 @@ export function ProfileCard({
 
       {/* Правая часть: действия */}
       <div className="profile-card-actions">
+        {onTrain && isActive && (
+          <button
+            type="button"
+            className="btn-profile btn-train"
+            onClick={() => onTrain(user)}
+            data-testid={`train-profile-${user.id}`}
+            title="Перейти к тренировкам"
+          >
+            🏋️ Тренировать
+          </button>
+        )}
+        
         {canActivate && (
           <button
             type="button"

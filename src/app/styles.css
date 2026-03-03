@@ -416,6 +416,17 @@ textarea:focus-visible {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
+.btn-profile.btn-train {
+  background: linear-gradient(145deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-profile.btn-train:hover {
+  background: linear-gradient(145deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
 .btn-profile-action {
   min-width: 44px;
   height: 44px;

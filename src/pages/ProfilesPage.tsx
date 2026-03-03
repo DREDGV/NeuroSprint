@@ -187,6 +187,13 @@ export function ProfilesPage() {
     setStatus(`Активный профиль: ${user.name} (${appRoleLabel(normalizeUserRole(user.role))}).`);
   }
 
+  function handleTrain(user: User) {
+    if (user.id !== activeUserId) {
+      handleSetActive(user);
+    }
+    navigate("/training");
+  }
+
   async function handleSaveRole(user: User) {
     if (
       !guardAccess(
@@ -323,6 +330,7 @@ export function ProfilesPage() {
             onActivate={handleSetActive}
             onRename={handleRename}
             onDelete={handleDelete}
+            onTrain={handleTrain}
             avatar={getUserAvatar(user.id)}
           />
         ))}
