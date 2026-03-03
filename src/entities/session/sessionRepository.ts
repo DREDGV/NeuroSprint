@@ -1,6 +1,7 @@
 import Dexie from "dexie";
 import { db } from "../../db/database";
 import { dailyChallengeRepository } from "../challenge/dailyChallengeRepository";
+import { userRepository } from "../user/userRepository";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import { DEFAULT_AUDIO_SETTINGS } from "../../shared/lib/audio/audioSettings";
 import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
@@ -639,6 +640,11 @@ export const sessionRepository = {
     const normalized = normalizeSession(session);
     await db.sessions.put(normalized);
     await dailyChallengeRepository.registerSession(normalized);
+    
+    // Обновляем активность пользователя
+    const durationMs = normalized.durationMs || 0;
+    const durationSec = Math.floor(durationMs / 1000);
+    await userRepository.updateActivity(normalized.userId, normalized.moduleId, durationSec);
   },
 
   async listByUser(userId: string): Promise<Session[]> {

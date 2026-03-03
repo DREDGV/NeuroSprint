@@ -1,6 +1,6 @@
 import { db } from "../../db/database";
 import { createId } from "../../shared/lib/id";
-import type { AppRole, User } from "../../shared/types/domain";
+import type { AppRole, User, TrainingModuleId } from "../../shared/types/domain";
 import {
   UserRoleGuardError,
   isTeacherRole,
@@ -20,11 +20,51 @@ export const userRepository = {
       id: createId(),
       name: name.trim(),
       role: normalizeUserRole(role),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+      totalSessions: 0,
+      totalTimeSec: 0,
+      sessionsByModule: {
+        schulte: 0,
+        sprint_math: 0,
+        reaction: 0,
+        n_back: 0,
+        memory_grid: 0,
+        decision_rush: 0,
+        pattern_recognition: 0
+      }
     };
 
     await db.users.add(user);
     return user;
+  },
+
+  async updateActivity(userId: string, moduleId: TrainingModuleId, durationSec: number): Promise<void> {
+    await db.transaction("rw", db.users, async () => {
+      const user = await db.users.get(userId);
+      if (!user) return;
+
+      const now = new Date().toISOString();
+      const sessionsByModule = user.sessionsByModule || {
+        schulte: 0,
+        sprint_math: 0,
+        reaction: 0,
+        n_back: 0,
+        memory_grid: 0,
+        decision_rush: 0,
+        pattern_recognition: 0
+      };
+
+      await db.users.update(userId, {
+        lastActivity: now,
+        totalSessions: (user.totalSessions || 0) + 1,
+        totalTimeSec: (user.totalTimeSec || 0) + durationSec,
+        sessionsByModule: {
+          ...sessionsByModule,
+          [moduleId]: (sessionsByModule[moduleId as TrainingModuleId] || 0) + 1
+        }
+      });
+    });
   },
 
   async list(): Promise<User[]> {

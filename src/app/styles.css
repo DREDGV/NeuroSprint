@@ -378,6 +378,24 @@ textarea:focus-visible {
   color: #6b7280;
 }
 
+.profile-activity-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: linear-gradient(145deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.activity-item {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
 .profile-card-role {
   display: inline-block;
   padding: 4px 12px;

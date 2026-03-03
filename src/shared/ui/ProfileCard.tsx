@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AppRole, User } from "../../shared/types/domain";
+import { formatLastActivity, formatTotalTime } from "../../shared/lib/format";
 
 const ROLE_COLORS: Record<AppRole, string> = {
   student: "#10b981",
@@ -67,6 +68,20 @@ export function ProfileCard({
         
         <div className="profile-card-info">
           <h3 className="profile-card-name">{user.name}</h3>
+          
+          {/* Мини-сводка активности */}
+          <div className="profile-activity-summary">
+            <span className="activity-item" title="Последняя активность">
+              🕒 {formatLastActivity(user.lastActivity)}
+            </span>
+            <span className="activity-item" title="Всего тренировок">
+              📊 {user.totalSessions || 0} сессий
+            </span>
+            <span className="activity-item" title="Общее время">
+              ⏱️ {formatTotalTime(user.totalTimeSec || 0)}
+            </span>
+          </div>
+          
           <p className="profile-card-date">Создан: {createdAt}</p>
           
           {canUpdateRole ? (

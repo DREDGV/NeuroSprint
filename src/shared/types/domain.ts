@@ -97,6 +97,10 @@ export interface User {
   name: string;
   role: AppRole;
   createdAt: string;
+  lastActivity?: string; // ISO timestamp последнего действия
+  totalSessions?: number; // Всего проведено сессий
+  totalTimeSec?: number; // Общее время в тренажёрах (сек)
+  sessionsByModule?: Record<TrainingModuleId, number>; // Сессии по тренажёрам
 }
 
 export interface Difficulty {
