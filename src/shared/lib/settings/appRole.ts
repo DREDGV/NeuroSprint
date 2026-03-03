@@ -5,7 +5,7 @@ export const DEFAULT_APP_ROLE: AppRole = "teacher";
 const APP_ROLE_CHANGED_EVENT = "ns:app-role-changed";
 
 function normalizeAppRole(value: unknown): AppRole {
-  if (value === "teacher" || value === "student" || value === "home") {
+  if (value === "teacher" || value === "student" || value === "home" || value === "admin") {
     return value;
   }
   return DEFAULT_APP_ROLE;
@@ -36,6 +36,12 @@ export function appRoleLabel(role: AppRole): string {
   }
   if (role === "student") {
     return "Ученик";
+  }
+  if (role === "home") {
+    return "Домашний";
+  }
+  if (role === "admin") {
+    return "Администратор";
   }
   return "Домашний";
 }

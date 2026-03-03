@@ -8,7 +8,7 @@ export type Mode =
   | "memory_grid"
   | "decision_rush"
   | "pattern_recognition";
-export type AppRole = "teacher" | "student" | "home";
+export type AppRole = "teacher" | "student" | "home" | "admin";
 export type TrainingModuleId =
   | "schulte"
   | "sprint_math"

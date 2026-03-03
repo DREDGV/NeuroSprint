@@ -79,6 +79,23 @@ const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "settings:training:update",
     "settings:audio:update",
     "settings:export"
+  ],
+  admin: [
+    "profiles:view",
+    "profiles:create",
+    "profiles:edit",
+    "profiles:role:update",
+    "profiles:activate",
+    "classes:view",
+    "classes:manage",
+    "stats:group:view",
+    "stats:comparison:view",
+    "settings:view",
+    "settings:training:update",
+    "settings:audio:update",
+    "settings:role:update",
+    "settings:export",
+    "settings:devtools"
   ]
 };
 

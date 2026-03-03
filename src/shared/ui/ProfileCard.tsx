@@ -3,13 +3,15 @@ import type { AppRole, User } from "../../shared/types/domain";
 const ROLE_COLORS: Record<AppRole, string> = {
   student: "#10b981",
   teacher: "#3b82f6",
-  home: "#f59e0b"
+  home: "#f59e0b",
+  admin: "#8b5cf6"
 };
 
 const ROLE_LABELS: Record<AppRole, string> = {
   student: "Ученик",
   teacher: "Учитель",
-  home: "Домашний"
+  home: "Домашний",
+  admin: "Администратор"
 };
 
 // Набор аватарок для выбора

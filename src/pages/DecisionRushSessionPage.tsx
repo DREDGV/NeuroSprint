@@ -45,6 +45,7 @@ const COLOR_HEX: Record<DecisionRushColor, string> = {
 };
 
 const DECISION_TEMPO_STORAGE_KEY = "ns.decisionRushTempo";
+const DECISION_TRANSITION_MS = 150;
 const TEMPO_MULTIPLIER: Record<DecisionTempoId, number> = {
   slow: 1.25,
   normal: 1,
@@ -244,6 +245,7 @@ export function DecisionRushSessionPage() {
   const [liveErrorCount, setLiveErrorCount] = useState(0);
   const [liveScoredCount, setLiveScoredCount] = useState(0);
   const [liveAnswerState, setLiveAnswerState] = useState<LiveAnswerState>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [lastAnswerLabel, setLastAnswerLabel] = useState<string | null>(null);
   const [result, setResult] = useState<DecisionRushSessionMetrics | null>(null);
   const [saved, setSaved] = useState(false);
@@ -253,6 +255,7 @@ export function DecisionRushSessionPage() {
   const [tempoId, setTempoId] = useState<DecisionTempoId>(() => readTempoPreference());
 
   const loopTimerRef = useRef<number | null>(null);
+  const transitionTimerRef = useRef<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
   const pausedAtRef = useRef<number | null>(null);
   const trialStartedAtRef = useRef<number | null>(null);
@@ -272,6 +275,7 @@ export function DecisionRushSessionPage() {
   const finishedRef = useRef(false);
   const runningRef = useRef(false);
   const pausedRef = useRef(false);
+  const transitioningRef = useRef(false);
 
   const durationMs = useMemo(() => setup.durationSec * 1000, [setup.durationSec]);
   const startedAtMs = startedAtRef.current;
@@ -314,6 +318,8 @@ export function DecisionRushSessionPage() {
       : "Нажмите «Старт», чтобы начать серию."
     : isPaused
       ? "Пауза: нажмите «Продолжить»."
+      : isTransitioning
+        ? "Ответ принят, показываем следующий стимул..."
       : currentAnswerLocked
         ? "Ответ принят, готовим следующий стимул..."
         : "Можно отвечать: выберите «ДА» или «НЕТ».";
@@ -322,6 +328,13 @@ export function DecisionRushSessionPage() {
     if (loopTimerRef.current != null) {
       window.clearInterval(loopTimerRef.current);
       loopTimerRef.current = null;
+    }
+  }
+
+  function clearTransitionTimer(): void {
+    if (transitionTimerRef.current != null) {
+      window.clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
     }
   }
 

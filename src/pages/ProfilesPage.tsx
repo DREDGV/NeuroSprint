@@ -274,6 +274,9 @@ export function ProfilesPage() {
             <option value="home" disabled={!canAssignRoleOnCreate}>
               Домашний
             </option>
+            <option value="admin" disabled={!canAssignRoleOnCreate}>
+              Администратор
+            </option>
           </select>
           {!canAssignRoleOnCreate ? (
             <p className="status-line" data-testid="profiles-create-role-note">
