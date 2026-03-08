@@ -1,59 +1,35 @@
-# NeuroSprint Execution Status (RU)
+﻿# NeuroSprint Execution Status (RU)
 
-## Дата/время
-- 2026-03-03 16:13 (Asia/Novosibirsk)
+Обновлено: 2026-03-08  
+Назначение: короткий operational snapshot
 
-## Что завершено
-- Выполнен стабилизационный пакет после параллельной разработки:
-  - синхронизированы mode-контракты для `N-Back`, `Pattern`, `Memory Grid`;
-  - `Pre-session` переведен на динамическую валидацию модулей/режимов;
-  - исправлены launch-path для Daily Challenge (Memory Grid + Pattern Recognition);
-  - исправлен игровой цикл `Pattern Recognition` (инициализация, завершение, длительность сессии);
-  - добавлены проверки маршрутов в unit/integration-тестах.
-- Обновлены release-артефакты:
-  - версия приложения `0.5.0-dev.5`,
-  - `docs/CHANGELOG_RU.md`,
-  - встроенная история релизов в `/help`.
-- Подтвержден регресс:
-  - `npm run check:encoding`,
-  - `npm test`,
-  - `npm run build`,
-  - `npm run test:e2e -- tests/e2e/smoke.spec.ts`.
-- Закрыт UX + e2e подэтап по `Decision Rush`:
-  - добавлены стабильные test-id в `TrainingHub` для всех модулей (`training-open-*`, `training-plan-*`);
-  - улучшены тексты и live-feedback в `DecisionRushSetup/Session` (уровни, статус ответа, состояние шага);
-  - добавлен e2e `tests/e2e/decision-rush.spec.ts`:
-    - `profiles -> training -> decision-rush -> session -> stats`,
-    - `pre-session -> decision_pro -> setup`.
-- Подтверждены проверки для подэтапа:
-  - `npm run check:encoding`,
-  - `npm test -- tests/integration/training-hub.test.tsx tests/integration/pre-session-page.test.tsx tests/unit/decision-rush-engine.test.ts`,
-  - `npm run test:e2e -- tests/e2e/decision-rush.spec.ts`,
-  - `npm run build`.
-- Подтвержден полный регресс после добавления нового e2e:
-  - `npm run test:e2e` (16/16),
-  - `npm test` (35 files, 141 tests).
+## Что считается актуально завершённым
+- Официальная линия модулей стабилизирована: `Шульте`, `Sprint Math`, `Reaction`, `N-Back Lite`, `Decision Rush`, `Memory Grid`.
+- `TrainingHub` честно отделяет alpha-линейку от официальных модулей.
+- Базовый набор рабочих документов сокращён до канонического контура.
 
-## Что в работе
-- Подготовка следующего этапа `v0.8.A`:
-  - финализация контракта `Memory Grid Rush` для режима `Classic/Rush`,
-  - проверка UX setup/session и интеграции в сводную статистику.
+## Что сейчас в работе
+- Production-доведение `Memory Match` как следующего официального модуля.
 
-## Блокеры
-- Нет.
+## Что пока не продвигается
+- `Block Pattern Recall` — alpha.
+- `Spatial Memory` — hold / redesign.
+- Широкое расширение статистики под alpha-модули.
+
+## Progress System
+Запланирована как следующий крупный слой после стабилизации `Memory Match`.
+
+Порядок этапов:
+1. `Phase 1 — Daily Training`
+2. `Phase 2 — Levels + Achievements`
+3. `Phase 3 — Skill Map + Strength/Weakness Analysis`
+4. `Phase 4 — AI Recommendations`
+
+## Блокеры и риски
+- Основной риск — расползание проекта между несколькими параллельными направлениями.
+- Второй риск — ранний запуск `Progress System` до стабилизации данных и официальных модулей.
 
 ## Следующие 3 шага
-1. Стартовать `v0.8.A`: пройтись по setup/session `Memory Grid Rush` и закрыть UX-разрывы.
-2. Уточнить mode-aware отображение `Memory Grid` в `StatsIndividual/StatsGroup` и добавить целевые integration-тесты.
-3. Подготовить следующий dev-срез после закрытия `v0.8.A` (version/help/changelog + регресс).
-
-## Команды для быстрого старта
-```powershell
-npm install
-npm run dev
-npm run check:encoding
-npm run lint
-npm test
-npm run build
-npm run test:e2e
-```
+1. Завершить production-сессию по `Memory Match`.
+2. Стабилизировать build/test и пользовательский цикл нового модуля.
+3. После этого открыть `Daily Training` как первый этап `Progress System`.

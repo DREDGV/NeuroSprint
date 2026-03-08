@@ -76,37 +76,6 @@ const ChartIcon = ({ size = 24 }: { size?: number }) => (
   </svg>
 );
 
-const BrainIcon = ({ size = 40 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" fill="none" width={size} height={size}>
-    {/* Outer brain shape */}
-    <path
-      d="M12 2C9 2 7 4 7 6c0 1 .3 2 .8 2.8C6.2 9.5 5 11.5 5 14c0 3 2.2 5.5 5 6v2a2 2 0 004 0v-2c2.8-.5 5-3 5-6 0-2.5-1.2-4.5-2.8-5.2.5-.8.8-1.8.8-2.8 0-2-2-4-5-4z"
-      fill="currentColor"
-      opacity="0.9"
-    />
-    {/* Left hemisphere detail */}
-    <path
-      d="M9 8c-1 1-1.5 2-1.5 3s.7 2 1.5 2"
-      stroke="rgba(255,255,255,0.6)"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-    />
-    {/* Right hemisphere detail */}
-    <path
-      d="M15 8c1 1 1.5 2 1.5 3s-.7 2-1.5 2"
-      stroke="rgba(255,255,255,0.6)"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-    />
-    {/* Neural connections */}
-    <circle cx="9" cy="13" r="1" fill="rgba(255,255,255,0.8)"/>
-    <circle cx="15" cy="13" r="1" fill="rgba(255,255,255,0.8)"/>
-    <circle cx="12" cy="15" r="0.8" fill="rgba(255,255,255,0.6)"/>
-    {/* Synapse lines */}
-    <path d="M10 17h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
-  </svg>
-);
-
 const GridIcon = ({ size = 28 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
     <rect x="3" y="3" width="7" height="7" rx="1"/>
@@ -211,7 +180,7 @@ function TrainingCard({ icon, title, description, to, color, gradient }: Trainin
 }
 
 export function HomePage() {
-  const { activeUserId, activeUserName } = useActiveUserDisplayName();
+  const { activeUserId } = useActiveUserDisplayName();
   const settings = getSettings();
   const dailyGoalSessions = settings.dailyGoalSessions;
   const [dailySummary, setDailySummary] = useState<DailyProgressSummary | null>(null);
@@ -219,6 +188,7 @@ export function HomePage() {
   const [streakDays, setStreakDays] = useState(0);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [challengeLoading, setChallengeLoading] = useState(false);
+  const [challengeIconMissing, setChallengeIconMissing] = useState(false);
 
   useEffect(() => {
     if (!activeUserId) {
@@ -293,18 +263,9 @@ export function HomePage() {
       {/* Hero Section */}
       <header className="home-hero">
         <div className="home-hero-content">
-          <h1 className="home-hero-title">
-            <span className="hero-icon"><BrainIcon /></span>
-            NeuroSprint
-          </h1>
-          <p className="home-hero-subtitle">Тренажёр скорости мышления</p>
-          {activeUserName && (
-            <div className="home-hero-user">
-              <span className="user-greeting">Привет,</span>
-              <span className="user-name">{activeUserName}</span>
-              <span className="user-action">👋</span>
-            </div>
-          )}
+          <p className="home-hero-subtitle">
+            Короткая цель на сегодня: сделайте {dailyGoalSessions} сессии в удобном темпе.
+          </p>
         </div>
         <div className="home-hero-stats">
           <div className="hero-stat">
@@ -329,7 +290,16 @@ export function HomePage() {
         <section className="challenge-highlight" data-testid="home-daily-challenge">
           <div className="challenge-highlight-header">
             <div className="challenge-highlight-icon">
-              <TrophyIcon />
+              {!challengeIconMissing ? (
+                <img
+                  className="challenge-highlight-image"
+                  src="/challenge-day-icon.svg"
+                  alt=""
+                  onError={() => setChallengeIconMissing(true)}
+                />
+              ) : (
+                <TrophyIcon />
+              )}
             </div>
             <div className="challenge-highlight-info">
               <h2 className="challenge-highlight-title">Challenge дня</h2>

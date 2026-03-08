@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveUser } from "../app/ActiveUserContext";
 import { useRoleAccess } from "../app/useRoleAccess";
@@ -61,6 +61,11 @@ export function ProfilesPage() {
     if (access.profiles.activate && user.id === activeUserId) return true;
     return false;
   }, [access.profiles.edit, access.profiles.activate, activeUserId]);
+
+  const isProtectedLastTeacher = useCallback(
+    (user: User) => isTeacherRole(normalizeUserRole(user.role)) && teachersCount === 1,
+    [teachersCount]
+  );
 
   const loadUsers = useCallback(async () => {
     const items = await userRepository.list();
@@ -154,6 +159,10 @@ export function ProfilesPage() {
     ) {
       return;
     }
+    if (isProtectedLastTeacher(user)) {
+      setError("Нельзя удалить последнего учителя.");
+      return;
+    }
     const approved = window.confirm(`Удалить профиль "${user.name}"?`);
     if (!approved) {
       return;
@@ -206,6 +215,10 @@ export function ProfilesPage() {
         "В этой роли смена ролей профилей недоступна."
       )
     ) {
+      return;
+    }
+    if (isProtectedLastTeacher(user) && newRole !== "teacher") {
+      setError("Нельзя понизить роль последнего учителя.");
       return;
     }
     try {
@@ -355,7 +368,9 @@ export function ProfilesPage() {
       {activeUser ? (
         <div className="active-profile-banner" data-testid="active-profile-banner">
           <span className="banner-icon">✅</span>
-          <span>Активный профиль: <strong>{activeUser.name}</strong> ({appRoleLabel(normalizeUserRole(activeUser.role))})</span>
+          <span data-testid="active-profile-status">
+            Активный профиль: <strong>{activeUser.name}</strong> ({appRoleLabel(normalizeUserRole(activeUser.role))})
+          </span>
         </div>
       ) : (
         <p className="status-line" data-testid="active-profile-status">
@@ -484,7 +499,9 @@ export function ProfilesPage() {
             user={user}
             isActive={user.id === activeUserId}
             canEdit={canEditUser(user)}
+            canDelete={canEditUser(user) && !isProtectedLastTeacher(user)}
             canUpdateRole={canUpdateProfileRoles}
+            lockTeacherRole={isProtectedLastTeacher(user)}
             canActivate={access.profiles.activate}
             onActivate={handleSetActive}
             onRename={handleRename}

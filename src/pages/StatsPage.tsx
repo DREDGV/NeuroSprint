@@ -39,6 +39,7 @@ type StatsMode =
   | "n_back"
   | "memory_grid"
   | "decision_rush";
+type ChartRange = 7 | 30 | 90 | "all";
 type SprintModeFilter = "all" | "sprint_add_sub" | "sprint_mixed";
 type SprintSubmode = "sprint_add_sub" | "sprint_mixed";
 
@@ -90,6 +91,15 @@ interface CompareChartPoint {
   p75: number | null;
 }
 
+interface ComparePlainSummary {
+  headline: string;
+  supporting: string;
+  percentileText: string;
+  userValueText: string;
+  majorityText: string;
+  tone: "positive" | "warning" | "neutral";
+}
+
 function formatDateShort(dateKey: string): string {
   const [year, month, day] = dateKey.split("-");
   if (!year || !month || !day) {
@@ -103,6 +113,17 @@ function formatPeriodLabel(period: ComparePeriod): string {
     return "все время";
   }
   return `${period} дн.`;
+}
+
+function filterRecentByDate<T extends { date: string }>(
+  points: T[],
+  range: ChartRange
+): T[] {
+  if (range === "all" || points.length === 0) {
+    return points;
+  }
+
+  return points.slice(-range);
 }
 
 function formatMetric(value: number | null, digits = 2, suffix = ""): string {
@@ -121,7 +142,7 @@ function formatSignedMetric(value: number | null, digits = 2, suffix = ""): stri
 }
 
 function sprintSubmodeLabel(mode: SprintSubmode): string {
-  return mode === "sprint_add_sub" ? "Add/Sub" : "Mixed";
+  return mode === "sprint_add_sub" ? "Сложение / вычитание" : "Смешанный";
 }
 
 function summarizeSprint(data: SprintMathDailyPoint[]): SprintSummary {
@@ -151,12 +172,12 @@ function summarizeSprint(data: SprintMathDailyPoint[]): SprintSummary {
 
 function sprintFilterLabel(filter: SprintModeFilter): string {
   if (filter === "sprint_add_sub") {
-    return "Add/Sub";
+    return "Сложение / вычитание";
   }
   if (filter === "sprint_mixed") {
-    return "Mixed";
+    return "Смешанный";
   }
-  return "Все";
+  return "Все режимы";
 }
 
 function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): CompareConfig {
@@ -352,12 +373,150 @@ function splitForTrend(values: number[]): { previous: number | null; current: nu
   return { previous, current };
 }
 
+function formatSummaryPeriodLabel(range: ChartRange): string {
+  return range === "all" ? "всё время" : `${range} дн.`;
+}
+
+function formatModeMetric(mode: StatsMode, value: number | null): string {
+  if (mode === "classic") {
+    return formatMetric(value, 2, " сек");
+  }
+  if (mode === "reaction") {
+    return formatMetric(value, 0, " мс");
+  }
+  return formatMetric(value);
+}
+
+function getModeMetricHint(mode: StatsMode): string {
+  if (mode === "classic") {
+    return "Чем меньше секунд, тем лучше.";
+  }
+  if (mode === "reaction") {
+    return "Чем меньше миллисекунд, тем быстрее реакция.";
+  }
+  return "Чем выше score, тем лучше результат.";
+}
+
+function buildFriendlyTrendSummary(changePct: number | null, sessionsCount: number): string {
+  if (sessionsCount === 0) {
+    return "Пока нет тренировок";
+  }
+  if (changePct == null) {
+    return "Пока мало данных для вывода";
+  }
+  if (Math.abs(changePct) < 3) {
+    return "Пока без резких изменений";
+  }
+  return changePct > 0
+    ? `Есть прогресс: +${changePct.toFixed(1)}%`
+    : `Есть спад: ${Math.abs(changePct).toFixed(1)}%`;
+}
+
+function buildSummaryHeroTitle(changePct: number | null, sessionsCount: number): string {
+  if (sessionsCount === 0) {
+    return "Пока нет данных по этому режиму";
+  }
+  if (changePct == null) {
+    return "Вы уже начали, но для честного вывода нужно ещё немного данных";
+  }
+  if (Math.abs(changePct) < 3) {
+    return "Результат держится примерно на одном уровне";
+  }
+  return changePct > 0
+    ? "Есть заметный прогресс"
+    : "Есть просадка: стоит спокойно закрепить базу";
+}
+
+
+function isLowerBetter(mode: StatsMode): boolean {
+  return mode === "classic" || mode === "reaction";
+}
+
+function buildComparePlainSummary(
+  mode: StatsMode,
+  point: CompareChartPoint | null,
+  progressChangePct: number | null
+): ComparePlainSummary {
+  if (
+    !point ||
+    point.me == null ||
+    point.p25 == null ||
+    point.median == null ||
+    point.p75 == null
+  ) {
+    return {
+      headline: "Сравнение с другими появится позже",
+      supporting: "Пока мало общих данных по этому режиму.",
+      percentileText: "Нужно ещё немного общих результатов.",
+      userValueText: "Ваш результат: пока без сравнения",
+      majorityText: "Ориентир большинства появится позже",
+      tone: "neutral"
+    };
+  }
+
+  const lowerBetter = isLowerBetter(mode);
+  const currentValue = point.me;
+  const betterThan = (threshold: number) =>
+    lowerBetter ? currentValue <= threshold : currentValue >= threshold;
+  const topThreshold = lowerBetter ? point.p25 : point.p75;
+  const baseThreshold = lowerBetter ? point.p75 : point.p25;
+
+  if (betterThan(topThreshold)) {
+    return {
+      headline: "Вы уже лучше, чем большинство",
+      supporting: "Ваш результат сильнее, чем у основной части пользователей.",
+      percentileText: "Лучше, чем примерно у 75% пользователей.",
+      userValueText: `Ваш результат: ${formatModeMetric(mode, point.me)}`,
+      majorityText: `Ориентир большинства: ${formatModeMetric(mode, point.median)}`,
+      tone: "positive"
+    };
+  }
+
+  if (betterThan(point.median)) {
+    return {
+      headline: "Вы уже выше среднего",
+      supporting: "Результат лучше, чем у половины пользователей.",
+      percentileText: "Лучше, чем примерно у 50% пользователей.",
+      userValueText: `Ваш результат: ${formatModeMetric(mode, point.me)}`,
+      majorityText: `Ориентир большинства: ${formatModeMetric(mode, point.median)}`,
+      tone: "positive"
+    };
+  }
+
+  if (betterThan(baseThreshold)) {
+    return {
+      headline: "Вы на уровне большинства",
+      supporting: "Результат близок к основной группе пользователей.",
+      percentileText: "Лучше, чем примерно у 25% пользователей.",
+      userValueText: `Ваш результат: ${formatModeMetric(mode, point.me)}`,
+      majorityText: `Ориентир большинства: ${formatModeMetric(mode, point.median)}`,
+      tone: "neutral"
+    };
+  }
+
+  return {
+    headline:
+      progressChangePct != null && progressChangePct > 0
+        ? "Пока ниже среднего, но прогресс уже есть"
+        : "Пока ниже среднего",
+    supporting:
+      progressChangePct != null && progressChangePct > 0
+        ? "Продолжайте в том же темпе: вы уже двигаетесь к уровню большинства."
+        : "Нужно ещё немного спокойных повторений, чтобы подтянуть базу.",
+    percentileText: "Пока результат ниже, чем у большинства пользователей.",
+    userValueText: `Ваш результат: ${formatModeMetric(mode, point.me)}`,
+    majorityText: `Ориентир большинства: ${formatModeMetric(mode, point.median)}`,
+    tone: "warning"
+  };
+}
+
 export function StatsPage() {
   const { activeUserId } = useActiveUser();
   const access = useRoleAccess();
   const canViewGroupStatsAccess = access.stats.viewGroup;
   const [mode, setMode] = useState<StatsMode>("classic");
   const [sprintFilter, setSprintFilter] = useState<SprintModeFilter>("all");
+  const [chartRange, setChartRange] = useState<ChartRange>(30);
   const [classicData, setClassicData] = useState<ClassicDailyPoint[]>([]);
   const [timedData, setTimedData] = useState<TimedDailyPoint[]>([]);
   const [reactionData, setReactionData] = useState<ReactionDailyPoint[]>([]);
@@ -367,7 +526,7 @@ export function StatsPage() {
   const [sprintAllData, setSprintAllData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintAddSubData, setSprintAddSubData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintMixedData, setSprintMixedData] = useState<SprintMathDailyPoint[]>([]);
-  const [compareEnabled, setCompareEnabled] = useState(false);
+  const [compareEnabled, setCompareEnabled] = useState(true);
   const [comparePeriod, setComparePeriod] = useState<ComparePeriod>(30);
   const [compareBands, setCompareBands] = useState<DailyCompareBandPoint[]>([]);
   const [compareLoading, setCompareLoading] = useState(false);
@@ -457,8 +616,13 @@ export function StatsPage() {
   }, [activeUserId]);
 
   useEffect(() => {
-    if (!activeUserId || !compareEnabled) {
+    if (!activeUserId) {
       setCompareBands([]);
+      setCompareLoading(false);
+      return;
+    }
+
+    if (!compareEnabled) {
       setCompareLoading(false);
       return;
     }
@@ -637,6 +801,35 @@ export function StatsPage() {
     [sprintActiveData]
   );
 
+  const visibleClassicChartData = useMemo(
+    () => filterRecentByDate(classicChartData, chartRange),
+    [chartRange, classicChartData]
+  );
+  const visibleTimedChartData = useMemo(
+    () => filterRecentByDate(timedChartData, chartRange),
+    [chartRange, timedChartData]
+  );
+  const visibleReactionChartData = useMemo(
+    () => filterRecentByDate(reactionChartData, chartRange),
+    [chartRange, reactionChartData]
+  );
+  const visibleNBackChartData = useMemo(
+    () => filterRecentByDate(nBackChartData, chartRange),
+    [chartRange, nBackChartData]
+  );
+  const visibleMemoryGridChartData = useMemo(
+    () => filterRecentByDate(memoryGridChartData, chartRange),
+    [chartRange, memoryGridChartData]
+  );
+  const visibleDecisionChartData = useMemo(
+    () => filterRecentByDate(decisionChartData, chartRange),
+    [chartRange, decisionChartData]
+  );
+  const visibleSprintMathChartData = useMemo(
+    () => filterRecentByDate(sprintMathChartData, chartRange),
+    [chartRange, sprintMathChartData]
+  );
+
   const sprintSummary = useMemo(() => summarizeSprint(sprintActiveData), [sprintActiveData]);
   const sprintModeSummary = useMemo(
     () => ({
@@ -679,10 +872,6 @@ export function StatsPage() {
   ]);
 
   const compareChartData = useMemo<CompareChartPoint[]>(() => {
-    if (!compareEnabled) {
-      return [];
-    }
-
     const bandByDate = new Map(compareBands.map((point) => [point.date, point]));
     const dateSet = new Set<string>();
     compareBands.forEach((point) => dateSet.add(point.date));
@@ -702,13 +891,12 @@ export function StatsPage() {
           p75: band?.p75 ?? null
         };
       });
-  }, [compareBands, compareEnabled, userCompareMetricByDate]);
+  }, [compareBands, userCompareMetricByDate]);
 
   const compareLatestPoint = useMemo(
     () => (compareChartData.length > 0 ? compareChartData[compareChartData.length - 1] : null),
     [compareChartData]
   );
-
   const progressInsight = useMemo<ProgressInsight>(() => {
     if (mode === "classic") {
       const values = classicChartData.map((point) => point.bestSec);
@@ -908,166 +1096,351 @@ export function StatsPage() {
     timedChartData
   ]);
 
-  const isEmpty = useMemo(() => {
+  const selectedModeTitle = useMemo(() => {
     if (mode === "classic") {
-      return classicChartData.length === 0;
+      return "Таблицы Шульте";
     }
     if (mode === "timed") {
-      return timedChartData.length === 0;
+      return "Шульте на время";
     }
     if (mode === "reaction") {
-      return reactionChartData.length === 0;
+      return "Скорость реакции";
     }
     if (mode === "n_back") {
-      return nBackChartData.length === 0;
+      return "Память: N-Back";
     }
     if (mode === "memory_grid") {
-      return memoryGridChartData.length === 0;
+      return "Память: сетка";
     }
     if (mode === "decision_rush") {
-      return decisionChartData.length === 0;
+      return "Быстрый выбор";
     }
-    return sprintMathChartData.length === 0;
+    return `Устный счёт: ${sprintFilterLabel(sprintFilter)}`;
+  }, [mode, sprintFilter]);
+
+  const sessionsInMode = useMemo(() => {
+    if (mode === "classic") {
+      return filterRecentByDate(classicData, chartRange).reduce((sum, point) => sum + point.count, 0);
+    }
+    if (mode === "timed") {
+      return filterRecentByDate(timedData, chartRange).reduce((sum, point) => sum + point.count, 0);
+    }
+    if (mode === "reaction") {
+      return filterRecentByDate(reactionData, chartRange).reduce((sum, point) => sum + point.count, 0);
+    }
+    if (mode === "n_back") {
+      return filterRecentByDate(nBackData, chartRange).reduce((sum, point) => sum + point.count, 0);
+    }
+    if (mode === "memory_grid") {
+      return filterRecentByDate(memoryGridData, chartRange).reduce((sum, point) => sum + point.count, 0);
+    }
+    if (mode === "decision_rush") {
+      return filterRecentByDate(decisionData, chartRange).reduce((sum, point) => sum + point.count, 0);
+    }
+    return filterRecentByDate(sprintActiveData, chartRange).reduce((sum, point) => sum + point.count, 0);
   }, [
-    classicChartData.length,
-    decisionChartData.length,
-    memoryGridChartData.length,
+    chartRange,
+    classicData,
+    decisionData,
+    memoryGridData,
     mode,
-    nBackChartData.length,
-    reactionChartData.length,
-    sprintMathChartData.length,
-    timedChartData.length
+    nBackData,
+    reactionData,
+    sprintActiveData,
+    timedData
+  ]);
+
+  const trendSummary = useMemo(() => {
+    return buildFriendlyTrendSummary(progressInsight.changePct, sessionsInMode);
+  }, [progressInsight.changePct, sessionsInMode]);
+
+  const nextStepText = useMemo(() => {
+    if (sessionsInMode === 0) {
+      return "Сделайте 2-3 тренировки в выбранном режиме, чтобы появился осмысленный тренд.";
+    }
+    if (challengeSummary && challengeSummary.pending > 0) {
+      return "Закройте челлендж дня, а затем сравните график после ещё одной сессии.";
+    }
+    if (progressInsight.changePct == null) {
+      return "Сделайте ещё несколько сессий в этом режиме, чтобы сравнение по периодам стало устойчивым.";
+    }
+    if (progressInsight.changePct < 0) {
+      return "Повторите режим в спокойном темпе и сфокусируйтесь на точности.";
+    }
+    if (mode === "sprint_math" && sprintComparison.bestMode) {
+      return `Закрепите результат ещё одной сессией: ${sprintSubmodeLabel(sprintComparison.bestMode)}.`;
+    }
+    return "Продолжайте этот режим и вернитесь сюда после ещё 2-3 сессий.";
+  }, [challengeSummary, mode, progressInsight.changePct, sessionsInMode, sprintComparison.bestMode]);
+
+  const chartRangeLabel = useMemo(
+    () => (chartRange === "all" ? "Всё время" : `${chartRange} дн.`),
+    [chartRange]
+  );
+  const summaryPeriodLabel = useMemo(() => formatSummaryPeriodLabel(chartRange), [chartRange]);
+  const summaryHeroTitle = useMemo(
+    () => buildSummaryHeroTitle(progressInsight.changePct, sessionsInMode),
+    [progressInsight.changePct, sessionsInMode]
+  );
+  const summaryTone = useMemo(() => {
+    if (
+      sessionsInMode === 0 ||
+      progressInsight.changePct == null ||
+      Math.abs(progressInsight.changePct) < 3
+    ) {
+      return "neutral";
+    }
+    return progressInsight.changePct > 0 ? "positive" : "warning";
+  }, [progressInsight.changePct, sessionsInMode]);
+  const summaryComparisonText = useMemo(() => {
+    if (progressInsight.previousAvg == null || progressInsight.currentAvg == null) {
+      return "Пока мало данных";
+    }
+    return `${formatModeMetric(mode, progressInsight.previousAvg)} > ${formatModeMetric(
+      mode,
+      progressInsight.currentAvg
+    )}`;
+  }, [mode, progressInsight.currentAvg, progressInsight.previousAvg]);
+  const summaryBestText = useMemo(
+    () => progressInsight.snapshot?.label ?? "Лучший результат появится после первых тренировок",
+    [progressInsight.snapshot]
+  );
+  const summaryModeHint = useMemo(() => getModeMetricHint(mode), [mode]);
+  const comparePlainSummary = useMemo(
+    () => buildComparePlainSummary(mode, compareLatestPoint, progressInsight.changePct),
+    [compareLatestPoint, mode, progressInsight.changePct]
+  );
+  const isEmpty = useMemo(() => {
+    if (mode === "classic") {
+      return visibleClassicChartData.length === 0;
+    }
+    if (mode === "timed") {
+      return visibleTimedChartData.length === 0;
+    }
+    if (mode === "reaction") {
+      return visibleReactionChartData.length === 0;
+    }
+    if (mode === "n_back") {
+      return visibleNBackChartData.length === 0;
+    }
+    if (mode === "memory_grid") {
+      return visibleMemoryGridChartData.length === 0;
+    }
+    if (mode === "decision_rush") {
+      return visibleDecisionChartData.length === 0;
+    }
+    return visibleSprintMathChartData.length === 0;
+  }, [
+    mode,
+    visibleClassicChartData.length,
+    visibleDecisionChartData.length,
+    visibleMemoryGridChartData.length,
+    visibleNBackChartData.length,
+    visibleReactionChartData.length,
+    visibleSprintMathChartData.length,
+    visibleTimedChartData.length
   ]);
 
   return (
     <section className="panel" data-testid="stats-page">
-      <h2>Статистика по дням</h2>
-      <p>
-        Базовый экран прогресса: понятные графики по режимам и быстрый переход к
-        расширенной аналитике.
+      <h2>Статистика</h2>
+      <p className="stats-page-intro">
+        Сначала — главный вывод по вашему прогрессу. Ниже можно уточнить режим, сравнение и детали.
       </p>
 
-      <div className="segmented-row">
-        <Link className="btn-secondary is-active" to="/stats">
-          Простая
-        </Link>
-        <Link className="btn-secondary" to="/stats/individual">
-          Расширенная
-        </Link>
-        {canViewGroupStatsAccess ? (
-          <Link className="btn-secondary" to="/stats/group">
-            Группа
-          </Link>
-        ) : null}
-      </div>
-
-      <div className="segmented-row">
-        <button
-          type="button"
-          className={mode === "classic" ? "btn-secondary is-active" : "btn-secondary"}
-          onClick={() => setMode("classic")}
-          data-testid="stats-mode-classic"
-        >
-          Classic / Reverse
-        </button>
-        <button
-          type="button"
-          className={mode === "timed" ? "btn-secondary is-active" : "btn-secondary"}
-          onClick={() => setMode("timed")}
-          data-testid="stats-mode-timed"
-        >
-          Timed
-        </button>
-        <button
-          type="button"
-          className={mode === "reaction" ? "btn-secondary is-active" : "btn-secondary"}
-          onClick={() => setMode("reaction")}
-          data-testid="stats-mode-reaction"
-        >
-          Reaction
-        </button>
-        <button
-          type="button"
-          className={mode === "n_back" ? "btn-secondary is-active" : "btn-secondary"}
-          onClick={() => setMode("n_back")}
-          data-testid="stats-mode-nback"
-        >
-          N-Back
-        </button>
-        <button
-          type="button"
-          className={mode === "memory_grid" ? "btn-secondary is-active" : "btn-secondary"}
-          onClick={() => setMode("memory_grid")}
-          data-testid="stats-mode-memory-grid"
-        >
-          Memory Grid
-        </button>
-        <button
-          type="button"
-          className={mode === "decision_rush" ? "btn-secondary is-active" : "btn-secondary"}
-          onClick={() => setMode("decision_rush")}
-          data-testid="stats-mode-decision-rush"
-        >
-          Decision Rush
-        </button>
-        <button
-          type="button"
-          className={mode === "sprint_math" ? "btn-secondary is-active" : "btn-secondary"}
-          onClick={() => setMode("sprint_math")}
-          data-testid="stats-mode-sprint"
-        >
-          Sprint Math
-        </button>
-      </div>
-
-      {mode === "sprint_math" ? (
-        <div className="segmented-row" data-testid="stats-sprint-filter-row">
-          <button
-            type="button"
-            className={sprintFilter === "all" ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => setSprintFilter("all")}
-            data-testid="stats-sprint-filter-all"
-          >
-            Все
-          </button>
-          <button
-            type="button"
-            className={sprintFilter === "sprint_add_sub" ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => setSprintFilter("sprint_add_sub")}
-            data-testid="stats-sprint-filter-add-sub"
-          >
-            Add/Sub
-          </button>
-          <button
-            type="button"
-            className={sprintFilter === "sprint_mixed" ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => setSprintFilter("sprint_mixed")}
-            data-testid="stats-sprint-filter-mixed"
-          >
-            Mixed
-          </button>
+      <div className="stats-page-flow">
+        <section className="setup-block stats-summary-block" data-testid="stats-primary-summary">
+        <div className="stats-summary-hero">
+          <div className="stats-summary-copy">
+            <p className="stats-summary-eyebrow">Что видно сразу</p>
+            <h3>{summaryHeroTitle}</h3>
+            <p className="stats-summary-lead">
+              {selectedModeTitle}. Короткий вывод за {summaryPeriodLabel}.
+            </p>
+          </div>
+          <p className={`stats-summary-badge is-${summaryTone}`} data-testid="stats-summary-trend">
+            {trendSummary}
+          </p>
         </div>
-      ) : null}
 
-      <section className="setup-block" data-testid="stats-progress-headline">
-        <h3>Прогресс за период</h3>
-        <p className="status-line">{progressInsight.headline}</p>
+        <div className="stats-summary-grid">
+          <article className="stats-summary-card" data-testid="stats-summary-sessions">
+            <p className="stats-summary-card-label">Сколько тренировок</p>
+            <p className="stats-summary-card-value">{sessionsInMode}</p>
+            <p className="stats-summary-card-hint">За {summaryPeriodLabel} в этом режиме.</p>
+          </article>
+
+          <article className="stats-summary-card" data-testid="stats-summary-comparison">
+            <p className="stats-summary-card-label">Было и сейчас</p>
+            <p className="stats-summary-card-value">{summaryComparisonText}</p>
+            <p className="stats-summary-card-hint">{summaryModeHint}</p>
+          </article>
+
+          <article className="stats-summary-card" data-testid="stats-summary-best">
+            <p className="stats-summary-card-label">Лучший ориентир</p>
+            <p className="stats-summary-card-value">{summaryBestText}</p>
+            <p className="stats-summary-card-hint">{chartRangeLabel} и выбранный режим.</p>
+          </article>
+        </div>
+
+        <div className="stats-summary-next-step" data-testid="stats-summary-next-step">
+          <p className="stats-summary-next-label">Что делать дальше</p>
+          <p>{nextStepText}</p>
+        </div>
+      </section>
+
+        <section className="setup-block stats-compare-quick" data-testid="stats-compare-plain">
+          <div className="stats-compare-quick-header">
+            <div className="stats-compare-quick-copy">
+              <p className="stats-section-kicker">На фоне других</p>
+              <h3>{comparePlainSummary.headline}</h3>
+              <p className="comparison-note">{comparePlainSummary.supporting}</p>
+            </div>
+            <p className={`stats-summary-badge is-${comparePlainSummary.tone}`} data-testid="stats-compare-plain-badge">
+              {compareLoading ? "Подбираем сравнение..." : comparePlainSummary.percentileText}
+            </p>
+          </div>
+          <div className="stats-summary-grid">
+            <article className="stats-summary-card" data-testid="stats-compare-plain-user">
+              <p className="stats-summary-card-label">Ваш уровень сейчас</p>
+              <p className="stats-summary-card-value">{comparePlainSummary.userValueText}</p>
+              <p className="stats-summary-card-hint">Сравнение берём по последнему дню в выбранном режиме.</p>
+            </article>
+            <article className="stats-summary-card" data-testid="stats-compare-plain-majority">
+              <p className="stats-summary-card-label">Ориентир большинства</p>
+              <p className="stats-summary-card-value">{comparePlainSummary.majorityText}</p>
+              <p className="stats-summary-card-hint">Это помогает понять, насколько результат уже силён.</p>
+            </article>
+          </div>
+        </section>
+
+        <section className="setup-block stats-controls-panel" data-testid="stats-controls-panel">
+          <p className="stats-section-kicker">Режим и детали</p>
+          <h3>Уточнить режим, период и подробности</h3>
+          <p className="status-line">
+            Если хотите глубже посмотреть статистику, переключите режим или откройте подробное сравнение ниже.
+          </p>
+          <div className="segmented-row stats-controls-row">
+            <Link className="btn-secondary is-active" to="/stats">
+              Простая
+            </Link>
+            <Link className="btn-secondary" to="/stats/individual">
+              Расширенная
+            </Link>
+            {canViewGroupStatsAccess ? (
+              <Link className="btn-secondary" to="/stats/group">
+                Группа
+              </Link>
+            ) : null}
+          </div>
+
+          <div className="segmented-row stats-controls-row">
+            <button
+              type="button"
+              className={mode === "classic" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setMode("classic")}
+              data-testid="stats-mode-classic"
+            >
+              Таблицы Шульте
+            </button>
+            <button
+              type="button"
+              className={mode === "timed" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setMode("timed")}
+              data-testid="stats-mode-timed"
+            >
+              Шульте на время
+            </button>
+            <button
+              type="button"
+              className={mode === "reaction" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setMode("reaction")}
+              data-testid="stats-mode-reaction"
+            >
+              Скорость реакции
+            </button>
+            <button
+              type="button"
+              className={mode === "n_back" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setMode("n_back")}
+              data-testid="stats-mode-nback"
+            >
+              Память: N-Back
+            </button>
+            <button
+              type="button"
+              className={mode === "memory_grid" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setMode("memory_grid")}
+              data-testid="stats-mode-memory-grid"
+            >
+              Память: сетка
+            </button>
+            <button
+              type="button"
+              className={mode === "decision_rush" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setMode("decision_rush")}
+              data-testid="stats-mode-decision-rush"
+            >
+              Быстрый выбор
+            </button>
+            <button
+              type="button"
+              className={mode === "sprint_math" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setMode("sprint_math")}
+              data-testid="stats-mode-sprint"
+            >
+              Устный счёт
+            </button>
+          </div>
+
+          {mode === "sprint_math" ? (
+            <div className="segmented-row stats-controls-row" data-testid="stats-sprint-filter-row">
+              <button
+                type="button"
+                className={sprintFilter === "all" ? "btn-secondary is-active" : "btn-secondary"}
+                onClick={() => setSprintFilter("all")}
+                data-testid="stats-sprint-filter-all"
+              >
+                Все
+              </button>
+              <button
+                type="button"
+                className={sprintFilter === "sprint_add_sub" ? "btn-secondary is-active" : "btn-secondary"}
+                onClick={() => setSprintFilter("sprint_add_sub")}
+                data-testid="stats-sprint-filter-add-sub"
+              >
+                Сложение / вычитание
+              </button>
+              <button
+                type="button"
+                className={sprintFilter === "sprint_mixed" ? "btn-secondary is-active" : "btn-secondary"}
+                onClick={() => setSprintFilter("sprint_mixed")}
+                data-testid="stats-sprint-filter-mixed"
+              >
+                Смешанный
+              </button>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="setup-block stats-flow-details" data-testid="stats-progress-headline">
+        <p className="stats-section-kicker">Подробности</p>
+        <h3>Как меняется результат</h3>
+        <p className="status-line">
+          Сравниваем первую и вторую половину выбранного периода по этому режиму.
+        </p>
         <div className="stats-grid compact">
           <StatCard
-            title="Прошлый период"
-            value={formatMetric(progressInsight.previousAvg)}
+            title="Раньше"
+            value={formatModeMetric(mode, progressInsight.previousAvg)}
           />
           <StatCard
-            title="Текущий период"
-            value={formatMetric(progressInsight.currentAvg)}
+            title="Сейчас"
+            value={formatModeMetric(mode, progressInsight.currentAvg)}
           />
           <StatCard
-            title="Изменение"
+            title="Разница"
             value={formatSignedMetric(progressInsight.changePct, 1, "%")}
-          />
-          <StatCard
-            title="Личный рекорд"
-            value={progressInsight.snapshot?.label ?? "-"}
           />
         </div>
         {progressInsight.snapshot ? (
@@ -1077,8 +1450,8 @@ export function StatsPage() {
         )}
       </section>
 
-      <section className="setup-block" data-testid="stats-daily-challenge-block">
-        <h3>Daily Challenge: выполнение</h3>
+      <section className="setup-block stats-secondary-block stats-flow-secondary" data-testid="stats-daily-challenge-block">
+        <h3>Дополнительно: челлендж дня</h3>
         <div className="action-row">
           <label htmlFor="stats-challenge-period">Период</label>
           <select
@@ -1094,16 +1467,16 @@ export function StatsPage() {
             <option value={7}>7 дней</option>
             <option value={30}>30 дней</option>
             <option value={90}>90 дней</option>
-            <option value="all">Все время</option>
+            <option value="all">Всё время</option>
           </select>
         </div>
 
         {challengeLoading ? (
-          <p>Загрузка Daily Challenge...</p>
+          <p>Загрузка челленджа дня...</p>
         ) : challengeSummary ? (
           <>
             <div className="stats-grid compact" data-testid="stats-daily-challenge-summary">
-              <StatCard title="Всего challenge" value={String(challengeSummary.total)} />
+              <StatCard title="Всего челленджей" value={String(challengeSummary.total)} />
               <StatCard title="Выполнено" value={String(challengeSummary.completed)} />
               <StatCard title="Осталось" value={String(challengeSummary.pending)} />
               <StatCard
@@ -1125,7 +1498,7 @@ export function StatsPage() {
               <StatCard title="Период" value={formatPeriodLabel(challengeSummary.period)} />
             </div>
             <p className="comparison-note" data-testid="stats-daily-challenge-note">
-              Период: {formatPeriodLabel(challengeSummary.period)}. Серия считается по дням подряд с выполненным challenge.
+              Период: {formatPeriodLabel(challengeSummary.period)}. Серия считается по дням подряд с выполненным челленджем.
             </p>
 
             {challengeTrendChartData.length > 0 ? (
@@ -1140,7 +1513,7 @@ export function StatsPage() {
                     <Line
                       type="monotone"
                       dataKey="completionPct"
-                      name="Выполнение challenge (%)"
+                      name="Выполнение челленджа (%)"
                       stroke="#1e7f71"
                       strokeWidth={3}
                       dot={{ r: 3 }}
@@ -1151,7 +1524,7 @@ export function StatsPage() {
             ) : null}
 
             {challengeHistory.length === 0 ? (
-              <p className="status-line">За выбранный период challenge еще не создавались.</p>
+              <p className="status-line">За выбранный период челленджи ещё не создавались.</p>
             ) : (
               <ol className="challenge-history-list" data-testid="stats-daily-challenge-history">
                 {challengeHistory.map((entry) => (
@@ -1180,12 +1553,12 @@ export function StatsPage() {
             )}
           </>
         ) : (
-          <p className="status-line">Не удалось загрузить блок Daily Challenge.</p>
+          <p className="status-line">Не удалось загрузить блок челленджа дня.</p>
         )}
       </section>
 
       {mode === "reaction" ? (
-        <section className="setup-block" data-testid="stats-reaction-summary">
+        <section className="setup-block stats-flow-details" data-testid="stats-reaction-summary">
           <h3>Reaction: итоги</h3>
           <div className="stats-grid compact">
             <StatCard
@@ -1229,7 +1602,7 @@ export function StatsPage() {
       ) : null}
 
       {mode === "n_back" ? (
-        <section className="setup-block" data-testid="stats-nback-summary">
+        <section className="setup-block stats-flow-details" data-testid="stats-nback-summary">
           <h3>N-Back Lite: итоги</h3>
           <div className="stats-grid compact">
             <StatCard
@@ -1271,7 +1644,7 @@ export function StatsPage() {
       ) : null}
 
       {mode === "memory_grid" ? (
-        <section className="setup-block" data-testid="stats-memory-grid-summary">
+        <section className="setup-block stats-flow-details" data-testid="stats-memory-grid-summary">
           <h3>Memory Grid: итоги</h3>
           <div className="stats-grid compact">
             <StatCard
@@ -1317,7 +1690,7 @@ export function StatsPage() {
       ) : null}
 
       {mode === "decision_rush" ? (
-        <section className="setup-block" data-testid="stats-decision-rush-summary">
+        <section className="setup-block stats-flow-details" data-testid="stats-decision-rush-summary">
           <h3>Decision Rush: итоги</h3>
           <div className="stats-grid compact">
             <StatCard
@@ -1361,7 +1734,7 @@ export function StatsPage() {
       ) : null}
 
       {mode === "sprint_math" ? (
-        <section className="setup-block" data-testid="stats-sprint-summary">
+        <section className="setup-block stats-flow-details" data-testid="stats-sprint-summary">
           <h3>Sprint Math: {sprintFilterLabel(sprintFilter)}</h3>
           <div className="stats-grid compact">
             <StatCard title="Сессий" value={String(sprintSummary.sessions)} />
@@ -1376,7 +1749,7 @@ export function StatsPage() {
       ) : null}
 
       {mode === "sprint_math" ? (
-        <section className="setup-block" data-testid="stats-sprint-comparison">
+        <section className="setup-block stats-flow-details" data-testid="stats-sprint-comparison">
           <h3>Сравнение подрежимов</h3>
           <div className="comparison-grid sprint-compare-grid">
             <article className="stat-card sprint-mode-card" data-testid="stats-sprint-card-add-sub">
@@ -1431,42 +1804,14 @@ export function StatsPage() {
         </section>
       ) : null}
 
-      <section className="setup-block" data-testid="stats-compare-band">
-        <h3>Сравнение с пользователями (median / p25 / p75)</h3>
-        <div className="action-row">
-          <button
-            type="button"
-            className={compareEnabled ? "btn-secondary is-active" : "btn-secondary"}
-            onClick={() => setCompareEnabled((value) => !value)}
-            data-testid="stats-compare-toggle"
-          >
-            {compareEnabled ? "Скрыть сравнение" : "Показать сравнение"}
-          </button>
-
-          <label htmlFor="stats-compare-period">Период</label>
-          <select
-            id="stats-compare-period"
-            value={String(comparePeriod)}
-            onChange={(event) =>
-              setComparePeriod(
-                event.target.value === "all" ? "all" : Number(event.target.value)
-              )
-            }
-            data-testid="stats-compare-period"
-          >
-            <option value={7}>7 дней</option>
-            <option value={30}>30 дней</option>
-            <option value={90}>90 дней</option>
-            <option value="all">Все время</option>
-          </select>
-        </div>
-
-        <p className="comparison-note">{compareConfig.title}</p>
+      <section className="setup-block stats-secondary-block stats-compare-details" data-testid="stats-compare-band">
+        <h3>Подробный график сравнения</h3>
+        <p className="comparison-note">Подробный диапазон и график по другим пользователям для выбранного режима.</p>
 
         {!compareEnabled ? (
-          <p className="status-line">Включите compare-mode, чтобы увидеть диапазон по другим пользователям.</p>
+          <p className="status-line">Включите режим сравнения, чтобы увидеть диапазон результатов по другим пользователям.</p>
         ) : compareLoading ? (
-          <p>Загрузка compare-mode...</p>
+          <p>Загрузка режима сравнения...</p>
         ) : compareChartData.length === 0 ? (
           <p>Недостаточно данных для сравнения в выбранном режиме.</p>
         ) : (
@@ -1481,7 +1826,7 @@ export function StatsPage() {
                 )}
               />
               <StatCard
-                title="P25"
+                title="Нижняя граница группы"
                 value={formatMetric(
                   compareLatestPoint?.p25 ?? null,
                   compareConfig.digits,
@@ -1497,7 +1842,7 @@ export function StatsPage() {
                 )}
               />
               <StatCard
-                title="P75"
+                title="Верхняя граница группы"
                 value={formatMetric(
                   compareLatestPoint?.p75 ?? null,
                   compareConfig.digits,
@@ -1523,7 +1868,7 @@ export function StatsPage() {
                   <Line
                     type="monotone"
                     dataKey="p25"
-                    name="P25"
+                    name="Нижняя граница"
                     stroke="#2e62c9"
                     strokeWidth={2}
                     dot={false}
@@ -1539,7 +1884,7 @@ export function StatsPage() {
                   <Line
                     type="monotone"
                     dataKey="p75"
-                    name="P75"
+                    name="Верхняя граница"
                     stroke="#b74343"
                     strokeWidth={2}
                     dot={false}
@@ -1557,10 +1902,49 @@ export function StatsPage() {
       {isEmpty ? (
         <p>Пока нет данных для выбранного режима.</p>
       ) : (
-        <div className="chart-box">
-          <ResponsiveContainer width="100%" height={320}>
+        <div className="setup-block stats-chart-primary" data-testid="stats-main-chart">
+          <p className="stats-section-kicker">Главный график</p>
+          <h3>Как меняется результат по времени</h3>
+          <p className="status-line">Сначала посмотрите тренд, потом при необходимости меняйте период и режим.</p>
+          <div className="segmented-row chart-window-row" data-testid="stats-chart-window">
+            <span className="status-line">Период графика:</span>
+            <button
+              type="button"
+              className={chartRange === 7 ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setChartRange(7)}
+              data-testid="stats-chart-window-7"
+            >
+              7 дн.
+            </button>
+            <button
+              type="button"
+              className={chartRange === 30 ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setChartRange(30)}
+              data-testid="stats-chart-window-30"
+            >
+              30 дн.
+            </button>
+            <button
+              type="button"
+              className={chartRange === 90 ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setChartRange(90)}
+              data-testid="stats-chart-window-90"
+            >
+              90 дн.
+            </button>
+            <button
+              type="button"
+              className={chartRange === "all" ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() => setChartRange("all")}
+              data-testid="stats-chart-window-all"
+            >
+              Всё время
+            </button>
+          </div>
+          <div className="chart-box">
+            <ResponsiveContainer width="100%" height={320}>
             {mode === "classic" ? (
-              <LineChart data={classicChartData}>
+              <LineChart data={visibleClassicChartData}>
                 <XAxis dataKey="dateShort" />
                 <YAxis />
                 <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
@@ -1582,7 +1966,7 @@ export function StatsPage() {
                 />
               </LineChart>
             ) : mode === "timed" ? (
-              <LineChart data={timedChartData}>
+              <LineChart data={visibleTimedChartData}>
                 <XAxis dataKey="dateShort" />
                 <YAxis />
                 <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
@@ -1604,7 +1988,7 @@ export function StatsPage() {
                 />
               </LineChart>
             ) : mode === "reaction" ? (
-              <LineChart data={reactionChartData}>
+              <LineChart data={visibleReactionChartData}>
                 <XAxis dataKey="dateShort" />
                 <YAxis />
                 <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
@@ -1634,7 +2018,7 @@ export function StatsPage() {
                 />
               </LineChart>
             ) : mode === "n_back" ? (
-              <LineChart data={nBackChartData}>
+              <LineChart data={visibleNBackChartData}>
                 <XAxis dataKey="dateShort" />
                 <YAxis />
                 <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
@@ -1656,7 +2040,7 @@ export function StatsPage() {
                 />
               </LineChart>
             ) : mode === "memory_grid" ? (
-              <LineChart data={memoryGridChartData}>
+              <LineChart data={visibleMemoryGridChartData}>
                 <XAxis dataKey="dateShort" />
                 <YAxis />
                 <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
@@ -1686,7 +2070,7 @@ export function StatsPage() {
                 />
               </LineChart>
             ) : mode === "decision_rush" ? (
-              <LineChart data={decisionChartData}>
+              <LineChart data={visibleDecisionChartData}>
                 <XAxis dataKey="dateShort" />
                 <YAxis />
                 <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
@@ -1716,7 +2100,7 @@ export function StatsPage() {
                 />
               </LineChart>
             ) : (
-              <LineChart data={sprintMathChartData}>
+              <LineChart data={visibleSprintMathChartData}>
                 <XAxis dataKey="dateShort" />
                 <YAxis />
                 <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""} />
@@ -1747,8 +2131,26 @@ export function StatsPage() {
               </LineChart>
             )}
           </ResponsiveContainer>
+          </div>
         </div>
       )}
+      </div>
     </section>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,12 +1,11 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { PwaStatusBar } from "../../src/widgets/PwaStatusBar";
 
 describe("PwaStatusBar", () => {
-  it("shows online message by default", () => {
+  it("is hidden by default in normal online browser mode", () => {
     render(<PwaStatusBar />);
-    expect(screen.getByTestId("pwa-status-bar")).toBeInTheDocument();
-    expect(screen.getByText(/Онлайн режим/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("pwa-status-bar")).not.toBeInTheDocument();
   });
 
   it("shows offline banner when network is unavailable", () => {
@@ -26,5 +25,21 @@ describe("PwaStatusBar", () => {
         get: () => originalOnline
       });
     }
+  });
+
+  it("shows install CTA when beforeinstallprompt is available", async () => {
+    const event = Object.assign(new Event("beforeinstallprompt"), {
+      prompt: vi.fn().mockResolvedValue(undefined),
+      userChoice: Promise.resolve({ outcome: "dismissed", platform: "web" }),
+      preventDefault: vi.fn()
+    });
+
+    render(<PwaStatusBar />);
+    fireEvent(window, event);
+
+    expect(await screen.findByTestId("pwa-status-bar")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Установить приложение/i })
+    ).toBeInTheDocument();
   });
 });

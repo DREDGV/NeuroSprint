@@ -4,21 +4,27 @@
 
 ## [Unreleased]
 ### План
-- Завершение `v0.7.C`: финальный UX-polish `Decision Rush` и расширение e2e-покрытия.
-- Подготовка `v0.8.A`: запуск полного цикла `Memory Grid Rush`.
+- Следующий основной шаг: production-доведение `Memory Match` как первого нового memory-модуля.
+- `Block Pattern Recall` остаётся в alpha-статусе.
+- `Spatial Memory` удерживается в `hold / redesign` до отдельной переработки концепции.
 
 ### Изменено
-- Продолжается стабилизация новых модулей и маршрутов перед следующим dev-срезом.
-- `Decision Rush` улучшен по UX:
-  - уровни в setup оформлены как `Легко / Стандарт / Эксперт`,
-  - добавлен живой статус шага в сессии (`можно отвечать`, `ответ принят`, `пауза`, `завершено`),
-  - уточнены тексты обратной связи во время разминки и ответов.
-- Добавлены стабильные селекторы модулей в `TrainingHub`:
-  - `data-testid="training-open-<moduleId>"`,
-  - `data-testid="training-plan-<moduleId>"`.
-- Добавлен e2e-сценарий `tests/e2e/decision-rush.spec.ts`:
-  - `profiles -> training -> decision-rush -> session -> stats`,
-  - `pre-session -> decision_pro -> setup`.
+- Выполнена стабилизация пользовательской поверхности:
+  - исправлены user-facing тексты в каталогах модулей и режимов,
+  - убрана заметная языковая мешанина в ключевых местах.
+- `TrainingHub` приведён в честное состояние:
+  - `Memory Match`, `Spatial Memory`, `Block Pattern Recall` явно помечены как `Alpha / Прототип`,
+  - добавлено пояснение, что эти тренажёры пока не входят в официальную статистику, рекомендации и челлендж дня.
+- Улучшен основной пользовательский сценарий вкладки `Статистика`:
+  - сверху добавлен короткий полезный итог,
+  - затем идёт тренд по периодам,
+  - сложные блоки сравнения и челленджа переведены в дополнительные секции.
+- `Stats`, `StatsIndividual`, `StatsGroup` теперь явно сообщают, что работают только с официально поддерживаемыми модулями.
+- Синхронизированы документы состояния проекта:
+  - `docs/NeuroSprint_MVP_Roadmap_RU.md`,
+  - `docs/NeuroSprint_Execution_Status_RU.md`,
+  - `docs/NeuroSprint_UNIFIED_PLAN_RU.md`,
+  - `NeuroSprint_AGENT_PLAN_RU.md`.
 
 ## [0.5.0-dev.5] - 2026-03-03
 ### Изменено
@@ -165,39 +171,3 @@
 ## [0.1.0] - 2026-02-23
 ### Добавлено
 - Базовый MVP: профили, активный пользователь, Schulte classic/timed, дневная статистика, PWA.
-
-### Обновлено (v0.5.P.1)
-- Reaction теперь сохраняет завершенные сессии в IndexedDB (`taskId=reaction`, modeId: `reaction_signal|reaction_stroop|reaction_pair`).
-- В `sessionRepository` добавлена дневная агрегация Reaction (`ReactionDailyPoint`) и поддержка `aggregateDailyByModeId`.
-- В `/stats` добавлен режим `Reaction` с графиком (лучшее/среднее время реакции, точность) и сводными карточками.
-- В `/stats/individual` добавлены подрежимы Reaction и их динамика в графиках.
-- В `/stats/group` добавлен модуль `Reaction` и выбор подрежимов для group/global-сравнений.
-- Обновлен e2e-сценарий Reaction для устойчивого старта после создания профиля.
-
-### Проверки (v0.5.P.1)
-- `npm run check:encoding` - passed.
-- `npm test -- tests/unit/session-aggregation.test.ts tests/integration/stats-page-sprint.test.tsx tests/integration/stats-individual-comparison.test.tsx` - passed.
-- `npm run build` - passed.
-- `npm run test:e2e -- tests/e2e/reaction.spec.ts` - passed.
-
-### Обновлено (v0.5.P.2)
-- Recommendation engine учитывает `Reaction`:
-  - добавлен mode-рекомендатор `reaction_signal`,
-  - `reaction_stroop`/`reaction_pair` нормализуются в единый recommendation-bucket,
-  - для «untrained Reaction» снижен приоритет, чтобы не перебивать базовые режимы без причины.
-- `Pre-session` теперь поддерживает модуль `Reaction` и быстрый запуск в конкретный режим:
-  - `/training/pre-session?module=reaction`
-  - переход на `/training/reaction?mode=reaction_signal|reaction_stroop|reaction_pair`.
-- `ReactionPage` читает query `mode` и открывает соответствующий вариант тренировки.
-- `TRAINING_MODES` расширен до Schulte + Sprint Math + Reaction.
-- Добавлены тесты на reaction-flow в pre-session и рекомендации.
-
-### Проверки (v0.5.P.2)
-- `npm test -- tests/unit/recommendation.test.ts tests/integration/pre-session-page.test.tsx tests/integration/training-hub.test.tsx` - passed.
-- `npm test -- tests/integration/stats-individual-comparison.test.tsx tests/integration/stats-group-comparison.test.tsx tests/integration/stats-page-sprint.test.tsx` - passed.
-- `npm run test:e2e -- tests/e2e/reaction.spec.ts` - passed.
-- `npm run check:encoding` - passed.
-- `npm run build` - passed.
-
-
-

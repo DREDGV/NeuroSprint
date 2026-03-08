@@ -31,6 +31,7 @@ export const userRepository = {
         n_back: 0,
         memory_grid: 0,
         decision_rush: 0,
+        memory_match: 0,
         pattern_recognition: 0
       }
     };
@@ -52,6 +53,7 @@ export const userRepository = {
         n_back: 0,
         memory_grid: 0,
         decision_rush: 0,
+        memory_match: 0,
         pattern_recognition: 0
       };
 
@@ -141,3 +143,5 @@ export const userRepository = {
     );
   }
 };
+
+

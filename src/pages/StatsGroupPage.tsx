@@ -56,7 +56,7 @@ function metricTitle(metric: GroupMetric): string {
   if (metric === "speed") {
     return "Скорость";
   }
-  return "Score";
+  return "Результат (score)";
 }
 
 function formatMetric(value: number | null | undefined, metric: GroupMetric): string {
@@ -327,6 +327,10 @@ export function StatsGroupPage() {
         Локальная аналитика класса: лучший, средний, худший результат,
         перцентиль ученика и распределение по уровням.
       </p>
+      <p className="status-line">
+        Здесь показываются только официально поддерживаемые модули. Экспериментальные
+        тренажёры пока не входят в групповую аналитику.
+      </p>
 
       <div className="segmented-row">
         <Link className="btn-secondary" to="/stats/individual">
@@ -352,6 +356,20 @@ export function StatsGroupPage() {
           Создать группу
         </button>
       </form>
+
+      <div className="segmented-row" data-testid="stats-group-module-row">
+        {GROUP_MODULES.map((module) => (
+          <button
+            key={module.id}
+            type="button"
+            className={moduleId === module.id ? "btn-secondary is-active" : "btn-secondary"}
+            data-testid={`stats-group-module-${module.id}`}
+            onClick={() => setModuleId(module.id)}
+          >
+            {module.title}
+          </button>
+        ))}
+      </div>
 
       <div className="settings-form">
         <label htmlFor="module-select">Модуль</label>
@@ -402,9 +420,9 @@ export function StatsGroupPage() {
           value={metric}
           onChange={(event) => setMetric(event.target.value as GroupMetric)}
         >
-          <option value="score">Score</option>
-          <option value="accuracy">Accuracy</option>
-          <option value="speed">Speed</option>
+          <option value="score">Результат (score)</option>
+          <option value="accuracy">Точность</option>
+          <option value="speed">Скорость</option>
         </select>
 
         <label htmlFor="period-select">Период</label>
@@ -419,7 +437,7 @@ export function StatsGroupPage() {
           <option value={14}>14 дней</option>
           <option value={30}>30 дней</option>
           <option value={90}>90 дней</option>
-          <option value="all">Все время</option>
+          <option value="all">Всё время</option>
         </select>
       </div>
 
@@ -479,7 +497,7 @@ export function StatsGroupPage() {
       </div>
 
       <section className="setup-block" data-testid="group-comparison-block">
-        <h3>Сравнение групп и общей статистики</h3>
+        <h3>Дополнительно: сравнение групп и общей статистики</h3>
         <div className="action-row">
           <select
             value={compareGroupId}
@@ -513,7 +531,7 @@ export function StatsGroupPage() {
       </section>
 
       <section className="setup-block">
-        <h3>Перцентиль ученика</h3>
+        <h3>Дополнительно: перцентиль ученика</h3>
         <div className="action-row">
           <select
             value={selectedUserId}
@@ -594,6 +612,8 @@ export function StatsGroupPage() {
     </section>
   );
 }
+
+
 
 
 

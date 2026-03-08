@@ -1,4 +1,4 @@
-export type Mode =
+﻿export type Mode =
   | "classic"
   | "timed"
   | "reverse"
@@ -7,6 +7,7 @@ export type Mode =
   | "n_back"
   | "memory_grid"
   | "decision_rush"
+  | "memory_match"
   | "pattern_recognition";
 export type AppRole = "teacher" | "student" | "home" | "admin";
 export type TrainingModuleId =
@@ -16,6 +17,7 @@ export type TrainingModuleId =
   | "n_back"
   | "memory_grid"
   | "decision_rush"
+  | "memory_match"
   | "pattern_recognition";
 export type TrainingModeId =
   | "classic_plus"
@@ -47,6 +49,7 @@ export type TrainingModeId =
   | "decision_kids"
   | "decision_standard"
   | "decision_pro"
+  | "memory_match_classic"
   | "pattern_classic"
   | "pattern_timed"
   | "pattern_progressive"
@@ -128,7 +131,7 @@ export interface Difficulty {
 export interface Session {
   id: string;
   userId: string;
-  taskId: "schulte" | "sprint_math" | "reaction" | "n_back" | "decision_rush" | "memory_grid" | "pattern_recognition";
+  taskId: "schulte" | "sprint_math" | "reaction" | "n_back" | "decision_rush" | "memory_grid" | "memory_match" | "pattern_recognition";
   mode: Mode;
   moduleId: TrainingModuleId;
   modeId: TrainingModeId;
@@ -458,3 +461,6 @@ export interface AppSettings {
   timedErrorPenalty: number;
   dailyGoalSessions: number;
 }
+
+
+

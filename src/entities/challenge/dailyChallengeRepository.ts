@@ -77,6 +77,7 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   decision_kids: "Decision Rush Kids",
   decision_standard: "Decision Rush Standard",
   decision_pro: "Decision Rush Pro",
+  memory_match_classic: "Memory Match Classic",
   pattern_classic: "Pattern Recognition Classic",
   pattern_timed: "Pattern Recognition Timed",
   pattern_progressive: "Pattern Recognition Progressive",
@@ -162,6 +163,9 @@ export function getChallengeLaunchPath(modeId: TrainingModeId): string {
   }
   if (moduleId === "memory_grid") {
     return `/training/memory-grid?mode=${modeId}`;
+  }
+  if (moduleId === "memory_match") {
+    return "/training/memory-match";
   }
   if (moduleId === "pattern_recognition") {
     return `/training/pattern-recognition?mode=${modeId}`;

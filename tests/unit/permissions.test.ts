@@ -83,8 +83,8 @@ describe("permissions", () => {
   });
 
   it("returns roles that can access a permission", () => {
-    expect(rolesWithPermission("classes:view")).toEqual(["teacher"]);
-    expect(rolesWithPermission("settings:export")).toEqual(["teacher", "home"]);
+    expect(rolesWithPermission("classes:view")).toEqual(["teacher", "admin"]);
+    expect(rolesWithPermission("settings:export")).toEqual(["teacher", "home", "admin"]);
   });
 
   it("builds normalized role access map", () => {

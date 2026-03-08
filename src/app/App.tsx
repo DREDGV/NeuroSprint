@@ -121,6 +121,21 @@ const PatternRecognitionResultPage = lazy(() =>
     default: module.PatternRecognitionResultPage
   }))
 );
+const MemoryMatchPage = lazy(() =>
+  import("../pages/MemoryMatchPage").then((module) => ({
+    default: module.MemoryMatchPage
+  }))
+);
+const SpatialMemoryPage = lazy(() =>
+  import("../pages/SpatialMemoryPage").then((module) => ({
+    default: module.SpatialMemoryPage
+  }))
+);
+const BlockPatternRecallPage = lazy(() =>
+  import("../pages/BlockPatternRecallPage").then((module) => ({
+    default: module.BlockPatternRecallPage
+  }))
+);
 
 export function App() {
   return (
@@ -280,6 +295,30 @@ export function App() {
                 }
               />
               <Route
+                path="/training/memory-match"
+                element={
+                  <RequireActiveUser>
+                    <MemoryMatchPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/spatial-memory"
+                element={
+                  <RequireActiveUser>
+                    <SpatialMemoryPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
+                path="/training/block-pattern"
+                element={
+                  <RequireActiveUser>
+                    <BlockPatternRecallPage />
+                  </RequireActiveUser>
+                }
+              />
+              <Route
                 path="/play/schulte/classic"
                 element={<Navigate to="/training/schulte/classic_plus" replace />}
               />
@@ -326,3 +365,5 @@ export function App() {
     </BrowserRouter>
   );
 }
+
+

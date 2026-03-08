@@ -66,6 +66,8 @@ export function PwaStatusBar() {
     [deferredPrompt, isInstalled]
   );
 
+  const showStatus = !isOnline || canInstall || (!isInstalled && isIos);
+
   async function handleInstallClick() {
     if (!deferredPrompt) {
       return;
@@ -78,13 +80,15 @@ export function PwaStatusBar() {
     }
   }
 
+  if (!showStatus) {
+    return null;
+  }
+
   const statusText = !isOnline
-    ? "Офлайн режим: интернет недоступен, используется локальный кеш."
+    ? "Офлайн режим: интернет недоступен, приложение работает из локального кеша."
     : canInstall
-      ? "Онлайн режим: приложение можно установить на устройство."
-      : isInstalled
-        ? "Онлайн режим: приложение установлено и готово к работе."
-        : "Онлайн режим: приложение работает в браузере.";
+      ? "Можно установить NeuroSprint на устройство."
+      : "iPhone/iPad: Safari → Поделиться → На экран Домой.";
 
   return (
     <section
@@ -100,11 +104,6 @@ export function PwaStatusBar() {
         >
           Установить приложение
         </button>
-      ) : null}
-      {!isInstalled && !canInstall && isIos ? (
-        <p className="pwa-status-text">
-          iPhone/iPad: Safari → Поделиться → На экран Домой.
-        </p>
       ) : null}
     </section>
   );

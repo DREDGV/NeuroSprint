@@ -450,8 +450,9 @@ export function ClassesPage() {
                 onChange={(event) => setStudentName(event.target.value)}
                 placeholder="Имя ученика"
                 className="classes-input"
+                data-testid="student-name-input"
               />
-              <button type="submit" className="btn-primary">
+              <button type="submit" className="btn-primary" data-testid="create-student-btn">
                 Добавить
               </button>
             </form>

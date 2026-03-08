@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { TRAINING_MODULES } from "../shared/lib/training/presets";
 import { InfoHint } from "../shared/ui/InfoHint";
 
@@ -234,6 +234,41 @@ export function TrainingHubPage() {
         })}
       </div>
 
+      <section className="setup-block" data-testid="training-alpha-trainers">
+        <h2>Экспериментальные тренажёры</h2>
+        <p className="status-line">
+          Это ранние прототипы по новым спецификациям. Их можно открыть и
+          протестировать, но они пока не входят в основную статистику,
+          рекомендации и челлендж дня.
+        </p>
+        <div className="training-alpha-grid">
+          <Link className="training-alpha-card" to="/training/memory-match" data-testid="training-alpha-memory-match">
+            <span className="training-alpha-title">Memory Match</span>
+            <span className="module-card-badge locked">Alpha / Прототип</span>
+            <span className="training-alpha-desc">
+              Найдите пары и потренируйте зрительную память. Пока работает как
+              экспериментальный режим без полной аналитики.
+            </span>
+          </Link>
+          <Link className="training-alpha-card" to="/training/spatial-memory" data-testid="training-alpha-spatial-memory">
+            <span className="training-alpha-title">Spatial Memory</span>
+            <span className="module-card-badge locked">Alpha / Прототип</span>
+            <span className="training-alpha-desc">
+              Запоминайте расположение элементов и восстанавливайте его. Модуль
+              ещё в доработке и пока не считается официальной тренировкой.
+            </span>
+          </Link>
+          <Link className="training-alpha-card" to="/training/block-pattern" data-testid="training-alpha-block-pattern">
+            <span className="training-alpha-title">Block Pattern Recall</span>
+            <span className="module-card-badge locked">Alpha / Прототип</span>
+            <span className="training-alpha-desc">
+              Запоминайте блочные паттерны с поворотом и зеркальностью. Пока это
+              экспериментальный сценарий без полной интеграции в прогресс.
+            </span>
+          </Link>
+        </div>
+      </section>
+
       {/* Quick Actions */}
       <section className="training-quick-actions">
         <h2 className="section-title">
@@ -261,3 +296,5 @@ export function TrainingHubPage() {
     </section>
   );
 }
+
+

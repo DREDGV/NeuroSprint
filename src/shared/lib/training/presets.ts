@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   GridSize,
   SchulteThemeId,
   TimeLimitSec,
@@ -23,7 +23,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
   {
     id: "sprint_math",
     title: "Sprint Math",
-    description: "Скоростной счет и вычисления.",
+    description: "Скоростной счёт и вычисления.",
     status: "active"
   },
   {
@@ -47,13 +47,12 @@ export const TRAINING_MODULES: TrainingModule[] = [
   {
     id: "decision_rush",
     title: "Decision Rush",
-    description:
-      "Быстрый тренажер правил ДА/НЕТ со сменой правил и фокусом на точность.",
+    description: "Быстрый тренажёр правил Да/Нет со сменой правил и фокусом на точность.",
     status: "active"
   },
   {
     id: "pattern_recognition",
-    title: "Pattern Recognition ⭐",
+    title: "Pattern Recognition",
     description: "Распознавание паттернов: «Что будет следующим?»",
     status: "active"
   }
@@ -70,7 +69,7 @@ export const SCHULTE_MODES: TrainingMode[] = [
     id: "timed_plus",
     moduleId: "schulte",
     title: "Timed+",
-    description: "Максимум правильных за ограниченное время."
+    description: "Максимум правильных чисел за ограниченное время."
   },
   {
     id: "reverse",
@@ -112,7 +111,7 @@ export const REACTION_MODES: TrainingMode[] = [
     id: "reaction_pair",
     moduleId: "reaction",
     title: "Reaction: Пара",
-    description: "Найдите правильную пару по подсказке (символ + число)."
+    description: "Найдите правильную пару по подсказке: символ и число."
   },
   {
     id: "reaction_number",
@@ -132,8 +131,8 @@ export const NBACK_MODES: TrainingMode[] = [
   {
     id: "nback_1_4x4",
     moduleId: "n_back",
-    title: "N-Back Lite 1-back 4×4",
-    description: "Увеличенная сетка 4×4 для 1-back режима."
+    title: "N-Back Lite 1-back 4x4",
+    description: "Увеличенная сетка 4x4 для режима 1-back."
   },
   {
     id: "nback_2",
@@ -144,44 +143,42 @@ export const NBACK_MODES: TrainingMode[] = [
   {
     id: "nback_2_4x4",
     moduleId: "n_back",
-    title: "N-Back Lite 2-back 4×4",
-    description: "Увеличенная сетка 4×4 для 2-back режима."
+    title: "N-Back Lite 2-back 4x4",
+    description: "Увеличенная сетка 4x4 для режима 2-back."
   },
   {
     id: "nback_3",
     moduleId: "n_back",
     title: "N-Back Lite 3-back",
-    description: "Хардкор: сравнивайте с позицией 3 шага назад."
+    description: "Сравнивайте текущую клетку с позицией три шага назад."
   }
 ];
 
 export const MEMORY_GRID_MODES: TrainingMode[] = [
-  // Classic режимы
   {
     id: "memory_grid_classic",
     moduleId: "memory_grid",
     title: "Memory Grid Classic",
-    description: "Запомните последовательность и воспроизведите её. Ошибка = конец игры."
+    description: "Запомните последовательность и воспроизведите её. Ошибка завершает попытку."
   },
   {
     id: "memory_grid_classic_kids",
     moduleId: "memory_grid",
     title: "Memory Grid Kids",
-    description: "Мягкий режим для детей 6-10 лет. Медленнее темп, проще уровни."
+    description: "Мягкий режим для детей 6-10 лет: медленнее темп и проще уровни."
   },
   {
     id: "memory_grid_classic_pro",
     moduleId: "memory_grid",
     title: "Memory Grid Pro",
-    description: "Сложный режим для взрослых. Быстрый темп, сетка 4×4."
+    description: "Сложный режим для взрослых: быстрее темп и сетка 4x4."
   },
   {
     id: "memory_grid_classic_4x4",
     moduleId: "memory_grid",
-    title: "Memory Grid Classic 4×4",
-    description: "Увеличенная сетка 4×4 для классического режима."
+    title: "Memory Grid Classic 4x4",
+    description: "Увеличенная сетка 4x4 для классического режима."
   },
-  // Rush режимы
   {
     id: "memory_grid_rush",
     moduleId: "memory_grid",
@@ -198,13 +195,13 @@ export const MEMORY_GRID_MODES: TrainingMode[] = [
     id: "memory_grid_rush_pro",
     moduleId: "memory_grid",
     title: "Memory Grid Rush Pro",
-    description: "Быстрый режим на время для экспертов."
+    description: "Быстрый режим на время для опытных пользователей."
   },
   {
     id: "memory_grid_rush_4x4",
     moduleId: "memory_grid",
-    title: "Memory Grid Rush 4×4",
-    description: "Увеличенная сетка 4×4 для режима Rush."
+    title: "Memory Grid Rush 4x4",
+    description: "Увеличенная сетка 4x4 для режима Rush."
   }
 ];
 
@@ -389,3 +386,4 @@ export function normalizeTimeLimit(value: number): TimeLimitSec {
   }
   return 60;
 }
+

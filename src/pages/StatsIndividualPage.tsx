@@ -41,6 +41,7 @@ import type {
   SprintMathDailyPoint,
   TimedDailyPoint,
   TrainingModeId,
+  TrainingModuleId,
   User,
   UserModeProfile
 } from "../shared/types/domain";
@@ -48,6 +49,26 @@ import type {
 const STATS_TRAINING_MODES = TRAINING_MODES.filter(
   (mode) => mode.moduleId !== "pattern_recognition"
 );
+
+const STATS_MODULE_ORDER: TrainingModuleId[] = [
+  "schulte",
+  "sprint_math",
+  "reaction",
+  "n_back",
+  "memory_grid",
+  "decision_rush"
+];
+
+const STATS_MODULE_LABELS: Record<TrainingModuleId, string> = {
+  schulte: "Шульте",
+  sprint_math: "Sprint Math",
+  reaction: "Reaction",
+  n_back: "N-Back",
+  memory_grid: "Memory Grid",
+  decision_rush: "Decision Rush",
+  memory_match: "Memory Match",
+  pattern_recognition: "Pattern"
+};
 
 function calculateStability(values: number[]): number | null {
   if (values.length < 2) {
@@ -66,7 +87,7 @@ function metricTitle(metric: GroupMetric): string {
   if (metric === "speed") {
     return "Скорость";
   }
-  return "Score";
+  return "Результат (score)";
 }
 
 function formatMetricValue(value: number | null | undefined, metric: GroupMetric): string {
@@ -396,6 +417,18 @@ export function StatsIndividualPage() {
     [modeId]
   );
 
+  const selectedModuleId = useMemo(() => moduleIdByModeId(modeId), [modeId]);
+
+  const moduleModeMap = useMemo(() => {
+    const grouped = new Map<TrainingModuleId, typeof STATS_TRAINING_MODES>();
+    STATS_TRAINING_MODES.forEach((mode) => {
+      const list = grouped.get(mode.moduleId) ?? [];
+      list.push(mode);
+      grouped.set(mode.moduleId, list);
+    });
+    return grouped;
+  }, []);
+
   const selectedProfileLevel = useMemo(() => {
     const profile = profiles.find((entry) => entry.modeId === modeId);
     if (profile) {
@@ -588,6 +621,10 @@ export function StatsIndividualPage() {
     <section className="panel" data-testid="stats-individual-page">
       <h2>Индивидуальная статистика</h2>
       <p>Текущие достижения, тренд сложности и рекомендации на сегодня.</p>
+      <p className="status-line">
+        Здесь показываются только официально поддерживаемые модули. Экспериментальные
+        тренажёры пока не входят в индивидуальную аналитику.
+      </p>
 
       <div className="segmented-row">
         <Link className="btn-secondary is-active" to="/stats/individual">
@@ -598,6 +635,26 @@ export function StatsIndividualPage() {
             Группа
           </Link>
         ) : null}
+      </div>
+
+      <div className="segmented-row" data-testid="stats-individual-module-row">
+        {STATS_MODULE_ORDER.map((moduleId) => {
+          const firstMode = moduleModeMap.get(moduleId)?.[0];
+          if (!firstMode) {
+            return null;
+          }
+          return (
+            <button
+              key={moduleId}
+              type="button"
+              className={selectedModuleId === moduleId ? "btn-secondary is-active" : "btn-secondary"}
+              data-testid={`stats-individual-module-${moduleId}`}
+              onClick={() => setModeId(firstMode.id)}
+            >
+              {STATS_MODULE_LABELS[moduleId]}
+            </button>
+          );
+        })}
       </div>
 
       <div className="segmented-row">
@@ -616,20 +673,30 @@ export function StatsIndividualPage() {
       <div className="stats-grid compact">
         <StatCard title="Режим" value={selectedMode.title} />
         <StatCard title="Текущий уровень" value={selectedProfileLevel} />
-        <StatCard title="Streak (дней)" value={String(streakDays)} />
+        <StatCard title="Серия дней" value={String(streakDays)} />
         <StatCard
           title="Стабильность точности"
           value={accuracyStability != null ? accuracyStability.toFixed(3) : "—"}
         />
         <StatCard
-          title="Текущая неделя"
+          title="Средний score: эта неделя"
           value={currentWeekAvgScore != null ? currentWeekAvgScore.toFixed(2) : "—"}
         />
         <StatCard
-          title="Прошлая неделя"
+          title="Средний score: прошлая"
           value={previousWeekAvgScore != null ? previousWeekAvgScore.toFixed(2) : "—"}
         />
       </div>
+
+      {recommendation ? (
+        <p className="status-line">
+          Что делать дальше: {TRAINING_MODES.find((entry) => entry.id === recommendation.modeId)?.title ?? recommendation.modeId}. {recommendation.reason}
+        </p>
+      ) : (
+        <p className="status-line">
+          Что делать дальше: выберите режим, выполните несколько сессий и затем сравните график и уровень.
+        </p>
+      )}
 
       {sprintSummary ? (
         <section className="setup-block" data-testid="sprint-individual-insights">
@@ -674,7 +741,7 @@ export function StatsIndividualPage() {
 
       {canViewComparisonAccess ? (
         <section className="setup-block" data-testid="individual-comparison-block">
-          <h3>Сравнение результатов</h3>
+          <h3>Дополнительно: сравнение результатов</h3>
           <div className="settings-form">
             <label htmlFor="compare-metric">Метрика сравнения</label>
             <select
@@ -682,9 +749,9 @@ export function StatsIndividualPage() {
               value={compareMetric}
               onChange={(event) => setCompareMetric(event.target.value as GroupMetric)}
             >
-              <option value="score">Score</option>
-              <option value="accuracy">Accuracy</option>
-              <option value="speed">Speed</option>
+              <option value="score">Результат (score)</option>
+              <option value="accuracy">Точность</option>
+              <option value="speed">Скорость</option>
             </select>
 
             <label htmlFor="compare-period">Период</label>
@@ -698,7 +765,7 @@ export function StatsIndividualPage() {
               <option value={7}>7 дней</option>
               <option value={30}>30 дней</option>
               <option value={90}>90 дней</option>
-              <option value="all">Все время</option>
+              <option value="all">Всё время</option>
             </select>
 
             <label htmlFor="compare-user">Пользователь</label>
@@ -757,7 +824,7 @@ export function StatsIndividualPage() {
 
       {canViewComparisonAccess ? (
         <section className="setup-block" data-testid="individual-leaderboard-block">
-          <h3>Лидерборд Top-10</h3>
+          <h3>Дополнительно: лидерборд Top-10</h3>
           <div className="action-row">
             <label htmlFor="leaderboard-period">Период</label>
             <select
@@ -773,7 +840,7 @@ export function StatsIndividualPage() {
               <option value={7}>7 дней</option>
               <option value={30}>30 дней</option>
               <option value={90}>90 дней</option>
-              <option value="all">Все время</option>
+              <option value="all">Всё время</option>
             </select>
           </div>
           <p className="comparison-note">
@@ -815,15 +882,6 @@ export function StatsIndividualPage() {
         </section>
       ) : null}
 
-      {recommendation ? (
-        <p className="status-line">
-          Рекомендованный режим:{" "}
-          {TRAINING_MODES.find((entry) => entry.id === recommendation.modeId)?.title ??
-            recommendation.modeId}
-          .{" "}
-          {recommendation.reason}
-        </p>
-      ) : null}
 
       {loading ? <p>Загрузка статистики...</p> : null}
       {comparisonLoading ? <p>Загрузка блока сравнения...</p> : null}
@@ -898,3 +956,5 @@ export function StatsIndividualPage() {
     </section>
   );
 }
+
+

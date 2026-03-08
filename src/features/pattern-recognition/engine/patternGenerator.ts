@@ -119,7 +119,7 @@ function generateABAB(level: PatternLevel, elementTypes: ('color' | 'shape' | 's
     patternType: 'ABAB',
     sequence,
     options: shuffledOptions,
-    correctIndex: correctIndices,
+    correctIndex: gaps === 1 ? (correctIndices[0] ?? 0) : correctIndices,
     level,
     contentType: 'visual',
     hint: gapsInMiddle ? 'Чередование: пропуски в разных местах' : 'Чередование: A, B, A, B...',

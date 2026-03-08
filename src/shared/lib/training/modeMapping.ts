@@ -1,4 +1,4 @@
-import type { TrainingModeId, TrainingModuleId } from "../../types/domain";
+﻿import type { TrainingModeId, TrainingModuleId } from "../../types/domain";
 
 const SPRINT_MODE_IDS: TrainingModeId[] = ["sprint_add_sub", "sprint_mixed"];
 const REACTION_MODE_IDS: TrainingModeId[] = [
@@ -33,6 +33,7 @@ const DECISION_RUSH_MODE_IDS: TrainingModeId[] = [
   "decision_standard",
   "decision_pro"
 ];
+const MEMORY_MATCH_MODE_IDS: TrainingModeId[] = ["memory_match_classic"];
 const PATTERN_MODE_IDS: TrainingModeId[] = [
   "pattern_classic",
   "pattern_timed",
@@ -56,6 +57,9 @@ export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
   }
   if (DECISION_RUSH_MODE_IDS.includes(modeId)) {
     return "decision_rush";
+  }
+  if (MEMORY_MATCH_MODE_IDS.includes(modeId)) {
+    return "memory_match";
   }
   if (PATTERN_MODE_IDS.includes(modeId)) {
     return "pattern_recognition";
@@ -83,6 +87,10 @@ export function isDecisionRushMode(modeId: TrainingModeId): boolean {
   return DECISION_RUSH_MODE_IDS.includes(modeId);
 }
 
+export function isMemoryMatchMode(modeId: TrainingModeId): boolean {
+  return MEMORY_MATCH_MODE_IDS.includes(modeId);
+}
+
 export function isPatternMode(modeId: TrainingModeId): boolean {
   return PATTERN_MODE_IDS.includes(modeId);
 }
@@ -90,3 +98,4 @@ export function isPatternMode(modeId: TrainingModeId): boolean {
 export function isTimedMode(modeId: TrainingModeId): boolean {
   return modeId === "timed_plus";
 }
+
