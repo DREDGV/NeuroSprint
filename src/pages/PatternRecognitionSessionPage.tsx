@@ -295,6 +295,7 @@ export function PatternRecognitionSessionPage() {
     };
 
     await sessionRepository.save(session);
+    // XP и achievements обрабатываются внутри save()
 
     // Переход на экран результатов
     navigate('/training/pattern-recognition/result', {

@@ -1,5 +1,11 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  getExperimentalModuleCurrentMilestone,
+  getExperimentalModuleMeta,
+  getExperimentalModuleProgress,
+  getExperimentalModulePromotionReadiness
+} from "../shared/lib/training/experimentalModules";
 
 type PatternDifficulty = "easy" | "medium" | "hard";
 type PatternMode = "classic" | "rotation" | "mirror";
@@ -51,6 +57,7 @@ function mirrorHorizontal(index: number, grid: number): number {
 }
 
 export function BlockPatternRecallPage() {
+  const experimentalMeta = getExperimentalModuleMeta("block_pattern");
   const [difficulty, setDifficulty] = useState<PatternDifficulty>("easy");
   const [mode, setMode] = useState<PatternMode>("classic");
   const [phase, setPhase] = useState<PatternPhase>("setup");
@@ -139,6 +146,9 @@ export function BlockPatternRecallPage() {
   const falseHits = [...selected].filter((cell) => !expectedSet.has(cell)).length;
   const accuracy = expectedPattern.length === 0 ? 0 : (hits / expectedPattern.length) * 100;
   const score = Math.max(0, Math.round(accuracy * 8 - (misses + falseHits) * 12));
+  const progress = experimentalMeta ? getExperimentalModuleProgress(experimentalMeta) : 0;
+  const currentMilestone = experimentalMeta ? getExperimentalModuleCurrentMilestone(experimentalMeta) : null;
+  const readiness = experimentalMeta ? getExperimentalModulePromotionReadiness(experimentalMeta) : null;
 
   const instruction =
     mode === "classic"
@@ -151,6 +161,30 @@ export function BlockPatternRecallPage() {
     <section className="panel" data-testid="block-pattern-page">
       <h2>Block Pattern Recall (альфа)</h2>
       <p>Запомните фигуру из блоков и воспроизведите её по правилу.</p>
+      {experimentalMeta ? (
+        <div className="setup-block experimental-module-status" data-testid="experimental-status-block-pattern">
+          <div className="experimental-module-status-head">
+            <div>
+              <p className="stats-section-kicker">Статус разработки</p>
+              <h3>{experimentalMeta.stageLabel}</h3>
+            </div>
+            <strong>{progress}%</strong>
+          </div>
+          <div className="training-alpha-progress-track" aria-hidden="true">
+            <span className="training-alpha-progress-fill" style={{ width: `${progress}%` }} />
+          </div>
+          <p className="comparison-note">
+            {currentMilestone?.label ?? experimentalMeta.stageLabel}. {experimentalMeta.nextFocus}
+          </p>
+          {readiness ? (
+            <div className={`experimental-module-readiness is-${readiness.tier}`}>
+              <strong>Готовность к переводу: {readiness.score}/100</strong>
+              <span>{readiness.label}</span>
+              <p>{readiness.summary}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {phase === "setup" ? (
         <>

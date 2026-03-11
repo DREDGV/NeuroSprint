@@ -1,7 +1,10 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
-import { sessionRepository } from "../entities/session/sessionRepository";
+import {
+  sessionRepository,
+  type SessionSaveResult
+} from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import {
   buildSprintMathTask,
@@ -12,6 +15,7 @@ import { getSprintMathSetup } from "../features/sprint-math/setupStorage";
 import { DEFAULT_AUDIO_SETTINGS } from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
+import { buildSessionProgressNotes } from "../shared/lib/progress/sessionProgressFeedback";
 import { SessionResultSummary } from "../shared/ui/SessionResultSummary";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
@@ -20,6 +24,7 @@ import type {
   SprintMathTask
 } from "../features/sprint-math/contract";
 import type { Session } from "../shared/types/domain";
+import { SessionRewardQueue } from "../widgets/SessionRewardQueue";
 
 interface SessionNavState {
   setup?: SprintMathSetup;
@@ -179,6 +184,7 @@ export function SprintMathSessionPage() {
   const [lastExpectedAnswer, setLastExpectedAnswer] = useState<number | null>(null);
   const [previousSession, setPreviousSession] = useState<Session | null>(null);
   const [bestSession, setBestSession] = useState<Session | null>(null);
+  const [sessionProgress, setSessionProgress] = useState<SessionSaveResult | null>(null);
 
   useEffect(() => {
     if (!isRunning || finished || startedAtMs == null) {
@@ -224,16 +230,18 @@ export function SprintMathSessionPage() {
 
     let cancelled = false;
     const session = createSprintMathSession(activeUserId, setup, result, correctCount, errors);
+    setSessionProgress(null);
 
     void sessionRepository
       .save(session)
-      .then(async () => {
+      .then(async (saveResult) => {
         if (cancelled) {
           return;
         }
 
         setSaved(true);
         setSaveError(null);
+        setSessionProgress(saveResult);
 
         const history = await trainingRepository.listRecentSessionsByMode(
           activeUserId,
@@ -491,18 +499,33 @@ export function SprintMathSessionPage() {
             text: saved ? "saved" : "saving"
           }}
           saveSummary={saved ? "Результаты сохранены в статистику." : "Сохраняем результаты..."}
+          xpGranted={sessionProgress?.xpGranted}
+          leveledUp={sessionProgress?.leveledUp}
+          fromLevel={sessionProgress?.levelUp?.fromLevel}
+          toLevel={sessionProgress?.levelUp?.toLevel}
+          newlyUnlockedAchievements={sessionProgress?.newlyUnlockedAchievements}
           extraNotes={
-            previousSession
-              ? [
-                  `Изменение темпа: ${formatSigned(result.throughput - previousSession.speed)} задач/мин, точности: ${formatSigned((result.accuracy - previousSession.accuracy) * 100, 1, "%")}.`
-                ]
-              : undefined
+            [
+              ...(previousSession
+                ? [
+                    `Изменение темпа: ${formatSigned(result.throughput - previousSession.speed)} задач/мин, точности: ${formatSigned((result.accuracy - previousSession.accuracy) * 100, 1, "%")}.`
+                  ]
+                : []),
+              ...buildSessionProgressNotes(sessionProgress)
+            ]
           }
           retryLabel="Начать заново"
           onRetry={resetSession}
         />
       ) : null}
 
+      <SessionRewardQueue
+        levelUp={sessionProgress?.levelUp}
+        nextGoalSummary={sessionProgress?.nextGoal?.primaryGoal.summary}
+        achievements={sessionProgress?.unlockedAchievements}
+        userId={activeUserId}
+        localDate={toLocalDateKey(new Date())}
+      />
       {saveError ? <p className="error-text">{saveError}</p> : null}
     </section>
   );

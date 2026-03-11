@@ -3,8 +3,55 @@ import {
   buildDailyChallengeStreak,
   getChallengeLaunchPath,
   listUpcomingDailyChallengeModes,
+  resolveAdaptiveDailyChallengeModeId,
   resolveDailyChallengeModeId
 } from "../../src/entities/challenge/dailyChallengeRepository";
+import type { Session, TrainingModuleId, TrainingModeId } from "../../src/shared/types/domain";
+
+function makeSession(
+  id: string,
+  moduleId: TrainingModuleId,
+  modeId: TrainingModeId,
+  timestamp: string,
+  overrides: Partial<Session> = {}
+): Session {
+  const modeByModule: Record<TrainingModuleId, Session["mode"]> = {
+    schulte: "classic",
+    sprint_math: "sprint_math",
+    reaction: "reaction",
+    n_back: "n_back",
+    memory_grid: "memory_grid",
+    spatial_memory: "spatial_memory",
+    decision_rush: "decision_rush",
+    memory_match: "memory_match",
+    pattern_recognition: "pattern_recognition"
+  };
+
+  return {
+    id,
+    userId: "u1",
+    taskId: moduleId,
+    moduleId,
+    modeId,
+    mode: modeByModule[moduleId],
+    level: 1,
+    presetId: "easy",
+    adaptiveSource: "auto",
+    timestamp,
+    localDate: timestamp.slice(0, 10),
+    durationMs: 45_000,
+    score: 60,
+    accuracy: 0.8,
+    speed: 1,
+    errors: 1,
+    difficulty: {
+      gridSize: 3,
+      numbersCount: 9,
+      mode: modeByModule[moduleId]
+    },
+    ...overrides
+  };
+}
 
 describe("daily challenge helpers", () => {
   it("resolves deterministic daily mode by date", () => {
@@ -39,6 +86,36 @@ describe("daily challenge helpers", () => {
     expect(preview[2]?.localDate).toBe("2026-03-03");
     expect(preview[0]?.modeId).toBe(resolveDailyChallengeModeId("2026-03-01"));
     expect(preview[1]?.modeId).toBe(resolveDailyChallengeModeId("2026-03-02"));
+  });
+
+  it("switches today's challenge to the growth focus when there is enough history", () => {
+    const modeId = resolveAdaptiveDailyChallengeModeId("2026-03-09", [
+      makeSession("s1", "reaction", "reaction_signal", "2026-03-08T10:00:00.000Z", {
+        score: 164,
+        accuracy: 0.93,
+        errors: 0
+      }),
+      makeSession("s2", "reaction", "reaction_pair", "2026-03-07T10:00:00.000Z", {
+        score: 152,
+        accuracy: 0.9,
+        errors: 1
+      }),
+      makeSession("s3", "reaction", "reaction_number", "2026-03-06T10:00:00.000Z", {
+        score: 149,
+        accuracy: 0.89,
+        errors: 1
+      })
+    ]);
+
+    expect(modeId).toBe("memory_match_classic");
+  });
+
+  it("can align the first preview item with an already created adaptive challenge", () => {
+    const preview = listUpcomingDailyChallengeModes("2026-03-01", 3, "memory_match_classic");
+
+    expect(preview[0]?.modeId).toBe("memory_match_classic");
+    expect(preview[1]?.modeId).toBe(resolveDailyChallengeModeId("2026-03-02"));
+    expect(preview[2]?.modeId).toBe(resolveDailyChallengeModeId("2026-03-03"));
   });
 
   it("computes current and best challenge streak", () => {

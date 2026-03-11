@@ -1,5 +1,4 @@
-﻿import { act, render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+﻿import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryMatchPage } from "../../src/pages/MemoryMatchPage";
@@ -102,7 +101,18 @@ describe("MemoryMatchPage", () => {
         }
       }
     ]);
-    mocks.sessionRepository.save.mockResolvedValue(undefined);
+    mocks.sessionRepository.save.mockResolvedValue({
+      xpGranted: 24,
+      unlockedAchievements: [
+        {
+          id: "skill_memory_match_10",
+          title: "РџР°РјСЏС‚СЊ Р±РµР· СЃСѓРµС‚С‹",
+          icon: "рџ§ ",
+          category: "skill"
+        }
+      ],
+      newlyUnlockedAchievements: ["skill_memory_match_10"]
+    });
   });
 
   afterEach(() => {
@@ -110,33 +120,31 @@ describe("MemoryMatchPage", () => {
   });
 
   it("restarts cleanly during preview and saves a completed easy round", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-
     render(
       <MemoryRouter>
         <MemoryMatchPage />
       </MemoryRouter>
     );
 
-    expect(await screen.findByTestId("memory-match-setup-summary")).toBeInTheDocument();
-    await user.click(screen.getByTestId("memory-match-start"));
+    expect(screen.getByTestId("memory-match-setup-summary")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("memory-match-start"));
 
-    const grid = await screen.findByTestId("memory-match-grid");
-    expect(await screen.findByTestId("memory-match-session-shell")).toBeInTheDocument();
+    const grid = screen.getByTestId("memory-match-grid");
+    expect(screen.getByTestId("memory-match-session-shell")).toBeInTheDocument();
     expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("0/8");
     expect(within(grid).getAllByRole("button")[0]).toHaveAttribute("aria-label");
 
     act(() => {
       vi.advanceTimersByTime(2500);
     });
-    await user.click(screen.getByTestId("memory-match-restart"));
+    fireEvent.click(screen.getByTestId("memory-match-restart"));
 
-    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("6с");
+    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("6СЃ");
 
     act(() => {
       vi.advanceTimersByTime(3500);
     });
-    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("Запоминание");
+    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("Р—Р°РїРѕРјРёРЅР°Р№С‚Рµ");
 
     const previewButtons = within(grid).getAllByRole("button") as HTMLButtonElement[];
     const pairs = collectPairs(previewButtons);
@@ -146,23 +154,26 @@ describe("MemoryMatchPage", () => {
       vi.advanceTimersByTime(2700);
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("Поиск пар");
-    });
+    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("РЎРѕР±РёСЂР°Р№С‚Рµ РїР°СЂС‹");
 
     for (const [first, second] of pairs) {
       const currentButtons = within(screen.getByTestId("memory-match-grid")).getAllByRole("button") as HTMLButtonElement[];
-      await user.click(currentButtons[first]);
-      await user.click(currentButtons[second]);
+      fireEvent.click(currentButtons[first]);
+      fireEvent.click(currentButtons[second]);
       act(() => {
         vi.advanceTimersByTime(700);
       });
     }
 
-    expect(await screen.findByTestId("memory-match-result-hero")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(mocks.sessionRepository.save).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("memory-match-result-hero")).toBeInTheDocument();
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
     });
+
+    expect(mocks.sessionRepository.save).toHaveBeenCalledTimes(1);
 
     const savedSession = mocks.sessionRepository.save.mock.calls[0]?.[0];
     expect(savedSession.taskId).toBe("memory_match");
@@ -173,5 +184,19 @@ describe("MemoryMatchPage", () => {
 
     expect(screen.getByTestId("memory-match-result")).toBeInTheDocument();
     expect(screen.getByTestId("memory-match-save-ok")).toBeInTheDocument();
+    expect(screen.getByTestId("memory-match-result-insight")).toBeInTheDocument();
+    expect(screen.getByTestId("memory-match-result-next-step")).toBeInTheDocument();
+    expect(screen.getByTestId("memory-match-result-comparison")).toBeInTheDocument();
+    expect(screen.getByTestId("memory-match-result-next-step")).toHaveTextContent("Следующий шаг");
+    expect(screen.getByTestId("trainer-feedback-card")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("trainer-feedback-option-liked"));
+    fireEvent.click(screen.getByRole("button", { name: "Понятные правила" }));
+    fireEvent.click(screen.getByTestId("trainer-feedback-submit"));
+
+    expect(screen.getByTestId("trainer-feedback-card")).toHaveTextContent("Отзыв сохранён");
+    expect(screen.getByTestId("achievement-toast")).toHaveTextContent("РџР°РјСЏС‚СЊ Р±РµР· СЃСѓРµС‚С‹");
   });
 });
+
+

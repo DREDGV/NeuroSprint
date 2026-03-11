@@ -6,6 +6,7 @@
   | "reaction"
   | "n_back"
   | "memory_grid"
+  | "spatial_memory"
   | "decision_rush"
   | "memory_match"
   | "pattern_recognition";
@@ -16,9 +17,11 @@ export type TrainingModuleId =
   | "reaction"
   | "n_back"
   | "memory_grid"
+  | "spatial_memory"
   | "decision_rush"
   | "memory_match"
   | "pattern_recognition";
+export type SkillProfileId = "attention" | "memory" | "reaction" | "math" | "logic";
 export type TrainingModeId =
   | "classic_plus"
   | "timed_plus"
@@ -46,6 +49,7 @@ export type TrainingModeId =
   | "memory_grid_rush_pro"
   | "memory_grid_rush_kids_4x4"
   | "memory_grid_rush_pro_4x4"
+  | "spatial_memory_classic"
   | "decision_kids"
   | "decision_standard"
   | "decision_pro"
@@ -131,7 +135,7 @@ export interface Difficulty {
 export interface Session {
   id: string;
   userId: string;
-  taskId: "schulte" | "sprint_math" | "reaction" | "n_back" | "decision_rush" | "memory_grid" | "memory_match" | "pattern_recognition";
+  taskId: "schulte" | "sprint_math" | "reaction" | "n_back" | "decision_rush" | "memory_grid" | "spatial_memory" | "memory_match" | "pattern_recognition";
   mode: Mode;
   moduleId: TrainingModuleId;
   modeId: TrainingModeId;
@@ -462,5 +466,454 @@ export interface AppSettings {
   dailyGoalSessions: number;
 }
 
+// ============================================================================
+// Daily Training System (Phase 1 — Progress System)
+// ============================================================================
 
+export type DailyTrainingStatus = "pending" | "completed";
 
+/**
+ * Ежедневный тренировочный прогресс пользователя.
+ * Хранит снимок цели на день и факт выполнения.
+ */
+export interface DailyTraining {
+  id: string;                    // "userId:localDate"
+  userId: string;
+  localDate: string;             // "YYYY-MM-DD"
+  goalSessions: number;          // Цель на этот день (снимок из настроек на момент создания)
+  completedSessions: number;     // Фактически завершено сессий
+  status: DailyTrainingStatus;
+  completedAt: string | null;    // Когда достигнута цель
+  createdAt: string;             // Когда создан рекорд
+  updatedAt: string;             // Последнее обновление
+}
+
+/**
+ * Связь между DailyTraining и Session.
+ * Предотвращает дублирование и позволяет быстро получить сессии дня.
+ */
+export interface DailyTrainingSessionLink {
+  id: string;
+  dailyTrainingId: string;       // Ссылка на DailyTraining.id
+  userId: string;
+  sessionId: string;             // Ссылка на Session.id
+  moduleId: TrainingModuleId;
+  modeId: TrainingModeId;
+  score: number;                 // Снимок результата сессии
+  durationMs: number;            // Снимок длительности
+  createdAt: string;
+}
+
+/**
+ * Прогресс пользователя за день (расширенная версия для UI).
+ */
+export interface DailyTrainingProgress {
+  training: DailyTraining;
+  sessions: DailyTrainingSessionLink[];
+  completed: boolean;
+  progressPercent: number;       // 0-100
+  remainingSessions: number;
+  launchPath: string;            // Куда вести для продолжения
+}
+
+/**
+ * Элемент истории Daily Training.
+ */
+export interface DailyTrainingHistoryItem {
+  dailyTrainingId: string;
+  localDate: string;
+  goalSessions: number;
+  completedSessions: number;
+  status: DailyTrainingStatus;
+  completedAt: string | null;
+  sessionsCount: number;
+  totalDurationMs: number;
+  bestScore: number;
+}
+
+/**
+ * Сводка выполнения за период.
+ */
+export interface DailyTrainingCompletionSummary {
+  period: ComparePeriod;
+  totalDays: number;             // Сколько дней было с сессиями
+  completedDays: number;         // Сколько дней цель достигнута
+  pendingDays: number;           // Сколько дней цель не достигнута
+  completionRatePct: number;     // Процент завершённых дней
+  totalSessions: number;         // Всего сессий за период
+  avgSessionsPerDay: number;     // Среднее сессий в день
+}
+
+/**
+ * Streak-сводка (серия подряд идущих завершённых дней).
+ */
+export interface DailyTrainingStreakSummary {
+  period: ComparePeriod;
+  currentStreakDays: number;     // Текущая серия
+  bestStreakDays: number;        // Лучшая серия за период
+  completedDays: number;         // Всего завершённых дней
+}
+
+/**
+ * Точка тренда для визуализации.
+ */
+export interface DailyTrainingTrendPoint {
+  localDate: string;
+  completed: boolean;
+  completedSessions: number;
+  goalSessions: number;
+  progressPct: number;
+  sessionsCount: number;
+}
+
+/**
+ * Heatmap-ячейка для календаря.
+ */
+export interface DailyTrainingHeatmapCell {
+  localDate: string;
+  completed: boolean;
+  sessionsCount: number;
+  intensity: 0 | 1 | 2 | 3 | 4;  // 0 = none, 1-4 = уровень активности
+}
+
+// ============================================================================
+// Progress System — Phase 2: Levels + Achievements
+// ============================================================================
+
+/**
+ * Уровень пользователя с XP и прогрессом.
+ */
+export interface UserLevel {
+  id: string;                    // userId
+  userId: string;
+  level: number;                 // Текущий уровень (1+)
+  currentXP: number;             // XP на текущем уровне
+  totalXP: number;               // Всего XP за всё время
+  xpToNextLevel: number;         // Сколько XP нужно до следующего уровня
+  lastLevelUpAt: string | null;  // Когда было последнее повышение
+  updatedAt: string;             // Последнее обновление
+}
+
+/**
+ * Достижение (описание в каталоге).
+ */
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;                  // Emoji или SVG icon
+  category: AchievementCategory;
+  condition: AchievementCondition;
+  order: number;                 // Порядок отображения
+  hidden: boolean;               // Скрытое достижение (не показывать пока не получено)
+}
+
+export type AchievementCategory =
+  | "streak"      // Серии дней
+  | "sessions"    // Количество сессий
+  | "skill"       // Навыки/модули
+  | "daily"       // Дневные цели
+  | "special";   // Специальные
+
+export interface AchievementCondition {
+  type: AchievementConditionType;
+  value: number;
+  moduleId?: TrainingModuleId;  // Для skill-достижений
+}
+
+export type AchievementConditionType =
+  | "streak_days"         // Серия дней подряд
+  | "sessions_total"      // Всего сессий
+  | "sessions_today"      // Сессий за день
+  | "module_sessions"     // Сессий в конкретном модуле
+  | "all_modules"         // Пройти все модули
+  | "level_reached"       // Достичь уровня
+  | "perfect_day";        // Идеальный день (goalSessions >= 5)
+
+/**
+ * Полученное пользователем достижение.
+ */
+export interface UserAchievement {
+  id: string;
+  userId: string;
+  achievementId: string;
+  progress: number;        // Текущий прогресс (0-100 или абсолютное значение)
+  completed: boolean;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Источники XP.
+ */
+export type XPSource =
+  | "session"              // Завершённая сессия
+  | "daily_complete"       // Completion дня
+  | "streak_bonus"         // Бонус за серию
+  | "achievement"          // Получение достижения
+  | "level_up";            // Повышение уровня
+
+/**
+ * История получения XP.
+ */
+export interface XPLog {
+  id: string;
+  userId: string;
+  source: XPSource;
+  amount: number;          // Сколько XP получено
+  sessionId?: string;      // Для session
+  achievementId?: string;  // Для achievement
+  streakDays?: number;     // Для streak_bonus
+  createdAt: string;
+}
+
+/**
+ * Конфигурация XP системы.
+ */
+export interface XPConfig {
+  baseXPPerSession: number;           // Базовое XP за сессию
+  dailyCompleteBonus: number;         // Бонус за completion дня
+  streakBonusMultiplier: number;      // Множитель за streak (дополнительно к 1.0)
+  maxStreakMultiplier: number;        // Максимальный множитель streak
+  xpToNextLevelBase: number;          // Базовое XP для уровня 1→2
+  xpToNextLevelGrowth: number;        // Рост XP для каждого уровня
+}
+
+/**
+ * Прогресс пользователя с уровнем и достижениями.
+ */
+export interface UserProgress {
+  level: UserLevel;
+  achievements: UserAchievement[];
+  availableAchievements: Achievement[];  // Какие ещё можно получить
+  recentXPLogs: XPLog[];                 // Последние получения XP
+}
+
+/**
+ * Событие для проверки достижений.
+ */
+export interface AchievementEvent {
+  type: "session_completed" | "daily_completed" | "streak_updated";
+  userId: string;
+  sessionId?: string;
+  moduleId?: TrainingModuleId;
+  streakDays?: number;
+  sessionsToday?: number;
+  totalSessions?: number;
+}
+
+// ============================================================================
+// Progress System Phase 3 — Skill Map + Strength/Weakness Analysis
+// ============================================================================
+
+/**
+ * Процентиль навыка пользователя (сравнение с другими).
+ */
+export interface SkillPercentile {
+  skillId: SkillProfileId;
+  userScore: number;
+  percentile: number;              // 0-100 (какой % пользователей ниже)
+  rank: SkillRank;
+  sampleSize: number;
+  source: "virtual" | "server";    // Для миграции на сервер
+}
+
+export type SkillRank =
+  | "top_1%"      // Легендарный
+  | "top_5%"      // Эпический
+  | "top_10%"     // Редкий
+  | "top_25%"     // Необычный
+  | "top_50%"     // Обычный
+  | "bottom_50%"; // Ниже среднего
+
+/**
+ * Бенчмарки навыка для сравнения.
+ */
+export interface SkillBenchmark {
+  skillId: SkillProfileId;
+  avg: number;
+  median: number;
+  top25: number;    // 75-й процентиль
+  top10: number;    // 90-й процентиль
+  sampleSize: number;
+  lastUpdated: string;
+  source: "virtual" | "server";
+}
+
+/**
+ * Сравнение навыка пользователя с другими.
+ */
+export interface SkillComparison {
+  id: string;
+  userId: string;
+  skillId: SkillProfileId;
+  userScore: number;
+  percentile: number;
+  rank: SkillRank;
+  
+  // PvP задел (будущее)
+  league?: "bronze" | "silver" | "gold" | "diamond";
+  division?: number;
+  rating?: number;  // ELO для будущего
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Рекомендация по тренировке навыка.
+ */
+export interface SkillRecommendation {
+  id: string;
+  skillId: SkillProfileId;
+  title: string;
+  description: string;
+  trainingModules: TrainingModuleId[];
+  frequencyPerWeek: number;
+  expectedBenefit: string;
+  difficulty: "easy" | "medium" | "hard";
+  
+  // PvP задел
+  pvpRelevance?: {
+    mode: string;
+    description: string;
+  };
+}
+
+/**
+ * Виртуальные бенчмарки для симуляции сравнения.
+ */
+export interface VirtualBenchmark {
+  skillId: SkillProfileId;
+  avg: number;
+  median: number;
+  top25: number;
+  top10: number;
+  description: string;
+}
+
+// ============================================================================
+// Progress System Phase 3C — Skill Achievements
+// ============================================================================
+
+/**
+ * Достижение за навык (50/80 очков).
+ */
+export interface SkillAchievement {
+  id: string;
+  skillId: SkillProfileId;
+  threshold: 50 | 80;            // Порог очков навыка
+  title: string;
+  description: string;
+  icon: string;
+  category: "skill_mastery";
+  order: number;
+  hidden: boolean;
+}
+
+/**
+ * Полученное пользователем достижение за навык.
+ */
+export interface UserSkillAchievement {
+  id: string;
+  userId: string;
+  skillAchievementId: string;
+  skillScore: number;            // Score навыка на момент получения
+  completed: boolean;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Рекомендация для тренировки навыка.
+ */
+export interface SkillTrainingRecommendation {
+  skillId: SkillProfileId;
+  level: "weak" | "medium" | "strong";
+  trainingModules: TrainingModuleId[];
+  title: string;
+  description: string;
+  priority: number;              // 1-9 (1 = высший приоритет)
+}
+
+/**
+ * Сводка навыка пользователя для UI.
+ */
+export interface SkillSummary {
+  skillId: SkillProfileId;
+  score: number;
+  percentile: number;
+  rank: SkillRank;
+  level: "weak" | "medium" | "strong";
+  improvements: number;          // Улучшений за последнюю неделю
+}
+
+/**
+ * Полная сводка всех навыков пользователя.
+ */
+export interface SkillMapSummary {
+  userId: string;
+  skills: SkillSummary[];
+  avgPercentile: number;
+  bestSkill: SkillSummary | null;
+  weakestSkill: SkillSummary | null;
+  topRankCount: number;          // Количество навыков в top 25%
+  lastUpdated: string;
+}
+
+// ============================================================================
+// PvP Foundation (Phase 3C — подготовка, скрыто до Phase 4)
+// ============================================================================
+
+/**
+ * Лига пользователя (для будущего PvP).
+ */
+export type LeagueType =
+  | "bronze_III" | "bronze_II" | "bronze_I"
+  | "silver_III" | "silver_II" | "silver_I"
+  | "gold_III" | "gold_II" | "gold_I"
+  | "diamond";
+
+/**
+ * Профиль пользователя с PvP полями (зарезервировано).
+ */
+export interface UserPvPProfile {
+  id: string;                    // userId
+  userId: string;
+  currentLeague: LeagueType | null;
+  leaguePoints: number;
+  weeklyRank: number | null;
+  rating: number;                // ELO рейтинг
+  division: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Сезон лидерборда (для будущего PvP).
+ */
+export interface LeaderboardSeason {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+}
+
+/**
+ * Запись в лидерборде (для будущего PvP).
+ */
+export interface LeaderboardEntry {
+  id: string;
+  seasonId: string;
+  userId: string;
+  skillId?: SkillProfileId;      // Если null — общий рейтинг
+  rank: number;
+  score: number;
+  rating: number;
+  league: LeagueType;
+  createdAt: string;
+  updatedAt: string;
+}

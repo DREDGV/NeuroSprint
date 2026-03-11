@@ -1,12 +1,23 @@
 ﻿import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
-import { sessionRepository } from "../entities/session/sessionRepository";
+import {
+  sessionRepository,
+  type SessionSaveResult
+} from "../entities/session/sessionRepository";
+import {
+  hasTrainerFeedbackBeenHandled,
+  markTrainerFeedbackHandled,
+  saveTrainerFeedback
+} from "../entities/trainer-feedback/trainerFeedbackRepository";
 import { DEFAULT_AUDIO_SETTINGS } from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
-import { SessionResultSummary } from "../shared/ui/SessionResultSummary";
+import { buildSessionProgressNotes } from "../shared/lib/progress/sessionProgressFeedback";
+import { MemoryCardVisual } from "../shared/ui/MemoryMatchCards";
+import { TrainerFeedbackCard } from "../shared/ui/TrainerFeedbackCard";
 import type { Session } from "../shared/types/domain";
+import { SessionRewardQueue } from "../widgets/SessionRewardQueue";
 
 type MatchDifficulty = "easy" | "medium" | "hard";
 type MatchPhase = "setup" | "preview" | "play" | "result";
@@ -34,6 +45,24 @@ interface ResultFeedback {
   nextStep: string;
 }
 
+interface ResultInsight {
+  title: string;
+  summary: string;
+  tone: "strong" | "steady" | "recover";
+}
+
+interface ResultComparison {
+  title: string;
+  summary: string;
+  detail: string;
+}
+
+interface LivePrompt {
+  eyebrow: string;
+  title: string;
+  text: string;
+}
+
 interface MemoryCard {
   id: string;
   label: string;
@@ -43,38 +72,24 @@ interface MemoryCard {
 }
 
 const CARD_LIBRARY: MemoryCard[] = [
-  { id: "books", label: "Книги", emoji: "📚", tint: "#2c8a6c", surface: "#e9fbf3" },
-  { id: "board", label: "Доска", emoji: "🧮", tint: "#2383d8", surface: "#edf6ff" },
-  { id: "globe", label: "Глобус", emoji: "🌍", tint: "#f3aa2d", surface: "#fff7e7" },
-  { id: "lightbulb", label: "Идея", emoji: "💡", tint: "#f8c339", surface: "#fff8df" },
-  { id: "trophy", label: "Кубок", emoji: "🏆", tint: "#d89b17", surface: "#fff4dc" },
-  { id: "microscope", label: "Наука", emoji: "🔬", tint: "#f26f61", surface: "#fff0ee" },
-  { id: "flask", label: "Колба", emoji: "🧪", tint: "#33a6d8", surface: "#ecf9ff" },
-  { id: "owl", label: "Сова", emoji: "🦉", tint: "#6f5de5", surface: "#f3efff" },
-  { id: "atom", label: "Атом", emoji: "⚛️", tint: "#2bb6b0", surface: "#e9fffb" },
-  { id: "scroll", label: "Свиток", emoji: "📜", tint: "#d87c3f", surface: "#fff1e6" },
-  { id: "medal", label: "Медаль", emoji: "🎖️", tint: "#ffb62a", surface: "#fff7df" },
-  { id: "bell", label: "Звонок", emoji: "🔔", tint: "#ff9f37", surface: "#fff1df" },
-  { id: "apple", label: "Яблоко", emoji: "🍎", tint: "#f15454", surface: "#fff0f0" },
-  { id: "dino", label: "Динозавр", emoji: "🦖", tint: "#55b855", surface: "#eefbea" },
-  { id: "planet", label: "Планета", emoji: "🪐", tint: "#8b62eb", surface: "#f3eeff" },
-  { id: "rocket", label: "Ракета", emoji: "🚀", tint: "#f2644d", surface: "#fff0ed" },
-  { id: "brain", label: "Мозг", emoji: "🧠", tint: "#f07ec2", surface: "#fff0fb" },
-  { id: "hourglass", label: "Часы", emoji: "⏳", tint: "#8f63e6", surface: "#f3efff" },
-  { id: "robot", label: "Робот", emoji: "🤖", tint: "#2c8fd6", surface: "#eef7ff" },
-  { id: "hearts", label: "Сердце", emoji: "💖", tint: "#ef5d8f", surface: "#fff0f5" },
-  { id: "frog", label: "Лягушка", emoji: "🐸", tint: "#4dbb6a", surface: "#eefbea" },
-  { id: "duck", label: "Утка", emoji: "🦆", tint: "#ffbe32", surface: "#fff7e0" },
-  { id: "ball", label: "Мяч", emoji: "⚽", tint: "#697988", surface: "#f3f6f8" },
-  { id: "star", label: "Звезда", emoji: "⭐", tint: "#f3a823", surface: "#fff6df" },
-  { id: "puzzle", label: "Пазл", emoji: "🧩", tint: "#4ab8d8", surface: "#eefbff" },
-  { id: "burger", label: "Бургер", emoji: "🍔", tint: "#d98b2d", surface: "#fff3e2" },
-  { id: "music", label: "Музыка", emoji: "🎹", tint: "#ffbf2d", surface: "#fff7df" },
-  { id: "paint", label: "Краски", emoji: "🎨", tint: "#37a7c7", surface: "#eefbff" },
-  { id: "computer", label: "Код", emoji: "💻", tint: "#8d64e8", surface: "#f2efff" },
-  { id: "math", label: "Счёт", emoji: "➗", tint: "#2f88de", surface: "#edf6ff" },
-  { id: "backpack", label: "Рюкзак", emoji: "🎒", tint: "#2e8dd9", surface: "#eef6ff" },
-  { id: "book", label: "Учёба", emoji: "📖", tint: "#7a64e2", surface: "#f2efff" }
+  { id: "apple", label: "Яблоко", emoji: "🍎", tint: "#ef6358", surface: "#fff0ef" },
+  { id: "bus", label: "Автобус", emoji: "🚌", tint: "#f2b12e", surface: "#fff7e5" },
+  { id: "books", label: "Книги", emoji: "📚", tint: "#dd6a54", surface: "#fff1ec" },
+  { id: "backpack", label: "Рюкзак", emoji: "🎒", tint: "#4b95d9", surface: "#eef6ff" },
+  { id: "pencil", label: "Карандаш", emoji: "✏️", tint: "#f2a23b", surface: "#fff4e5" },
+  { id: "trophy", label: "Кубок", emoji: "🏆", tint: "#e4a328", surface: "#fff6df" },
+  { id: "clock", label: "Часы", emoji: "⏰", tint: "#6e89d9", surface: "#eef3ff" },
+  { id: "flask", label: "Колба", emoji: "🧪", tint: "#7ab85a", surface: "#f2faed" },
+  { id: "board", label: "Доска", emoji: "🧮", tint: "#5ea86a", surface: "#eef9ef" },
+  { id: "crayons", label: "Цвета", emoji: "🖍️", tint: "#74b65f", surface: "#f0faeb" },
+  { id: "glue", label: "Клей", emoji: "🧴", tint: "#f1b252", surface: "#fff5e8" },
+  { id: "bell", label: "Звонок", emoji: "🔔", tint: "#efb13d", surface: "#fff5e5" },
+  { id: "math", label: "Счёт", emoji: "➗", tint: "#8f9bb3", surface: "#f4f6fa" },
+  { id: "paint", label: "Краски", emoji: "🎨", tint: "#5db0d7", surface: "#eef9ff" },
+  { id: "notebook", label: "Тетрадь", emoji: "📓", tint: "#6a9ee0", surface: "#edf4ff" },
+  { id: "hourglass", label: "Таймер", emoji: "⏳", tint: "#d7a357", surface: "#fff4e7" },
+  { id: "magnifier", label: "Лупа", emoji: "🔎", tint: "#72a8d9", surface: "#eef6ff" },
+  { id: "folder", label: "Оценка", emoji: "📁", tint: "#e7b34c", surface: "#fff6e6" }
 ];
 
 const PREVIEW_SYMBOLS = CARD_LIBRARY.slice(0, 6);
@@ -121,6 +136,64 @@ function buildDeck(pairs: number): MemoryCard[] {
 
 function formatSeconds(value: number): string {
   return `${Math.max(0, value)} сек`;
+}
+
+function formatCompactSeconds(value: number): string {
+  return `${Math.max(0, value)}с`;
+}
+
+function formatPairCount(value: number): string {
+  const abs = Math.abs(value) % 100;
+  const last = abs % 10;
+
+  if (abs > 10 && abs < 20) {
+    return `${value} пар`;
+  }
+
+  if (last === 1) {
+    return `${value} пара`;
+  }
+
+  if (last >= 2 && last <= 4) {
+    return `${value} пары`;
+  }
+
+  return `${value} пар`;
+}
+
+function formatRemainingPairs(value: number): string {
+  if (value <= 0) {
+    return "Пары собраны";
+  }
+
+  if (value === 1) {
+    return "Осталась 1 пара";
+  }
+
+  return `Осталось ${formatPairCount(value)}`;
+}
+
+function formatErrorCount(value: number): string {
+  const abs = Math.abs(value) % 100;
+  const last = abs % 10;
+
+  if (value === 0) {
+    return "без ошибок";
+  }
+
+  if (abs > 10 && abs < 20) {
+    return `${value} ошибок`;
+  }
+
+  if (last === 1) {
+    return `${value} ошибка`;
+  }
+
+  if (last >= 2 && last <= 4) {
+    return `${value} ошибки`;
+  }
+
+  return `${value} ошибок`;
 }
 
 function pickBestSession(sessions: Session[]): Session | null {
@@ -244,6 +317,114 @@ function buildResultFeedback(result: MatchResult, errors: number, difficulty: Ma
   };
 }
 
+function formatSignedValue(value: number): string {
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function buildResultInsight(result: MatchResult, errors: number): ResultInsight {
+  if (result.accuracy >= 0.95 && errors === 0) {
+    return {
+      title: "Раунд прошёл очень чисто",
+      summary: "Вы держали поле под контролем и не теряли темп на лишних открытиях.",
+      tone: "strong"
+    };
+  }
+
+  if (result.accuracy >= 0.8) {
+    return {
+      title: "Раунд уже выглядит устойчиво",
+      summary: "База есть: вы удерживаете карту поля и не распадаетесь после первых ходов.",
+      tone: "steady"
+    };
+  }
+
+  return {
+    title: "База уже собирается, но нужна стабилизация",
+    summary: "Сейчас важнее играть спокойнее и закрывать знакомые пары без спешки.",
+    tone: "recover"
+  };
+}
+
+function buildResultComparison(result: MatchResult, previousSession: Session | null): ResultComparison {
+  if (!previousSession) {
+    return {
+      title: "Это первый сохранённый раунд",
+      summary: "Теперь у вас есть честная стартовая точка на этой сложности.",
+      detail: "Следующий раунд уже можно сравнивать по времени, точности и score."
+    };
+  }
+
+  const scoreDelta = result.score - previousSession.score;
+  const durationDeltaSec = Math.round((result.durationMs - previousSession.durationMs) / 1000);
+
+  if (scoreDelta > 0) {
+    return {
+      title: "Вы стали лучше прошлого раза",
+      summary: `Score изменился на ${formatSignedValue(scoreDelta)}.`,
+      detail:
+        durationDeltaSec < 0
+          ? `Идёте быстрее на ${Math.abs(durationDeltaSec)} сек при той же сложности.`
+          : durationDeltaSec > 0
+            ? `Раунд занял на ${durationDeltaSec} сек больше, но score всё равно вырос.`
+            : "Темп остался тем же, а score вырос за счёт более чистой игры."
+    };
+  }
+
+  if (scoreDelta < 0) {
+    return {
+      title: "Сейчас слабее прошлого результата",
+      summary: `Score изменился на ${formatSignedValue(scoreDelta)}.`,
+      detail:
+        durationDeltaSec > 0
+          ? `Раунд занял на ${durationDeltaSec} сек больше. Начните следующий круг с более спокойного темпа.`
+          : "Лучше вернуться к темпу прошлого удачного раунда и не форсировать поиск новых пар."
+    };
+  }
+
+  return {
+    title: "Вы держитесь на уровне прошлого раунда",
+    summary: "Score остался тем же на этой сложности.",
+    detail:
+      durationDeltaSec < 0
+        ? `При этом вы закончили быстрее на ${Math.abs(durationDeltaSec)} сек.`
+        : durationDeltaSec > 0
+          ? `Раунд занял на ${durationDeltaSec} сек больше, но результат сохранился.`
+          : "Это хороший знак: база уже начинает стабилизироваться."
+  };
+}
+
+function buildNextRoundGoal(
+  difficulty: MatchDifficulty,
+  result: MatchResult,
+  errors: number
+): { label: string; detail: string } {
+  if (difficulty === "easy" && result.accuracy >= 0.9 && errors <= 1) {
+    return {
+      label: "Следующий шаг: ещё один чистый easy и можно пробовать medium",
+      detail: "Если в следующем раунде снова мало ошибок, переход на среднюю сложность уже будет честным."
+    };
+  }
+
+  if (difficulty === "medium" && result.accuracy >= 0.85 && errors <= 2) {
+    return {
+      label: "Следующий шаг: закрепить medium или аккуратно зайти в hard",
+      detail: "Лучший выбор сейчас — ещё один уверенный medium. Если хочется вызова, можно протестировать hard одним коротким раундом."
+    };
+  }
+
+  if (difficulty === "hard" && result.accuracy >= 0.8) {
+    return {
+      label: "Следующий шаг: сохранить этот темп на hard",
+      detail: "Не усложняйте задачу. Сейчас ценнее повторить такой же собранный раунд ещё раз."
+    };
+  }
+
+  return {
+    label: `Следующий шаг: повторить ${difficulty} без спешки`,
+    detail: "Сначала закрепите карту поля и сократите 1-2 лишние ошибки. Потом уже добавляйте скорость."
+  };
+}
+
 export function MemoryMatchPage() {
   const { activeUserId, activeUserName } = useActiveUserDisplayName();
   const [difficulty, setDifficulty] = useState<MatchDifficulty>("easy");
@@ -258,6 +439,7 @@ export function MemoryMatchPage() {
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [previewRemainingSec, setPreviewRemainingSec] = useState(0);
+  const [previewRemainingMs, setPreviewRemainingMs] = useState(0);
   const [feedbackText, setFeedbackText] = useState("Соберите все пары без лишних ошибок.");
   const [feedbackTone, setFeedbackTone] = useState<FeedbackTone>("neutral");
   const [lastMismatch, setLastMismatch] = useState<number[]>([]);
@@ -268,6 +450,8 @@ export function MemoryMatchPage() {
   const [previousSession, setPreviousSession] = useState<Session | null>(null);
   const [bestSession, setBestSession] = useState<Session | null>(null);
   const [baselineBestSession, setBaselineBestSession] = useState<Session | null>(null);
+  const [sessionProgress, setSessionProgress] = useState<SessionSaveResult | null>(null);
+  const [feedbackHandled, setFeedbackHandled] = useState(false);
 
   const previewTimerRef = useRef<number | null>(null);
   const mismatchTimerRef = useRef<number | null>(null);
@@ -279,6 +463,17 @@ export function MemoryMatchPage() {
   const totalPairs = config.pairs;
   const pairsLeft = Math.max(0, totalPairs - matchedPairs);
   const accuracy = useMemo(() => calculateAccuracy(moves, matchedPairs), [matchedPairs, moves]);
+  const accuracyLabel = moves === 0 ? "—" : `${Math.round(accuracy * 100)}%`;
+  const previewProgressPercent = useMemo(() => {
+    if (config.previewSec <= 0) {
+      return 0;
+    }
+
+    const totalPreviewMs = config.previewSec * 1000;
+    const completed = totalPreviewMs - previewRemainingMs;
+    return Math.max(0, Math.min(100, Math.round((completed / totalPreviewMs) * 100)));
+  }, [config.previewSec, previewRemainingMs]);
+  const roundProgressPercent = totalPairs === 0 ? 0 : Math.round((matchedPairs / totalPairs) * 100);
   const liveScore = useMemo(
     () => calculateScore(matchedPairs / (Math.max(1, elapsedMs) / 60_000), accuracy, errors),
     [accuracy, elapsedMs, errors, matchedPairs]
@@ -305,25 +500,188 @@ export function MemoryMatchPage() {
     }
     return resultSummary.score === baselineBestSession.score;
   }, [baselineBestSession, hasActiveUser, resultSummary.score, saveError, saved]);
-  const focusTitle = phase === "preview" ? "Сейчас главное" : "Что делать сейчас";
+  const livePrompt = useMemo<LivePrompt>(() => {
+    if (phase === "preview") {
+      if (previewRemainingSec <= 1) {
+        return {
+          eyebrow: "Финиш запоминания",
+          title: "Закрепите последние опоры",
+          text: "Сейчас полезнее удержать 1-2 точные пары, чем пытаться помнить всё поле."
+        };
+      }
+
+      if (previewRemainingSec <= Math.max(1, Math.ceil(config.previewSec / 2))) {
+        return {
+          eyebrow: "Фокус",
+          title: "Разложите пары по зонам",
+          text: "Держите в памяти по одной опоре сверху, в центре и снизу: так после старта легче войти в ритм."
+        };
+      }
+
+      return {
+        eyebrow: "Фокус",
+        title: "Выберите 3-4 опоры",
+        text: "Запоминайте не только символы, а конкретные места на поле."
+      };
+    }
+
+    if (pairsLeft === 0) {
+      return {
+        eyebrow: "Финиш",
+        title: "Поле собрано",
+        text: "Итог уже считается. Сохраните в памяти, что сработало лучше всего в этом раунде."
+      };
+    }
+
+    if (lastMismatchSymbols.length === 2) {
+      return {
+        eyebrow: "Следующий ход",
+        title: "Вернитесь к последнему промаху",
+        text: `Вспомните, где лежат «${lastMismatchSymbols[0]}» и «${lastMismatchSymbols[1]}», и закройте эту пару без лишнего поиска.`
+      };
+    }
+
+    if (pairsLeft <= 2) {
+      return {
+        eyebrow: "Финиш",
+        title: "Доиграйте без риска",
+        text: "Осталось совсем немного. Сначала используйте свежую память, потом открывайте новую зону."
+      };
+    }
+
+    if (moves >= 4 && accuracy < 0.65) {
+      return {
+        eyebrow: "Коррекция",
+        title: "Сбавьте темп",
+        text: "После промаха не сканируйте всё поле. Сначала добирайте карточки из последних двух ходов."
+      };
+    }
+
+    if (moves >= 3 && accuracy >= 0.85) {
+      return {
+        eyebrow: "Темп",
+        title: "Ритм хороший",
+        text: "Сохраняйте тот же порядок: сначала свежие следы, потом новая зона."
+      };
+    }
+
+    return {
+      eyebrow: "Следующий ход",
+      title: "Ищите недавние открытия",
+      text: "Начинайте новый ход с карточек, которые уже мелькали в последних попытках."
+    };
+  }, [accuracy, config.previewSec, lastMismatchSymbols, moves, pairsLeft, phase, previewRemainingSec]);
+  const focusTitle =
+    phase === "preview"
+      ? "Как запоминать"
+      : lastMismatchSymbols.length === 2
+        ? "Последний промах"
+        : pairsLeft <= 2
+          ? "Спокойный финиш"
+          : accuracy >= 0.8 && moves >= 2
+            ? "Сохраняйте ритм"
+            : "Играйте от памяти";
   const focusText =
     phase === "preview"
-      ? `За ${config.previewSec} сек выберите взглядом 3-4 самые заметные пары и запомните их места.`
+      ? "Выберите верхнюю, центральную и нижнюю часть поля и привяжите к ним заметные пары. Так карта держится устойчивее."
       : pairsLeft === 0
-        ? "Поле собрано. Осталось дождаться итога раунда."
+        ? "Раунд завершён. Посмотрите на поле и отметьте, что помогло пройти его чище."
         : lastMismatchSymbols.length === 2
-          ? `Вернитесь к последней трудной паре: ${lastMismatchSymbols[0]} и ${lastMismatchSymbols[1]}.`
-          : `Осталось ${pairsLeft} пар. Сначала ищите карточки, которые вы уже видели совсем недавно.`;
-  const boardCardSize = config.columns === 4 ? "clamp(68px, 11vw, 124px)" : "clamp(44px, 7vw, 88px)";
+          ? "После промаха выгоднее вернуться к той же зоне поля, чем снова искать наугад."
+          : accuracy >= 0.8 && moves >= 2
+            ? "Если темп уже устойчивый, не меняйте стратегию. Сначала закрывайте знакомые пары, потом открывайте новую область."
+            : "Открывайте только одну новую область за ход. Так легче удерживать в памяти последние позиции.";
   const boardGridStyle: CSSProperties = {
-    gridTemplateColumns: `repeat(${config.columns}, ${boardCardSize})`
+    gridTemplateColumns: `repeat(${config.columns}, minmax(0, 1fr))`,
+    maxWidth: config.columns === 4 ? "min(100%, 560px)" : "min(100%, 640px)"
   };
-  const boardTitle = phase === "preview" ? "Сначала запомните поле" : "Теперь спокойно собирайте пары";
+  const boardTitle =
+    phase === "preview"
+      ? "Запомните пары"
+      : phase === "play"
+        ? "Соберите все пары"
+        : "Раунд завершён";
   const canInteract = phase === "play" && !locked;
+  const sessionPhaseLabel = phase === "preview" ? "Запоминайте" : phase === "play" ? "Собирайте пары" : "Итог";
+  const stageSummaryText =
+    phase === "preview"
+      ? `Старт через ${formatCompactSeconds(previewRemainingSec)}`
+      : phase === "play"
+        ? formatRemainingPairs(pairsLeft)
+        : "Раунд завершён";
   const boardHint =
     phase === "preview"
-      ? "Карточки пока открыты только для запоминания. Нажимать ещё не нужно."
-      : "Открывайте по две карточки. После промаха сначала возвращайтесь к последней трудной паре.";
+      ? "Держите в памяти 3-4 опоры и их места."
+      : phase === "play"
+        ? "Один ход = две карточки. После промаха сначала вернитесь к знакомой зоне."
+        : "Поле собрано. Сохраните в памяти, какие решения дали лучший темп.";
+  const boardNote =
+    phase === "preview"
+      ? "Поле пока открыто целиком."
+      : phase === "play"
+        ? "Открывайте только закрытые карточки."
+        : "Карточки оставлены открытыми, чтобы можно было спокойно соотнести итог с картой поля.";
+  const feedbackHeading =
+    phase === "preview"
+      ? "Поле открыто"
+      : phase === "result"
+        ? "Раунд сохранён в контексте"
+        : feedbackTone === "match"
+        ? "Пара найдена"
+        : feedbackTone === "mismatch"
+          ? "Промах тоже полезен"
+          : "Раунд идёт спокойно";
+  const feedbackMeta =
+    phase === "preview"
+      ? `${formatPairCount(totalPairs)} на поле • предпросмотр ${formatCompactSeconds(previewRemainingSec)}`
+      : phase === "result"
+        ? `Score ${resultSummary.score} • ${formatSeconds(Math.round(resultSummary.durationMs / 1000))}`
+        : moves === 0
+        ? "Сделайте первый ход, чтобы увидеть темп и точность."
+        : `${formatErrorCount(errors)} • текущий score ${liveScore}`;
+  const resultHeadline =
+    isNewBest
+      ? "Новый лучший результат на этой сложности"
+      : tiedBest
+        ? "Вы повторили свой лучший результат"
+        : resultFeedback.nextStep;
+  const resultInsight = useMemo(() => buildResultInsight(resultSummary, errors), [errors, resultSummary]);
+  const resultComparison = useMemo(
+    () => buildResultComparison(resultSummary, previousSession),
+    [previousSession, resultSummary]
+  );
+  const nextRoundGoal = useMemo(
+    () => buildNextRoundGoal(difficulty, resultSummary, errors),
+    [difficulty, errors, resultSummary]
+  );
+  const previousSummaryText = previousSession
+    ? `Прошлый результат на этой сложности: ${previousSession.score} score за ${Math.round(previousSession.durationMs / 1000)} сек.`
+    : `Это первый сохранённый раунд на сложности ${config.label}.`;
+  const bestSummaryText = bestSession
+    ? `Лучший результат сейчас: ${bestSession.score} score.`
+    : "Личный лучший результат появится после первого сохранения.";
+  const saveState =
+    !hasActiveUser
+      ? undefined
+      : saveError
+        ? { text: saveError, testId: "memory-match-save-error" }
+        : saved
+          ? { text: "Сессия сохранена.", testId: "memory-match-save-ok" }
+          : { text: "Сохраняем сессию...", testId: "memory-match-save-pending" };
+  const saveSummaryText = !hasActiveUser
+    ? "Результат не сохранён: сначала выберите активного пользователя."
+    : saveError
+      ? "Сохранить результат не удалось. Можно сразу сыграть ещё раз."
+      : saved
+        ? "Результат сохранён локально как отдельная сессия Memory Match."
+        : "Сохраняем результат локально...";
+  const feedbackLocalDate = useMemo(() => toLocalDateKey(new Date()), [phase, roundKey]);
+  const inlineRecommendations = [
+    resultFeedback.tip,
+    errors > 0
+      ? "В следующем раунде сначала возвращайтесь к местам последних промахов, а не открывайте новые зоны вслепую."
+      : "Раунд без ошибок: теперь можно добавлять темп, не жертвуя точностью."
+  ];
 
   useEffect(() => {
     return () => {
@@ -346,6 +704,7 @@ export function MemoryMatchPage() {
 
     const previewEndsAt = Date.now() + config.previewSec * 1000;
     setPreviewRemainingSec(config.previewSec);
+    setPreviewRemainingMs(config.previewSec * 1000);
     setFeedbackTone("neutral");
     setFeedbackText(`Запоминайте позиции. Карточки закроются через ${config.previewSec} сек.`);
 
@@ -353,6 +712,7 @@ export function MemoryMatchPage() {
       const remainingMs = Math.max(0, previewEndsAt - Date.now());
       const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
       setPreviewRemainingSec(remainingSec);
+      setPreviewRemainingMs(remainingMs);
 
       if (remainingMs <= 0) {
         if (previewTimerRef.current != null) {
@@ -363,6 +723,7 @@ export function MemoryMatchPage() {
         setLocked(false);
         setPhase("play");
         setStartedAt(Date.now());
+        setPreviewRemainingMs(0);
         setFeedbackText("Поле открыто: теперь можно нажимать по две карточки и держать в памяти последние ошибки.");
       }
     }, 100);
@@ -423,14 +784,16 @@ export function MemoryMatchPage() {
         setPreviousSession(previous);
         setBestSession(best);
         setBaselineBestSession(best);
+        setSessionProgress(null);
 
         const nextSession = buildSession(activeUserId, config, result, moves, errors);
-        await sessionRepository.save(nextSession);
+        const saveResult = await sessionRepository.save(nextSession);
         if (cancelled) {
           return;
         }
 
         setBestSession(best && best.score >= nextSession.score ? best : nextSession);
+        setSessionProgress(saveResult);
         setSaved(true);
       } catch (error) {
         if (cancelled) {
@@ -444,6 +807,41 @@ export function MemoryMatchPage() {
       cancelled = true;
     };
   }, [activeUserId, config, errors, moves, phase, result, saved]);
+
+  useEffect(() => {
+    if (!activeUserId || phase !== "result") {
+      setFeedbackHandled(false);
+      return;
+    }
+
+    setFeedbackHandled(hasTrainerFeedbackBeenHandled(activeUserId, "memory_match", feedbackLocalDate));
+  }, [activeUserId, feedbackLocalDate, phase]);
+
+  function handleDismissTrainerFeedback(): void {
+    if (!activeUserId) {
+      return;
+    }
+
+    markTrainerFeedbackHandled(activeUserId, "memory_match", feedbackLocalDate);
+    setFeedbackHandled(true);
+  }
+
+  function handleSubmitTrainerFeedback(payload: { sentiment: "liked" | "okay" | "not_for_me"; reasons: string[]; comment: string }): void {
+    if (!activeUserId) {
+      return;
+    }
+
+    saveTrainerFeedback({
+      userId: activeUserId,
+      moduleId: "memory_match",
+      modeId: "memory_match_classic",
+      sentiment: payload.sentiment,
+      reasons: payload.reasons,
+      comment: payload.comment
+    });
+    markTrainerFeedbackHandled(activeUserId, "memory_match", feedbackLocalDate);
+    setFeedbackHandled(true);
+  }
 
   function clearRoundTimers(): void {
     if (previewTimerRef.current != null) {
@@ -474,6 +872,7 @@ export function MemoryMatchPage() {
     setElapsedMs(0);
     setStartedAt(null);
     setPreviewRemainingSec(config.previewSec);
+    setPreviewRemainingMs(config.previewSec * 1000);
     setResult(null);
     setSaved(false);
     setSaveError(null);
@@ -499,6 +898,7 @@ export function MemoryMatchPage() {
     setElapsedMs(0);
     setStartedAt(null);
     setPreviewRemainingSec(0);
+    setPreviewRemainingMs(0);
     setFeedbackText("Соберите все пары без лишних ошибок.");
     setFeedbackTone("neutral");
     setLastMismatch([]);
@@ -536,11 +936,11 @@ export function MemoryMatchPage() {
         const remainingPairs = Math.max(0, totalPairs - (matchedPairs + 1));
         setMatched((prev) => new Set([...prev, first, second]));
         setFeedbackTone("match");
-        setFeedbackText(
-          remainingPairs === 0
-            ? `Пара «${deck[first]?.label}» найдена. Это последняя пара раунда.`
-            : `Пара «${deck[first]?.label}» найдена. Осталось ${remainingPairs} пар.`
-        );
+          setFeedbackText(
+            remainingPairs === 0
+              ? `Пара «${deck[first]?.label}» найдена. Это последняя пара раунда.`
+              : `Пара «${deck[first]?.label}» найдена. ${formatRemainingPairs(remainingPairs)}.`
+          );
         setLastMismatch([]);
         setLastMismatchSymbols([]);
       } else {
@@ -564,7 +964,7 @@ export function MemoryMatchPage() {
   }
 
   return (
-    <section className="panel" data-testid="memory-match-page">
+    <section className="panel memory-match-page" data-testid="memory-match-page">
       <h2>Memory Match</h2>
       <p>
         Новый тренажёр на зрительную память и удержание позиций. Цель — быстро найти все пары и не
@@ -586,7 +986,7 @@ export function MemoryMatchPage() {
             <div className="memory-match-preview-strip" aria-hidden="true">
               {PREVIEW_SYMBOLS.map((card) => (
                 <span key={`memory-match-preview-${card.id}`} className="memory-match-preview-icon">
-                  {card.emoji}
+                  <MemoryCardVisual id={card.id} className="memory-match-preview-art" />
                 </span>
               ))}
             </div>
@@ -666,66 +1066,129 @@ export function MemoryMatchPage() {
         </div>
       ) : null}
 
-      {phase === "preview" || phase === "play" ? (
+      {phase === "preview" || phase === "play" || phase === "result" ? (
         <div className={`memory-match-session-shell phase-${phase}`} data-testid="memory-match-session-shell" data-phase={phase}>
-          <div className="memory-match-hud" data-testid="memory-match-live-summary">
-            <div className="memory-match-hud-top">
-              <div>
-                <p className="stats-section-kicker">{phase === "preview" ? "Запоминание" : "Игровой ход"}</p>
-                <h3>{boardTitle}</h3>
-                <p>{boardHint}</p>
-              </div>
-              <div className="memory-match-hud-actions">
-                <button type="button" className="btn-secondary" onClick={startSession} data-testid="memory-match-restart">
-                  Начать заново
-                </button>
-                <button type="button" className="btn-ghost" onClick={resetToSetup}>
-                  Сменить уровень
-                </button>
+          {phase === "result" ? (
+            <div className="setup-block memory-match-result-hero memory-match-inline-summary" data-testid="memory-match-result-hero">
+              <div className="memory-match-inline-summary-head">
+                <div>
+                  <p className="stats-section-kicker">Итог раунда</p>
+                  <h3>{resultFeedback.title}</h3>
+                  <p>{resultHeadline}</p>
+                </div>
+                <div className="memory-match-inline-summary-badges" aria-hidden="true">
+                  <span className="memory-match-summary-pill">{formatSeconds(Math.round(resultSummary.durationMs / 1000))}</span>
+                  <span className="memory-match-summary-pill">{Math.round(resultSummary.accuracy * 100)}%</span>
+                  <span className="memory-match-summary-pill">Score {resultSummary.score}</span>
+                </div>
               </div>
             </div>
+          ) : (
+            <div className="memory-match-hud" data-testid="memory-match-live-summary">
+              <div className="memory-match-hud-top">
+                <div className="memory-match-hud-copy">
+                  <p className="stats-section-kicker">{phase === "preview" ? "Подготовка" : "Раунд"}</p>
+                  <h3>{boardTitle}</h3>
+                  <p>{boardHint}</p>
+                </div>
+              </div>
 
-            <div className="memory-match-hud-metrics">
-              <div className="memory-match-hud-card">
-                <span className="memory-match-hud-label">Стадия</span>
-                <strong className="memory-match-hud-value">
-                  {phase === "preview" ? `Запоминание ${previewRemainingSec}с` : "Поиск пар"}
-                </strong>
+              <div className="memory-match-hud-pills" aria-hidden="true">
+                  <span className="memory-match-summary-pill">{formatPairCount(totalPairs)}</span>
+                  <span className="memory-match-summary-pill">{config.label}</span>
+                  <span className="memory-match-summary-pill">{stageSummaryText}</span>
+                </div>
+
+              <div className="memory-match-hud-metrics">
+                <div className="memory-match-hud-card is-phase">
+                  <span className="memory-match-hud-label">Сейчас</span>
+                  <strong className="memory-match-hud-value">{sessionPhaseLabel}</strong>
+                  <span className="memory-match-hud-meta">
+                    {phase === "preview" ? `${formatCompactSeconds(previewRemainingSec)} до старта` : formatRemainingPairs(pairsLeft)}
+                  </span>
+                </div>
+                <div className="memory-match-hud-card">
+                  <span className="memory-match-hud-label">Собрано</span>
+                  <strong className="memory-match-hud-value">{matchedPairs}/{totalPairs}</strong>
+                  <span className="memory-match-hud-meta">
+                    {pairsLeft === totalPairs ? "пока без найденных пар" : formatRemainingPairs(pairsLeft)}
+                  </span>
+                </div>
+                <div className="memory-match-hud-card">
+                  <span className="memory-match-hud-label">Время</span>
+                  <strong className="memory-match-hud-value">{formatSeconds(Math.floor(elapsedMs / 1000))}</strong>
+                  <span className="memory-match-hud-meta">
+                    {phase === "preview" ? "таймер раунда стартует после закрытия поля" : "идёт с первого игрового хода"}
+                  </span>
+                </div>
+                <div className="memory-match-hud-card">
+                  <span className="memory-match-hud-label">Точность</span>
+                  <strong className="memory-match-hud-value">{accuracyLabel}</strong>
+                  <span className="memory-match-hud-meta">
+                    {moves === 0 ? "оценим после первого полного хода" : formatErrorCount(errors)}
+                  </span>
+                </div>
               </div>
-              <div className="memory-match-hud-card">
-                <span className="memory-match-hud-label">Время</span>
-                <strong className="memory-match-hud-value">{formatSeconds(Math.floor(elapsedMs / 1000))}</strong>
-              </div>
-              <div className="memory-match-hud-card">
-                <span className="memory-match-hud-label">Собрано</span>
-                <strong className="memory-match-hud-value">{matchedPairs}/{totalPairs} пар</strong>
-              </div>
-              <div className="memory-match-hud-card">
-                <span className="memory-match-hud-label">Ошибки</span>
-                <strong className="memory-match-hud-value">{errors}</strong>
-              </div>
-              <div className="memory-match-hud-card">
-                <span className="memory-match-hud-label">Точность</span>
-                <strong className="memory-match-hud-value">{Math.round(accuracy * 100)}%</strong>
-              </div>
-              <div className="memory-match-hud-card is-accent">
-                <span className="memory-match-hud-label">Следующий ориентир</span>
-                <strong className="memory-match-hud-value">
-                  {phase === "preview" ? "Запомнить 3-4 пары" : `${pairsLeft} пар осталось`}
-                </strong>
+
+              <div className="memory-match-guidance" data-tone={feedbackTone}>
+                <div className="memory-match-guidance-copy">
+                  <span className="memory-match-guidance-label">{livePrompt.eyebrow}</span>
+                  <strong className="memory-match-guidance-title">{livePrompt.title}</strong>
+                  <p>{livePrompt.text}</p>
+                </div>
+                <div className="memory-match-guidance-progress" aria-hidden="true">
+                  <span className="memory-match-guidance-progress-label">
+                    {phase === "preview" ? "Предпросмотр" : "Прогресс раунда"}
+                  </span>
+                  <div className="memory-match-progress-track">
+                    <span
+                      className={`memory-match-progress-fill ${phase === "preview" ? "is-preview" : "is-play"}`}
+                      style={{ width: `${phase === "preview" ? previewProgressPercent : roundProgressPercent}%` }}
+                    />
+                  </div>
+                  <span className="memory-match-guidance-progress-note">
+                    {phase === "preview"
+                      ? `${formatCompactSeconds(previewRemainingSec)} до старта`
+                      : `${roundProgressPercent}% поля собрано`}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="memory-match-board-layout">
-            <div className="memory-match-board-panel">
+            <div className={`memory-match-board-panel ${phase === "result" ? "is-result-board" : ""}`}>
               <div className="memory-match-board-header">
                 <div>
-                  <p className="stats-section-kicker">Поле раунда</p>
                   <h3>{config.label}</h3>
                 </div>
-                <p className="comparison-note memory-match-board-note">{boardHint}</p>
+                <div className="memory-match-board-toolbar">
+                  <div className="memory-match-board-badges" aria-hidden="true">
+                    <span className="memory-match-board-badge">{config.columns}x{config.columns}</span>
+                    <span className="memory-match-board-badge">{formatPairCount(config.pairs)}</span>
+                  </div>
+                  {phase !== "result" ? (
+                    <div className="memory-match-board-actions">
+                      <button
+                        type="button"
+                        className="btn-secondary memory-match-action-btn is-primary"
+                        onClick={startSession}
+                        data-testid="memory-match-restart"
+                      >
+                        Начать заново
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost memory-match-action-btn"
+                        onClick={resetToSetup}
+                      >
+                        Сменить уровень
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
+              <p className="comparison-note memory-match-board-note">{boardNote}</p>
 
               <div
                 className={`memory-match-grid ${phase === "preview" ? "is-preview" : ""} ${config.columns === 6 ? "is-compact-board" : "is-standard-board"}`}
@@ -780,7 +1243,9 @@ export function MemoryMatchPage() {
                         {isShown ? (
                           <>
                             <span className="memory-match-card-figure">
-                              <span className="memory-match-card-icon" aria-hidden="true">{card.emoji}</span>
+                              <span className="memory-match-card-icon" aria-hidden="true">
+                                <MemoryCardVisual id={card.id} />
+                              </span>
                             </span>
                             <span className="memory-match-card-caption">{card.label}</span>
                           </>
@@ -797,96 +1262,144 @@ export function MemoryMatchPage() {
             </div>
 
             <aside className="memory-match-side-panel">
-              <div className="setup-block memory-match-focus" data-testid="memory-match-focus">
-                <p className="stats-section-kicker">{phase === "preview" ? "Сейчас" : "Подсказка"}</p>
-                <h3>{focusTitle}</h3>
-                <p>{focusText}</p>
-              </div>
+              {phase === "result" ? (
+                <div className="setup-block memory-match-inline-result" data-testid="memory-match-result">
+                  <p className="stats-section-kicker">Подробно</p>
+                  <h3>Точные итоги и что делать дальше</h3>
 
-              <div className={`setup-block memory-match-status memory-match-status-${feedbackTone}`}>
-                <p><strong>{phase === "preview" ? "Подготовка" : "Обратная связь"}:</strong> {feedbackText}</p>
-                {phase === "play" ? <p>Промежуточный score: <strong>{liveScore}</strong></p> : null}
-                {phase === "play" && lastMismatchSymbols.length === 2 ? (
-                  <p className="comparison-note" data-testid="memory-match-review-note">
-                    Последняя трудная пара: {lastMismatchSymbols[0]} и {lastMismatchSymbols[1]}.
-                  </p>
-                ) : null}
-              </div>
+                  <div className="memory-match-inline-result-metrics">
+                    <div className="memory-match-inline-result-metric">
+                      <span>Время</span>
+                      <strong>{formatSeconds(Math.round(resultSummary.durationMs / 1000))}</strong>
+                    </div>
+                    <div className="memory-match-inline-result-metric">
+                      <span>Ходы</span>
+                      <strong>{moves}</strong>
+                    </div>
+                    <div className="memory-match-inline-result-metric">
+                      <span>Ошибки</span>
+                      <strong>{errors}</strong>
+                    </div>
+                    <div className="memory-match-inline-result-metric">
+                      <span>Точность</span>
+                      <strong>{Math.round(resultSummary.accuracy * 100)}%</strong>
+                    </div>
+                    <div className="memory-match-inline-result-metric">
+                      <span>Скорость</span>
+                      <strong>{resultSummary.speed.toFixed(1)} пар/мин</strong>
+                    </div>
+                    <div className="memory-match-inline-result-metric is-score">
+                      <span>Score</span>
+                      <strong>{resultSummary.score}</strong>
+                    </div>
+                  </div>
+
+                  <div className="memory-match-inline-result-callouts">
+                    <article
+                      className={`memory-match-inline-result-callout is-${resultInsight.tone}`}
+                      data-testid="memory-match-result-insight"
+                    >
+                      <p className="stats-section-kicker">Что значит этот раунд</p>
+                      <h4>{resultInsight.title}</h4>
+                      <p>{resultInsight.summary}</p>
+                    </article>
+
+                    <article className="memory-match-inline-result-callout" data-testid="memory-match-result-next-step">
+                      <p className="stats-section-kicker">Что делать дальше</p>
+                      <h4>{nextRoundGoal.label}</h4>
+                      <p>{nextRoundGoal.detail}</p>
+                    </article>
+                  </div>
+
+                  <div className="memory-match-inline-result-copy">
+                    <article className="memory-match-inline-result-note" data-testid="memory-match-result-comparison">
+                      <strong>{resultComparison.title}</strong>
+                      <p>{resultComparison.summary}</p>
+                      <p>{resultComparison.detail}</p>
+                    </article>
+                    <p>{previousSummaryText}</p>
+                    <p>{bestSummaryText}</p>
+                    {inlineRecommendations.map((note) => (
+                      <p key={note} className="memory-match-inline-result-note">
+                        {note}
+                      </p>
+                    ))}
+                    {buildSessionProgressNotes(sessionProgress).map((note) => (
+                      <p key={note} className="memory-match-inline-result-note">
+                        {note}
+                      </p>
+                    ))}
+                  </div>
+
+                  {saveState ? (
+                    <p className="memory-match-inline-result-save" data-testid={saveState.testId}>
+                      {saveState.text}
+                    </p>
+                  ) : null}
+                  <p className="comparison-note memory-match-inline-result-save-note">{saveSummaryText}</p>
+
+                  {hasActiveUser && !feedbackHandled ? (
+                    <TrainerFeedbackCard
+                      title="Как вам этот раунд Memory Match?"
+                      subtitle="Короткий отзыв поможет нам спокойнее доводить модуль без навязчивых popup-окон."
+                      onDismiss={handleDismissTrainerFeedback}
+                      onSubmit={handleSubmitTrainerFeedback}
+                    />
+                  ) : null}
+
+                  <div className="action-row memory-match-inline-result-actions">
+                    <button type="button" className="btn-secondary" onClick={startSession} data-testid="memory-match-result-retry-btn">
+                      Сыграть ещё
+                    </button>
+                    <button type="button" className="btn-ghost" onClick={resetToSetup}>
+                      Сменить уровень
+                    </button>
+                    <Link className="btn-ghost" to="/training" data-testid="memory-match-result-stats-link">
+                      К тренировкам
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="setup-block memory-match-focus" data-testid="memory-match-focus">
+                    <p className="stats-section-kicker">{phase === "preview" ? "Стратегия" : "Опора"}</p>
+                    <h3>{focusTitle}</h3>
+                    <p>{focusText}</p>
+                  </div>
+
+                  <div
+                    className={`setup-block memory-match-status memory-match-status-${feedbackTone}`}
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    <p className="memory-match-status-kicker">{phase === "preview" ? "Подготовка" : "Обратная связь"}</p>
+                    <h3>{feedbackHeading}</h3>
+                    <p>{feedbackText}</p>
+                    <p className="memory-match-status-meta">{feedbackMeta}</p>
+                    {phase === "play" && lastMismatchSymbols.length === 2 ? (
+                      <p className="comparison-note" data-testid="memory-match-review-note">
+                        Последняя трудная пара: {lastMismatchSymbols[0]} и {lastMismatchSymbols[1]}.
+                      </p>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </aside>
           </div>
         </div>
       ) : null}
 
-      {phase === "result" ? (
-        <>
-          <div className="setup-block memory-match-result-hero" data-testid="memory-match-result-hero">
-            <p className="stats-section-kicker">Итог раунда</p>
-            <h3>{resultFeedback.title}</h3>
-            <p>{resultFeedback.nextStep}</p>
-          </div>
-          <SessionResultSummary
-            testId="memory-match-result"
-            title="Результаты Memory Match"
-            metrics={[
-              { label: "Время", value: formatSeconds(Math.round(resultSummary.durationMs / 1000)) },
-              { label: "Попытки", value: String(moves) },
-              { label: "Ошибки", value: String(errors) },
-              { label: "Точность", value: `${Math.round(resultSummary.accuracy * 100)}%` },
-              { label: "Скорость", value: `${resultSummary.speed.toFixed(1)} пар/мин` },
-              { label: "Score", value: String(resultSummary.score) }
-            ]}
-            previousSummary={
-              previousSession
-                ? `Прошлый результат на этой же сложности: ${previousSession.score} score за ${Math.round(previousSession.durationMs / 1000)} сек.`
-                : `Это первый сохранённый раунд на сложности ${config.label}.`
-            }
-            bestSummary={
-              bestSession
-                ? `Лучший результат на этой же сложности: ${bestSession.score} score.`
-                : null
-            }
-            tip={resultFeedback.tip}
-            saveSummary={
-              !hasActiveUser
-                ? "Результат не сохранён: сначала выберите активного пользователя."
-                : saveError
-                  ? "Сохранить результат не удалось. Можно сразу сыграть ещё раз."
-                  : saved
-                    ? "Результат сохранён локально как отдельная сессия Memory Match."
-                    : "Сохраняем результат локально..."
-            }
-            saveState={
-              !hasActiveUser
-                ? undefined
-                : saveError
-                  ? { text: saveError, testId: "memory-match-save-error" }
-                  : saved
-                    ? { text: "Сессия сохранена.", testId: "memory-match-save-ok" }
-                    : { text: "Сохраняем сессию...", testId: "memory-match-save-pending" }
-            }
-            extraNotes={[
-              `Сложность раунда: ${config.label}. Сравнение идёт только внутри этой сложности.`,
-              isNewBest
-                ? "Новый личный рекорд на этой сложности."
-                : tiedBest
-                  ? "Вы повторили свой лучший результат на этой сложности."
-                  : "Личный рекорд на этой сложности пока не обновлён.",
-              errors > 0
-                ? "Если ошиблись, в следующем раунде сначала ищите пары из последних промахов."
-                : "Раунд без ошибок: теперь можно улучшать темп без потери точности."
-            ]}
-            retryLabel="Сыграть ещё"
-            statsLabel="К тренировкам"
-            statsTo="/training"
-            onRetry={startSession}
-          />
-        </>
-      ) : null}
+      <SessionRewardQueue
+        levelUp={sessionProgress?.levelUp}
+        nextGoalSummary={sessionProgress?.nextGoal?.primaryGoal.summary}
+        achievements={sessionProgress?.unlockedAchievements}
+        userId={activeUserId}
+        localDate={toLocalDateKey(new Date())}
+      />
     </section>
   );
 }
-
-
 
 
 

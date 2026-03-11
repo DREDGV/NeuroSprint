@@ -45,6 +45,18 @@ export const TRAINING_MODULES: TrainingModule[] = [
     status: "active"
   },
   {
+    id: "memory_match",
+    title: "Memory Match",
+    description: "Зрительная память, поиск пар и удержание позиций на поле.",
+    status: "active"
+  },
+  {
+    id: "spatial_memory",
+    title: "Spatial Memory",
+    description: "Пространственная память, удержание карты поля и работа с зонами.",
+    status: "active"
+  },
+  {
     id: "decision_rush",
     title: "Decision Rush",
     description: "Быстрый тренажёр правил Да/Нет со сменой правил и фокусом на точность.",
@@ -226,6 +238,24 @@ export const DECISION_RUSH_MODES: TrainingMode[] = [
   }
 ];
 
+export const MEMORY_MATCH_MODES: TrainingMode[] = [
+  {
+    id: "memory_match_classic",
+    moduleId: "memory_match",
+    title: "Memory Match Classic",
+    description: "Запомните поле, находите пары и старайтесь не повторять одни и те же ошибки."
+  }
+];
+
+export const SPATIAL_MEMORY_MODES: TrainingMode[] = [
+  {
+    id: "spatial_memory_classic",
+    moduleId: "spatial_memory",
+    title: "Spatial Memory Classic",
+    description: "Запомните карту поля, удержите форму и восстановите её без лишних догадок."
+  }
+];
+
 export const PATTERN_MODES: TrainingMode[] = [
   {
     id: "pattern_classic",
@@ -260,6 +290,8 @@ export const TRAINING_MODES: TrainingMode[] = [
   ...NBACK_MODES,
   ...MEMORY_GRID_MODES,
   ...DECISION_RUSH_MODES,
+  ...MEMORY_MATCH_MODES,
+  ...SPATIAL_MEMORY_MODES,
   ...PATTERN_MODES
 ];
 

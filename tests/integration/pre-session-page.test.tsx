@@ -8,7 +8,8 @@ import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
 const mocks = vi.hoisted(() => ({
   sessionRepository: {
     getDailyProgressSummary: vi.fn(),
-    getIndividualInsights: vi.fn()
+    getIndividualInsights: vi.fn(),
+    listByUser: vi.fn()
   },
   trainingRepository: {
     recommendModeForToday: vi.fn()
@@ -31,6 +32,52 @@ vi.mock("../../src/entities/user/userRepository", () => ({
 }));
 
 import { PreSessionPage } from "../../src/pages/PreSessionPage";
+import type { Session, TrainingModuleId, TrainingModeId } from "../../src/shared/types/domain";
+
+function makeSession(
+  id: string,
+  moduleId: TrainingModuleId,
+  modeId: TrainingModeId,
+  timestamp: string,
+  overrides: Partial<Session> = {}
+): Session {
+  const modeByModule: Record<TrainingModuleId, Session["mode"]> = {
+    schulte: "classic",
+    sprint_math: "sprint_math",
+    reaction: "reaction",
+    n_back: "n_back",
+    memory_grid: "memory_grid",
+    spatial_memory: "spatial_memory",
+    decision_rush: "decision_rush",
+    memory_match: "memory_match",
+    pattern_recognition: "pattern_recognition"
+  };
+
+  return {
+    id,
+    userId: "u1",
+    taskId: moduleId,
+    moduleId,
+    modeId,
+    mode: modeByModule[moduleId],
+    level: 1,
+    presetId: "easy",
+    adaptiveSource: "auto",
+    timestamp,
+    localDate: timestamp.slice(0, 10),
+    durationMs: 45_000,
+    score: 60,
+    accuracy: 0.8,
+    speed: 1,
+    errors: 1,
+    difficulty: {
+      gridSize: 3,
+      numbersCount: 9,
+      mode: modeByModule[moduleId]
+    },
+    ...overrides
+  };
+}
 
 function ReactionMarker() {
   const location = useLocation();
@@ -45,6 +92,11 @@ function NBackMarker() {
 function DecisionRushMarker() {
   const location = useLocation();
   return <p data-testid="decision-setup-marker">{location.search}</p>;
+}
+
+function SpatialMemoryMarker() {
+  const location = useLocation();
+  return <p data-testid="spatial-memory-setup-marker">{location.search}</p>;
 }
 
 describe("PreSessionPage", () => {
@@ -72,6 +124,7 @@ describe("PreSessionPage", () => {
       reason: "Тестовая рекомендация",
       confidence: 0.75
     });
+    mocks.sessionRepository.listByUser.mockResolvedValue([]);
     mocks.sessionRepository.getIndividualInsights.mockResolvedValue({
       streakDays: 4,
       currentWeekAvgScore: 22,
@@ -207,5 +260,62 @@ describe("PreSessionPage", () => {
     expect(await screen.findByTestId("decision-setup-marker")).toHaveTextContent(
       "?mode=decision_pro"
     );
+  });
+
+  it("supports spatial memory module flow and opens spatial memory route", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/training/pre-session?module=spatial_memory"]}>
+        <ActiveUserProvider>
+          <Routes>
+            <Route path="/training/pre-session" element={<PreSessionPage />} />
+            <Route path="/training/spatial-memory" element={<SpatialMemoryMarker />} />
+          </Routes>
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("pre-session-page")).toBeInTheDocument();
+    expect(screen.getByTestId("pre-session-mode-spatial_memory_classic")).toBeInTheDocument();
+    expect(screen.queryByTestId("pre-session-mode-classic_plus")).not.toBeInTheDocument();
+    expect(screen.getByTestId("pre-session-reaction-mode-tip")).toHaveTextContent("форму поля");
+
+    await user.click(screen.getByTestId("pre-session-start-btn"));
+    expect(await screen.findByTestId("spatial-memory-setup-marker")).toHaveTextContent(
+      "?mode=spatial_memory_classic"
+    );
+  });
+
+  it("shows growth focus and uses it as the default start when there is no query filter", async () => {
+    mocks.sessionRepository.listByUser.mockResolvedValue([
+      makeSession("s1", "reaction", "reaction_signal", "2026-03-08T10:00:00.000Z", {
+        score: 164,
+        accuracy: 0.93,
+        errors: 0
+      }),
+      makeSession("s2", "reaction", "reaction_pair", "2026-03-07T10:00:00.000Z", {
+        score: 152,
+        accuracy: 0.9,
+        errors: 1
+      })
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={["/training/pre-session"]}>
+        <ActiveUserProvider>
+          <Routes>
+            <Route path="/training/pre-session" element={<PreSessionPage />} />
+          </Routes>
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("pre-session-growth-focus")).toHaveTextContent(
+      "Сейчас стоит усилить память"
+    );
+    expect(screen.getByTestId("pre-session-mode-memory_match_classic")).toHaveClass("is-active");
+    expect(screen.getByTestId("pre-session-use-growth-focus-btn")).toBeDisabled();
+    expect(screen.getByTestId("pre-session-recommendation")).toBeInTheDocument();
   });
 });

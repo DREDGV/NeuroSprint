@@ -65,6 +65,7 @@ const STATS_MODULE_LABELS: Record<TrainingModuleId, string> = {
   reaction: "Reaction",
   n_back: "N-Back",
   memory_grid: "Memory Grid",
+  spatial_memory: "Spatial Memory",
   decision_rush: "Decision Rush",
   memory_match: "Memory Match",
   pattern_recognition: "Pattern"

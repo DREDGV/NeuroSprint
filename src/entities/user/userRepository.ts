@@ -30,6 +30,7 @@ export const userRepository = {
         reaction: 0,
         n_back: 0,
         memory_grid: 0,
+        spatial_memory: 0,
         decision_rush: 0,
         memory_match: 0,
         pattern_recognition: 0
@@ -52,6 +53,7 @@ export const userRepository = {
         reaction: 0,
         n_back: 0,
         memory_grid: 0,
+        spatial_memory: 0,
         decision_rush: 0,
         memory_match: 0,
         pattern_recognition: 0

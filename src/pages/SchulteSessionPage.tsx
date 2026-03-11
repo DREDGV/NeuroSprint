@@ -2,7 +2,10 @@
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { preferenceRepository } from "../entities/preferences/preferenceRepository";
-import { sessionRepository } from "../entities/session/sessionRepository";
+import {
+  sessionRepository,
+  type SessionSaveResult
+} from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import { playAudioCue } from "../shared/lib/audio/audioCues";
 import {
@@ -12,6 +15,7 @@ import {
 } from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
+import { buildSessionProgressNotes } from "../shared/lib/progress/sessionProgressFeedback";
 import { generateSchulteGrid } from "../shared/lib/random/grid";
 import {
   calcClassicMetrics,
@@ -36,6 +40,7 @@ import type {
   TrainingModeId,
   TrainingSetup
 } from "../shared/types/domain";
+import { SessionRewardQueue } from "../widgets/SessionRewardQueue";
 
 interface SessionResult {
   durationMs: number;
@@ -219,6 +224,7 @@ export function SchulteSessionPage() {
   const [adaptiveDecision, setAdaptiveDecision] = useState<AdaptiveDecision | null>(null);
   const [previousSession, setPreviousSession] = useState<Session | null>(null);
   const [bestSession, setBestSession] = useState<Session | null>(null);
+  const [sessionProgress, setSessionProgress] = useState<SessionSaveResult | null>(null);
   const [flash, setFlash] = useState<{ index: number; type: "correct" | "error" } | null>(null);
   const timedBaseCycleMode =
     modeId === "timed_plus" && (setup.timedBaseClear ?? level <= 1);
@@ -415,14 +421,16 @@ export function SchulteSessionPage() {
     };
 
     let cancelled = false;
+    setSessionProgress(null);
     void sessionRepository
       .save(session)
-      .then(async () => {
+      .then(async (saveResult) => {
         if (cancelled) {
           return;
         }
         setSaved(true);
         setSaveError(null);
+        setSessionProgress(saveResult);
 
         const [decision, history] = await Promise.all([
           trainingRepository.evaluateAdaptiveLevel(activeUserId, "schulte", modeId),
@@ -753,17 +761,27 @@ export function SchulteSessionPage() {
           tip={buildSchulteTip(modeId, result.accuracy, errors)}
           saveSummary={saved ? "Сессия сохранена." : "Сохраняем сессию..."}
           extraNotes={
-            adaptiveDecision
-              ? [
-                  `Адаптация: ${adaptiveDecision.reason} (уровень ${adaptiveDecision.previousLevel} → ${adaptiveDecision.nextLevel})`
-                ]
-              : undefined
+            [
+              ...(adaptiveDecision
+                ? [
+                    `Адаптация: ${adaptiveDecision.reason} (уровень ${adaptiveDecision.previousLevel} → ${adaptiveDecision.nextLevel})`
+                  ]
+                : []),
+              ...buildSessionProgressNotes(sessionProgress)
+            ]
           }
           retryLabel="Новая попытка"
           onRetry={resetGame}
         />
       ) : null}
 
+      <SessionRewardQueue
+        levelUp={sessionProgress?.levelUp}
+        nextGoalSummary={sessionProgress?.nextGoal?.primaryGoal.summary}
+        achievements={sessionProgress?.unlockedAchievements}
+        userId={activeUserId}
+        localDate={toLocalDateKey(new Date())}
+      />
       {saveError ? <p className="error-text">{saveError}</p> : null}
     </section>
   );

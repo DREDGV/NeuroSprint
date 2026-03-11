@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+﻿import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: "NeuroSprint",
         short_name: "NeuroSprint",
-        description: "Когнитивный тренажер скорости мышления",
+        description: "Когнитивный тренажёр скорости мышления",
         theme_color: "#1e7f71",
         background_color: "#f2f8f6",
         display: "standalone",
@@ -31,7 +31,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,ico}"]
+        globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
+        globIgnores: ["**/Memory Match_*.png"],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
       }
     })
   ],

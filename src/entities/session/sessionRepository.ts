@@ -1,12 +1,18 @@
 import Dexie from "dexie";
 import { db } from "../../db/database";
 import { dailyChallengeRepository } from "../challenge/dailyChallengeRepository";
+import { dailyTrainingRepository } from "../training/dailyTrainingRepository";
+import { levelRepository } from "../level/levelRepository";
+import { achievementRepository } from "../achievement/achievementRepository";
+import { skillComparisonRepository } from "../skill/skillComparisonRepository";
 import { userRepository } from "../user/userRepository";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import { DEFAULT_AUDIO_SETTINGS } from "../../shared/lib/audio/audioSettings";
+import { buildProgressGoalSummary, type ProgressGoalSummary } from "../../shared/lib/progress/nextGoal";
 import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
 import { recommendModeByPerformance } from "../../shared/lib/training/recommendation";
 import type {
+  Achievement,
   ClassicDailyPoint,
   CompareBandMetric,
   ComparePeriod,
@@ -23,7 +29,8 @@ import type {
   Session,
   SprintMathDailyPoint,
   TimedDailyPoint,
-  TrainingModeId
+  TrainingModeId,
+  TrainingModuleId
 } from "../../shared/types/domain";
 
 function byDateAsc<T extends { date: string }>(a: T, b: T): number {
@@ -368,6 +375,8 @@ function normalizeSession(session: Session): Session {
         ? "n_back"
         : resolvedTaskId === "memory_grid"
           ? "memory_grid"
+      : resolvedTaskId === "spatial_memory"
+        ? "spatial_memory"
       : resolvedTaskId === "decision_rush"
         ? "decision_rush"
         : resolvedTaskId === "pattern_recognition"
@@ -392,6 +401,8 @@ function normalizeSession(session: Session): Session {
                 ? "nback_1"
               : session.mode === "memory_grid"
                 ? "memory_grid_classic"
+              : session.mode === "spatial_memory"
+                ? "spatial_memory_classic"
               : session.mode === "decision_rush"
                 ? "decision_standard"
               : session.mode === "pattern_recognition"
@@ -635,16 +646,269 @@ export function recommendModeFromSessions(sessions: Session[]): ModeRecommendati
   return recommendModeByPerformance(sessions);
 }
 
+export interface SessionUnlockedAchievement {
+  id: string;
+  title: string;
+  icon: string;
+  category: Achievement["category"];
+}
+
+export interface SessionSaveResult {
+  xpGranted?: number;
+  leveledUp?: boolean;
+  newlyUnlockedAchievements?: string[];
+  unlockedAchievements?: SessionUnlockedAchievement[];
+  nextGoal?: ProgressGoalSummary;
+  xpBreakdown?: {
+    session: number;
+    dailyComplete: number;
+    streakBonus: number;
+    achievement: number;
+    total: number;
+  };
+  levelUp?: {
+    fromLevel: number;
+    toLevel: number;
+  } | null;
+  dailyTrainingCompleted?: boolean;
+}
+
+function toUnlockedAchievementSummary(achievement: Achievement): SessionUnlockedAchievement {
+  return {
+    id: achievement.id,
+    title: achievement.title,
+    icon: achievement.icon,
+    category: achievement.category
+  };
+}
+
 export const sessionRepository = {
-  async save(session: Session): Promise<void> {
+  async save(session: Session): Promise<SessionSaveResult> {
     const normalized = normalizeSession(session);
+    const previousLevel = await levelRepository.getOrCreateUserLevel(normalized.userId);
+    const trainingBefore = await dailyTrainingRepository.getOrCreateForToday(
+      normalized.userId,
+      normalized.localDate
+    );
+
     await db.sessions.put(normalized);
     await dailyChallengeRepository.registerSession(normalized);
-    
+    await dailyTrainingRepository.registerSession(normalized);
+
     // Обновляем активность пользователя
     const durationMs = normalized.durationMs || 0;
     const durationSec = Math.floor(durationMs / 1000);
     await userRepository.updateActivity(normalized.userId, normalized.moduleId, durationSec);
+
+    // Начисляем XP и проверяем достижения
+    const result: SessionSaveResult = {
+      leveledUp: false,
+      levelUp: null,
+      dailyTrainingCompleted: false
+    };
+
+    try {
+      const trainingProgress = await dailyTrainingRepository.getOrCreateForToday(
+        normalized.userId,
+        normalized.localDate
+      );
+      const streakSummary = await dailyTrainingRepository.getStreakSummary(
+        normalized.userId,
+        365
+      );
+
+      let totalXpGranted = 0;
+      let achievementXpGranted = 0;
+      let dailyBonusXpGranted = 0;
+      let streakBonusXpGranted = 0;
+      let currentStreakDays = streakSummary.currentStreakDays;
+      let currentLevel = previousLevel;
+      const unlockedAchievements: Achievement[] = [];
+      const unlockedAchievementIds = new Set<string>();
+
+      const pushUnlockedAchievements = (items: Achievement[]): void => {
+        for (const item of items) {
+          if (unlockedAchievementIds.has(item.id)) {
+            continue;
+          }
+          unlockedAchievementIds.add(item.id);
+          unlockedAchievements.push(item);
+        }
+      };
+
+      const sessionXpResult = await levelRepository.grantSessionXP(
+        normalized.userId,
+        streakSummary.currentStreakDays
+      );
+      totalXpGranted += sessionXpResult.xpGranted;
+      currentLevel = sessionXpResult.level;
+
+      const totalSessions = await db.sessions
+        .where("userId")
+        .equals(normalized.userId)
+        .count();
+      const moduleSessions = await db.sessions
+        .where("userId")
+        .equals(normalized.userId)
+        .and((entry) => entry.moduleId === normalized.moduleId)
+        .count();
+      const modulesCompletedSessions = await db.sessions
+        .where("userId")
+        .equals(normalized.userId)
+        .toArray();
+      const modulesCompleted = new Set(
+        modulesCompletedSessions.map((entry) => entry.moduleId)
+      );
+
+      const sessionsToday = trainingProgress.sessions.length;
+
+      const sessionAchievements = await achievementRepository.processAchievementEvent(
+        normalized.userId,
+        {
+          type: "session_completed",
+          userId: normalized.userId,
+          sessionId: normalized.id,
+          moduleId: normalized.moduleId,
+          totalSessions,
+          sessionsToday
+        }
+      );
+      pushUnlockedAchievements(sessionAchievements.newlyUnlocked);
+
+      const moduleAchievements = await achievementRepository.updateModuleSessionProgress(
+        normalized.userId,
+        normalized.moduleId,
+        moduleSessions
+      );
+      pushUnlockedAchievements(moduleAchievements.newlyUnlocked);
+
+      const allModulesAchievement = await achievementRepository.checkAllModulesAchievement(
+        normalized.userId,
+        modulesCompleted
+      );
+      pushUnlockedAchievements(allModulesAchievement.newlyUnlocked);
+
+      const dailyCompleted = !trainingBefore.completed && trainingProgress.completed;
+      result.dailyTrainingCompleted = dailyCompleted;
+
+      if (dailyCompleted) {
+        const dailyXpResult = await levelRepository.grantDailyCompleteXP(normalized.userId);
+        totalXpGranted += dailyXpResult.xpGranted;
+        dailyBonusXpGranted = dailyXpResult.xpGranted;
+        currentLevel = dailyXpResult.level;
+
+        const dailyAchievements = await achievementRepository.processAchievementEvent(
+          normalized.userId,
+          {
+            type: "daily_completed",
+            userId: normalized.userId,
+            sessionsToday
+          }
+        );
+        pushUnlockedAchievements(dailyAchievements.newlyUnlocked);
+
+        const updatedStreak = await dailyTrainingRepository.getStreakSummary(
+          normalized.userId,
+          365
+        );
+        currentStreakDays = updatedStreak.currentStreakDays;
+        const streakAchievements = await achievementRepository.processAchievementEvent(
+          normalized.userId,
+          {
+            type: "streak_updated",
+            userId: normalized.userId,
+            streakDays: updatedStreak.currentStreakDays
+          }
+        );
+        pushUnlockedAchievements(streakAchievements.newlyUnlocked);
+
+        if (updatedStreak.currentStreakDays > 1) {
+          const streakXpResult = await levelRepository.grantStreakBonusXP(
+            normalized.userId,
+            updatedStreak.currentStreakDays
+          );
+          totalXpGranted += streakXpResult.xpGranted;
+          streakBonusXpGranted = streakXpResult.xpGranted;
+          currentLevel = streakXpResult.level;
+        }
+      }
+
+      const rewardedAchievementIds = new Set<string>();
+      let pendingAchievements = [...unlockedAchievements];
+      let shouldCheckLevelAchievements = true;
+
+      while (pendingAchievements.length > 0 || shouldCheckLevelAchievements) {
+        const batch = pendingAchievements.filter(
+          (achievement) => !rewardedAchievementIds.has(achievement.id)
+        );
+
+        pendingAchievements = [];
+        shouldCheckLevelAchievements = false;
+
+        for (const achievement of batch) {
+          rewardedAchievementIds.add(achievement.id);
+          const achievementXpResult = await levelRepository.grantAchievementXP(
+            normalized.userId,
+            achievement.id
+          );
+          achievementXpGranted += achievementXpResult.xpGranted;
+          totalXpGranted += achievementXpResult.xpGranted;
+          currentLevel = achievementXpResult.level;
+        }
+
+        const levelAchievements = await achievementRepository.checkLevelAchievement(
+          normalized.userId,
+          currentLevel.level
+        );
+        pushUnlockedAchievements(levelAchievements.newlyUnlocked);
+        pendingAchievements = levelAchievements.newlyUnlocked.filter(
+          (achievement) => !rewardedAchievementIds.has(achievement.id)
+        );
+      }
+
+      if (unlockedAchievements.length > 0) {
+        result.newlyUnlockedAchievements = unlockedAchievements.map((achievement) => achievement.id);
+        result.unlockedAchievements = unlockedAchievements.map(toUnlockedAchievementSummary);
+      }
+
+      const userAchievements = await achievementRepository.getUserAchievements(normalized.userId);
+      result.nextGoal = buildProgressGoalSummary({
+        level: currentLevel,
+        achievements: userAchievements,
+        sessions: modulesCompletedSessions,
+        totalSessions,
+        sessionsToday,
+        streakDays: currentStreakDays
+      });
+
+      result.xpGranted = totalXpGranted;
+      result.xpBreakdown = {
+        session: sessionXpResult.xpGranted,
+        dailyComplete: dailyBonusXpGranted,
+        streakBonus: streakBonusXpGranted,
+        achievement: achievementXpGranted,
+        total: totalXpGranted
+      };
+      result.leveledUp = currentLevel.level > previousLevel.level;
+      result.levelUp = result.leveledUp
+        ? {
+            fromLevel: previousLevel.level,
+            toLevel: currentLevel.level
+          }
+        : null;
+
+      // Обновляем сравнение навыков (Phase 3)
+      try {
+        await skillComparisonRepository.updateAllSkillComparisons(normalized.userId);
+      } catch (error) {
+        console.error("Error updating skill comparisons:", error);
+      }
+    } catch (error) {
+      // Не блокируем сохранение сессии если XP/achievements упали
+      console.error("Error granting XP/achievements:", error);
+    }
+
+    return result;
   },
 
   async listByUser(userId: string): Promise<Session[]> {

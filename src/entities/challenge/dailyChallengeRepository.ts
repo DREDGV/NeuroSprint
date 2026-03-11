@@ -1,6 +1,7 @@
 import { db } from "../../db/database";
 import { toLocalDateKey } from "../../shared/lib/date/date";
 import { createId } from "../../shared/lib/id";
+import { buildSkillGuidance } from "../../shared/lib/training/skillGuidance";
 import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
 import type {
   ComparePeriod,
@@ -12,6 +13,7 @@ import type {
   DailyChallengeStreakSummary,
   DailyChallengeTrendPoint,
   Session,
+  TrainingModuleId,
   TrainingModeId
 } from "../../shared/types/domain";
 
@@ -77,6 +79,7 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   decision_kids: "Decision Rush Kids",
   decision_standard: "Decision Rush Standard",
   decision_pro: "Decision Rush Pro",
+  spatial_memory_classic: "Spatial Memory Classic",
   memory_match_classic: "Memory Match Classic",
   pattern_classic: "Pattern Recognition Classic",
   pattern_timed: "Pattern Recognition Timed",
@@ -147,6 +150,42 @@ export function resolveDailyChallengeModeId(localDate: string): TrainingModeId {
   return DAILY_CHALLENGE_MODE_ROTATION[index] ?? "classic_plus";
 }
 
+function modeIdForGrowthModule(moduleId: TrainingModuleId): TrainingModeId | null {
+  if (moduleId === "memory_match") {
+    return "memory_match_classic";
+  }
+  if (moduleId === "pattern_recognition") {
+    return "pattern_classic";
+  }
+  if (moduleId === "reaction") {
+    return "reaction_signal";
+  }
+  if (moduleId === "sprint_math") {
+    return "sprint_add_sub";
+  }
+  if (moduleId === "schulte") {
+    return "classic_plus";
+  }
+  return null;
+}
+
+export function resolveAdaptiveDailyChallengeModeId(
+  localDate: string,
+  sessions: Session[]
+): TrainingModeId {
+  const fallbackModeId = resolveDailyChallengeModeId(localDate);
+  if (sessions.length < 3) {
+    return fallbackModeId;
+  }
+
+  const skillGuidance = buildSkillGuidance(sessions);
+  if (!skillGuidance.hasData || skillGuidance.profile.totalSessions < 3) {
+    return fallbackModeId;
+  }
+
+  return modeIdForGrowthModule(skillGuidance.primaryModuleId) ?? fallbackModeId;
+}
+
 export function getChallengeLaunchPath(modeId: TrainingModeId): string {
   const moduleId = moduleIdByModeId(modeId);
   if (moduleId === "sprint_math") {
@@ -179,12 +218,13 @@ export function getChallengeModeTitle(modeId: TrainingModeId): string {
 
 export function listUpcomingDailyChallengeModes(
   startLocalDate: string,
-  daysCount = 3
+  daysCount = 3,
+  firstModeId?: TrainingModeId
 ): Array<{ localDate: string; modeId: TrainingModeId; modeTitle: string }> {
   const count = Math.max(1, Math.min(14, Math.floor(daysCount)));
   return Array.from({ length: count }, (_, offset) => {
     const localDate = addDays(startLocalDate, offset);
-    const modeId = resolveDailyChallengeModeId(localDate);
+    const modeId = offset === 0 && firstModeId ? firstModeId : resolveDailyChallengeModeId(localDate);
     return {
       localDate,
       modeId,
@@ -203,8 +243,8 @@ function buildChallengeDescription(modeId: TrainingModeId): string {
   return `Пройдите 1 сессию в режиме «${modeTitle}».`;
 }
 
-function buildChallengeDraft(userId: string, localDate: string): DailyChallenge {
-  const modeId = resolveDailyChallengeModeId(localDate);
+function buildChallengeDraft(userId: string, localDate: string, sessions: Session[]): DailyChallenge {
+  const modeId = resolveAdaptiveDailyChallengeModeId(localDate, sessions);
   const now = new Date().toISOString();
   return {
     id: `${userId}:${localDate}`,
@@ -357,7 +397,8 @@ export const dailyChallengeRepository = {
       null;
 
     if (!challenge) {
-      challenge = buildChallengeDraft(userId, localDate);
+      const sessions = await db.sessions.where("userId").equals(userId).toArray();
+      challenge = buildChallengeDraft(userId, localDate, sessions);
       await db.dailyChallenges.put(challenge);
     }
 

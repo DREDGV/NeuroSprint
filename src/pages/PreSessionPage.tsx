@@ -10,12 +10,14 @@ import {
   resolveStreakBadge
 } from "../shared/lib/motivation/motivation";
 import { getSettings } from "../shared/lib/settings/settings";
+import { buildSkillGuidance } from "../shared/lib/training/skillGuidance";
 import { moduleIdByModeId } from "../shared/lib/training/modeMapping";
 import { TRAINING_MODES, TRAINING_MODULES } from "../shared/lib/training/presets";
 import { InfoHint } from "../shared/ui/InfoHint";
 import type {
   DailyProgressSummary,
   ModeRecommendation,
+  Session,
   TrainingModeId,
   TrainingModuleId
 } from "../shared/types/domain";
@@ -50,6 +52,12 @@ function fallbackModeForModule(moduleId: TrainingModuleId): TrainingModeId {
   if (moduleId === "memory_grid") {
     return "memory_grid_classic";
   }
+  if (moduleId === "memory_match") {
+    return "memory_match_classic";
+  }
+  if (moduleId === "spatial_memory") {
+    return "spatial_memory_classic";
+  }
   if (moduleId === "pattern_recognition") {
     return "pattern_classic";
   }
@@ -72,6 +80,12 @@ function setupRouteByMode(modeId: TrainingModeId): string {
   }
   if (moduleId === "memory_grid") {
     return `/training/memory-grid?mode=${modeId}`;
+  }
+  if (moduleId === "memory_match") {
+    return `/training/memory-match?mode=${modeId}`;
+  }
+  if (moduleId === "spatial_memory") {
+    return `/training/spatial-memory?mode=${modeId}`;
   }
   if (moduleId === "pattern_recognition") {
     return `/training/pattern-recognition?mode=${modeId}`;
@@ -134,6 +148,12 @@ function getReactionModeTip(modeId: TrainingModeId): string | null {
   if (modeId.startsWith("memory_grid_rush")) {
     return "Memory Grid Rush: пройдите максимум уровней за ограниченное время.";
   }
+  if (modeId === "memory_match_classic") {
+    return "Memory Match: сначала запомните несколько опорных пар, затем собирайте поле без повторяющихся ошибок.";
+  }
+  if (modeId === "spatial_memory_classic") {
+    return "Spatial Memory: держите в памяти не порядок, а форму поля, зоны и опорные точки без лишних кликов.";
+  }
   return null;
 }
 
@@ -146,7 +166,9 @@ export function PreSessionPage() {
   const [dailySummary, setDailySummary] = useState<DailyProgressSummary | null>(null);
   const [streakDays, setStreakDays] = useState(0);
   const [recommendation, setRecommendation] = useState<ModeRecommendation | null>(null);
-  const [selectedModeId, setSelectedModeId] = useState<TrainingModeId>("classic_plus");
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
+  const [selectedModeId, setSelectedModeId] = useState<TrainingModeId | null>(null);
+  const [hasManualModePick, setHasManualModePick] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -174,24 +196,57 @@ export function PreSessionPage() {
     [requestedModuleId]
   );
 
-  const selectedMode = useMemo(
-    () => visibleModes.find((mode) => mode.id === selectedModeId) ?? visibleModes[0] ?? TRAINING_MODES[0],
-    [selectedModeId, visibleModes]
-  );
-
   const recommendationTitle = useMemo(
     () => TRAINING_MODES.find((entry) => entry.id === recommendation?.modeId)?.title ?? recommendation?.modeId ?? "—",
     [recommendation]
   );
 
-  const selectedReactionTip = useMemo(() => getReactionModeTip(selectedMode.id), [selectedMode.id]);
   const recommendationReactionTip = useMemo(
     () => getReactionModeTip(recommendation?.modeId ?? "classic_plus"),
     [recommendation?.modeId]
   );
+  const skillGuidance = useMemo(() => buildSkillGuidance(allSessions), [allSessions]);
+  const growthModeId = useMemo(
+    () => fallbackModeForModule(skillGuidance.primaryModuleId),
+    [skillGuidance.primaryModuleId]
+  );
+  const defaultModeId = useMemo(() => {
+    if (requestedModeId) {
+      return requestedModeId;
+    }
+
+    if (!requestedModuleId && skillGuidance.hasData) {
+      return growthModeId;
+    }
+
+    if (recommendation && (!requestedModuleId || moduleIdByModeId(recommendation.modeId) === requestedModuleId)) {
+      return recommendation.modeId;
+    }
+
+    if (requestedModuleId) {
+      return fallbackModeForModule(requestedModuleId);
+    }
+
+    return "classic_plus";
+  }, [growthModeId, recommendation, requestedModeId, requestedModuleId, skillGuidance.hasData]);
+  const effectiveSelectedModeId = hasManualModePick && selectedModeId ? selectedModeId : defaultModeId;
+  const selectedMode = useMemo(
+    () =>
+      visibleModes.find((mode) => mode.id === effectiveSelectedModeId) ??
+      visibleModes[0] ??
+      TRAINING_MODES[0],
+    [effectiveSelectedModeId, visibleModes]
+  );
+  const selectedReactionTip = useMemo(() => getReactionModeTip(selectedMode.id), [selectedMode.id]);
+
+  useEffect(() => {
+    setHasManualModePick(false);
+    setSelectedModeId(null);
+  }, [requestedModeId, requestedModuleId]);
 
   useEffect(() => {
     if (!activeUserId) {
+      setAllSessions([]);
       return;
     }
 
@@ -200,10 +255,12 @@ export function PreSessionPage() {
     setError(null);
 
     void (async () => {
-      const [summaryResult, recommendationResult, insightsResult] = await Promise.allSettled([
+      const [summaryResult, recommendationResult, insightsResult, sessionsResult] =
+        await Promise.allSettled([
         sessionRepository.getDailyProgressSummary(activeUserId),
         trainingRepository.recommendModeForToday(activeUserId),
-        sessionRepository.getIndividualInsights(activeUserId)
+        sessionRepository.getIndividualInsights(activeUserId),
+        sessionRepository.listByUser(activeUserId)
       ]);
 
       if (cancelled) {
@@ -212,6 +269,7 @@ export function PreSessionPage() {
 
       setDailySummary(summaryResult.status === "fulfilled" ? summaryResult.value : null);
       setStreakDays(insightsResult.status === "fulfilled" ? insightsResult.value.streakDays : 0);
+      setAllSessions(sessionsResult.status === "fulfilled" ? sessionsResult.value : []);
 
       if (recommendationResult.status === "fulfilled") {
         setRecommendation(recommendationResult.value);
@@ -232,25 +290,6 @@ export function PreSessionPage() {
     };
   }, [activeUserId]);
 
-  useEffect(() => {
-    if (requestedModeId) {
-      setSelectedModeId(requestedModeId);
-      return;
-    }
-
-    if (recommendation && (!requestedModuleId || moduleIdByModeId(recommendation.modeId) === requestedModuleId)) {
-      setSelectedModeId(recommendation.modeId);
-      return;
-    }
-
-    if (requestedModuleId) {
-      setSelectedModeId(fallbackModeForModule(requestedModuleId));
-      return;
-    }
-
-    setSelectedModeId("classic_plus");
-  }, [recommendation, requestedModeId, requestedModuleId]);
-
   const dailyGoalSessions = settings.dailyGoalSessions;
   const sessionsToday = dailySummary?.sessionsTotal ?? 0;
   const goalPercent = Math.min(100, Math.round((sessionsToday / dailyGoalSessions) * 100));
@@ -261,6 +300,11 @@ export function PreSessionPage() {
     () => buildDailyMiniGoals({ streakDays, dailySummary, dailyGoalSessions }),
     [streakDays, dailySummary, dailyGoalSessions]
   );
+  const growthFocusSelected = selectedMode.moduleId === skillGuidance.primaryModuleId;
+  const growthModeVisible = !requestedModuleId || requestedModuleId === skillGuidance.primaryModuleId;
+  const growthMatchesRecommendation = recommendation
+    ? moduleIdByModeId(recommendation.modeId) === skillGuidance.primaryModuleId
+    : false;
 
   function handleQuickStart() {
     navigate(setupRouteByMode(selectedMode.id));
@@ -334,6 +378,44 @@ export function PreSessionPage() {
         </div>
       </section>
 
+      <section className="setup-block pre-session-growth-focus" data-testid="pre-session-growth-focus">
+        <h3>Фокус роста на сегодня</h3>
+        <p>
+          <strong>{skillGuidance.headline}</strong>
+        </p>
+        <p>{skillGuidance.summary}</p>
+        <div className="pre-session-growth-pills" aria-hidden="true">
+          <span className="pre-session-growth-pill">Фокус: {skillGuidance.focusLabel}</span>
+          <span className="pre-session-growth-pill">Опора: {skillGuidance.strongestLabel}</span>
+          <span className="pre-session-growth-pill">
+            Сессий: {skillGuidance.profile.totalSessions}
+          </span>
+        </div>
+        <p className="status-line">
+          {growthModeVisible
+            ? growthMatchesRecommendation
+              ? "Хороший сигнал: профиль роста и режимная рекомендация совпадают."
+              : skillGuidance.nextStep
+            : `Сейчас открыт другой модуль. По профилю роста лучший фокус — ${skillGuidance.primaryModuleTitle}.`}
+        </p>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => {
+            setHasManualModePick(true);
+            setSelectedModeId(growthModeId);
+          }}
+          data-testid="pre-session-use-growth-focus-btn"
+          disabled={!growthModeVisible || growthFocusSelected}
+        >
+          {growthFocusSelected
+            ? "Фокус роста уже выбран"
+            : growthModeVisible
+              ? "Выбрать фокус роста"
+              : "Открыт другой модуль"}
+        </button>
+      </section>
+
       {recommendation ? (
         <section className="setup-block" data-testid="pre-session-recommendation">
           <h3>Рекомендация на сегодня</h3>
@@ -352,7 +434,10 @@ export function PreSessionPage() {
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => setSelectedModeId(recommendation.modeId)}
+            onClick={() => {
+              setHasManualModePick(true);
+              setSelectedModeId(recommendation.modeId);
+            }}
             data-testid="pre-session-use-recommendation-btn"
           >
             Выбрать рекомендацию
@@ -368,7 +453,10 @@ export function PreSessionPage() {
               key={mode.id}
               type="button"
               className={mode.id === selectedMode.id ? "btn-secondary is-active" : "btn-secondary"}
-              onClick={() => setSelectedModeId(mode.id)}
+              onClick={() => {
+                setHasManualModePick(true);
+                setSelectedModeId(mode.id);
+              }}
               data-testid={`pre-session-mode-${mode.id}`}
             >
               {mode.title}

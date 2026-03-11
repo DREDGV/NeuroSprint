@@ -2,7 +2,10 @@
 import type { CSSProperties } from "react";
 import { useLocation } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
-import { sessionRepository } from "../entities/session/sessionRepository";
+import {
+  sessionRepository,
+  type SessionSaveResult
+} from "../entities/session/sessionRepository";
 import { trainingRepository } from "../entities/training/trainingRepository";
 import {
   adaptDecisionIntervalMs,
@@ -26,9 +29,11 @@ import { getDecisionRushSetup } from "../features/decision-rush/setupStorage";
 import { DEFAULT_AUDIO_SETTINGS } from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
+import { buildSessionProgressNotes } from "../shared/lib/progress/sessionProgressFeedback";
 import { SessionResultSummary } from "../shared/ui/SessionResultSummary";
 import { StatCard } from "../shared/ui/StatCard";
 import type { Session } from "../shared/types/domain";
+import { SessionRewardQueue } from "../widgets/SessionRewardQueue";
 
 interface DecisionRushSessionNavState {
   setup?: DecisionRushSetup;
@@ -252,6 +257,7 @@ export function DecisionRushSessionPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [previousSession, setPreviousSession] = useState<Session | null>(null);
   const [bestSession, setBestSession] = useState<Session | null>(null);
+  const [sessionProgress, setSessionProgress] = useState<SessionSaveResult | null>(null);
   const [tempoId, setTempoId] = useState<DecisionTempoId>(() => readTempoPreference());
 
   const loopTimerRef = useRef<number | null>(null);
@@ -705,16 +711,18 @@ export function DecisionRushSessionPage() {
       )
     );
     const modeId = modeIdFromDecisionLevel(setup.level);
+    setSessionProgress(null);
 
     void sessionRepository
       .save(session)
-      .then(async () => {
+      .then(async (saveResult) => {
         if (cancelled) {
           return;
         }
 
         setSaved(true);
         setSaveError(null);
+        setSessionProgress(saveResult);
 
         const history = await trainingRepository.listRecentSessionsByMode(
           activeUserId,
@@ -948,11 +956,19 @@ export function DecisionRushSessionPage() {
             text: saved ? "saved" : "saving"
           }}
           saveSummary={saved ? "Результаты сохранены в статистику." : "Сохраняем результаты..."}
+          extraNotes={buildSessionProgressNotes(sessionProgress)}
           retryLabel="Начать заново"
           onRetry={restartSession}
         />
       ) : null}
 
+      <SessionRewardQueue
+        levelUp={sessionProgress?.levelUp}
+        nextGoalSummary={sessionProgress?.nextGoal?.primaryGoal.summary}
+        achievements={sessionProgress?.unlockedAchievements}
+        userId={activeUserId}
+        localDate={toLocalDateKey(new Date())}
+      />
       {saveError ? <p className="error-text">{saveError}</p> : null}
     </section>
   );

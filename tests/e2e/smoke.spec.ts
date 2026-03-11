@@ -10,8 +10,7 @@ test.describe("NeuroSprint smoke", () => {
 
     await page.goto("/");
     await expect(page.getByTestId("home-open-pre-session")).toBeVisible();
-    await expect(page.getByTestId("home-quick-start")).toBeVisible();
-    await page.getByTestId("home-quick-start").locator("a").first().click();
+    await page.getByTestId("home-open-pre-session").click();
     await expect(page.getByTestId("schulte-setup-page")).toBeVisible();
     await page.getByTestId("setup-start-btn").click();
 

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     aggregateDailyMemoryGrid: vi.fn(),
     aggregateDailyDecisionRush: vi.fn(),
     aggregateDailySprintMath: vi.fn(),
+    listByUser: vi.fn(),
     aggregateDailyByModeId: vi.fn(),
     aggregateDailyCompareBand: vi.fn()
   },
@@ -91,6 +92,7 @@ describe("StatsPage sprint filters", () => {
         ];
       }
     );
+    mocks.sessionRepository.listByUser.mockResolvedValue([]);
     mocks.sessionRepository.aggregateDailyCompareBand.mockResolvedValue([]);
     mocks.dailyChallengeRepository.getCompletionSummary.mockResolvedValue({
       period: 30,
@@ -143,6 +145,18 @@ describe("StatsPage sprint filters", () => {
     );
 
     const summary = await screen.findByTestId("stats-primary-summary");
+    expect(screen.getByTestId("stats-skill-profile")).toBeInTheDocument();
+    expect(screen.getByTestId("stats-growth-plan")).toBeInTheDocument();
+    expect(screen.getByTestId("stats-skill-profile")).toHaveTextContent("Статус: стартовый профиль");
+    expect(screen.getByTestId("stats-growth-plan")).toHaveTextContent("7-дневный старт профиля");
+    expect(screen.getByTestId("stats-growth-plan-step-1")).toHaveTextContent("Memory Match");
+    expect(screen.getByTestId("stats-growth-plan-cta")).toHaveAttribute(
+      "href",
+      "/training/pre-session?module=memory_match"
+    );
+    expect(screen.getByTestId("stats-skill-card-memory")).toHaveTextContent("Память");
+    expect(screen.getByTestId("stats-skill-card-memory")).toHaveTextContent("Пока без данных");
+    expect(screen.getByTestId("stats-skill-card-memory")).toHaveTextContent("Lv. 1");
     expect(within(summary).getByTestId("stats-summary-sessions")).toHaveTextContent("0");
     expect(within(summary).getByTestId("stats-summary-trend")).toHaveTextContent(
       "Пока нет тренировок"
@@ -152,6 +166,66 @@ describe("StatsPage sprint filters", () => {
     );
     expect(within(summary).getByTestId("stats-summary-next-step")).toHaveTextContent(
       "Сделайте 2-3 тренировки"
+    );
+  });
+
+  it("shows a focused weekly roadmap when the growth profile already sees a weak zone", async () => {
+    mocks.sessionRepository.listByUser.mockResolvedValue([
+      {
+        id: "s1",
+        userId: "u1",
+        taskId: "reaction",
+        moduleId: "reaction",
+        modeId: "reaction_signal",
+        mode: "reaction",
+        level: 1,
+        presetId: "easy",
+        adaptiveSource: "auto",
+        timestamp: "2026-03-08T10:00:00.000Z",
+        localDate: "2026-03-08",
+        durationMs: 45000,
+        score: 164,
+        accuracy: 0.93,
+        speed: 1,
+        errors: 0,
+        difficulty: { mode: "reaction" }
+      },
+      {
+        id: "s2",
+        userId: "u1",
+        taskId: "reaction",
+        moduleId: "reaction",
+        modeId: "reaction_pair",
+        mode: "reaction",
+        level: 1,
+        presetId: "easy",
+        adaptiveSource: "auto",
+        timestamp: "2026-03-07T10:00:00.000Z",
+        localDate: "2026-03-07",
+        durationMs: 45000,
+        score: 152,
+        accuracy: 0.9,
+        speed: 1,
+        errors: 1,
+        difficulty: { mode: "reaction" }
+      }
+    ]);
+
+    render(
+      <MemoryRouter>
+        <ActiveUserProvider>
+          <StatsPage />
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    const roadmap = await screen.findByTestId("stats-growth-plan");
+    expect(roadmap).toHaveTextContent("7 дней на память");
+    expect(roadmap).toHaveTextContent("Подтянуть память");
+    expect(screen.getByTestId("stats-growth-plan-step-4")).toHaveTextContent("Reaction");
+    expect(screen.getByTestId("stats-growth-plan-cta")).toHaveAttribute(
+      "href",
+      "/training/pre-session?module=memory_match"
     );
   });
 
@@ -184,11 +258,11 @@ describe("StatsPage sprint filters", () => {
     );
 
     const sprintSummary = screen.getByTestId("stats-sprint-summary");
-    expect(within(sprintSummary).getByText("Sprint Math: Все")).toBeInTheDocument();
+    expect(within(sprintSummary).getByText("Sprint Math: Все режимы")).toBeInTheDocument();
     expect(within(sprintSummary).getByText("16.00")).toBeInTheDocument();
 
     await user.click(screen.getByTestId("stats-sprint-filter-mixed"));
-    expect(within(sprintSummary).getByText("Sprint Math: Mixed")).toBeInTheDocument();
+    expect(within(sprintSummary).getByText("Sprint Math: Смешанный")).toBeInTheDocument();
     expect(within(sprintSummary).getByText("10.00")).toBeInTheDocument();
     expect(within(primarySummary).getByTestId("stats-summary-sessions")).toHaveTextContent("1");
     expect(within(primarySummary).getByTestId("stats-summary-best")).toHaveTextContent(
@@ -308,7 +382,7 @@ describe("StatsPage sprint filters", () => {
     expect(within(compare).getByTestId("stats-sprint-card-add-sub")).toHaveTextContent("Сессий: 2");
     expect(within(compare).getByTestId("stats-sprint-card-mixed")).toHaveTextContent("Сессий: 1");
     expect(screen.getByTestId("stats-sprint-best-mode")).toHaveTextContent(
-      "Сильнее сейчас: Add/Sub"
+      "Сильнее сейчас: Сложение / вычитание"
     );
 
     const deltaGrid = screen.getByTestId("stats-sprint-delta-grid");

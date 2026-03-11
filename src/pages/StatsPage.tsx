@@ -1,8 +1,13 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Line,
   LineChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,7 +17,12 @@ import { useActiveUser } from "../app/ActiveUserContext";
 import { useRoleAccess } from "../app/useRoleAccess";
 import { dailyChallengeRepository } from "../entities/challenge/dailyChallengeRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
+import { buildSkillProfile } from "../shared/lib/training/skillProfile";
+import { buildSkillRoadmap } from "../shared/lib/training/skillRoadmap";
 import { StatCard } from "../shared/ui/StatCard";
+import { AchievementList } from "../widgets/AchievementList";
+import { LevelProgressWidget } from "../widgets/LevelProgressWidget";
+import { SkillStatsTab } from "../features/skills";
 import type {
   ClassicDailyPoint,
   CompareBandMetric,
@@ -26,9 +36,12 @@ import type {
   MemoryGridDailyPoint,
   NBackDailyPoint,
   ReactionDailyPoint,
+  Session,
   SprintMathDailyPoint,
   TimedDailyPoint,
-  TrainingModeId
+  TrainingModuleId,
+  TrainingModeId,
+  UserAchievement
 } from "../shared/types/domain";
 
 type StatsMode =
@@ -178,6 +191,10 @@ function sprintFilterLabel(filter: SprintModeFilter): string {
     return "Смешанный";
   }
   return "Все режимы";
+}
+
+function moduleLaunchPath(moduleId: TrainingModuleId): string {
+  return `/training/pre-session?module=${moduleId}`;
 }
 
 function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): CompareConfig {
@@ -510,10 +527,43 @@ function buildComparePlainSummary(
   };
 }
 
+function skillTrendLabel(delta: number, hasData = true): string {
+  if (!hasData) {
+    return "Пока без данных";
+  }
+  if (delta >= 4) {
+    return `Рост +${delta.toFixed(1)}`;
+  }
+  if (delta <= -4) {
+    return `Спад ${delta.toFixed(1)}`;
+  }
+  if (delta > 0) {
+    return `Лёгкий рост +${delta.toFixed(1)}`;
+  }
+  if (delta < 0) {
+    return `Лёгкое снижение ${delta.toFixed(1)}`;
+  }
+  return "Стабильно";
+}
+
+function skillTrendTone(delta: number): "up" | "down" | "steady" {
+  if (delta >= 4) {
+    return "up";
+  }
+  if (delta <= -4) {
+    return "down";
+  }
+  return "steady";
+}
+
 export function StatsPage() {
   const { activeUserId } = useActiveUser();
+  const location = useLocation();
   const access = useRoleAccess();
   const canViewGroupStatsAccess = access.stats.viewGroup;
+  const [activeTab, setActiveTab] = useState<"stats" | "skills" | "achievements">(() =>
+    location.hash === "#achievements" ? "achievements" : "stats"
+  );
   const [mode, setMode] = useState<StatsMode>("classic");
   const [sprintFilter, setSprintFilter] = useState<SprintModeFilter>("all");
   const [chartRange, setChartRange] = useState<ChartRange>(30);
@@ -526,6 +576,7 @@ export function StatsPage() {
   const [sprintAllData, setSprintAllData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintAddSubData, setSprintAddSubData] = useState<SprintMathDailyPoint[]>([]);
   const [sprintMixedData, setSprintMixedData] = useState<SprintMathDailyPoint[]>([]);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [compareEnabled, setCompareEnabled] = useState(true);
   const [comparePeriod, setComparePeriod] = useState<ComparePeriod>(30);
   const [compareBands, setCompareBands] = useState<DailyCompareBandPoint[]>([]);
@@ -556,6 +607,7 @@ export function StatsPage() {
       setSprintAllData([]);
       setSprintAddSubData([]);
       setSprintMixedData([]);
+      setAllSessions([]);
       return;
     }
 
@@ -572,7 +624,8 @@ export function StatsPage() {
       sessionRepository.aggregateDailyDecisionRush(activeUserId),
       sessionRepository.aggregateDailySprintMath(activeUserId),
       sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_add_sub"),
-      sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_mixed")
+      sessionRepository.aggregateDailyByModeId(activeUserId, "sprint_mixed"),
+      sessionRepository.listByUser(activeUserId)
     ])
       .then(
         ([
@@ -584,7 +637,8 @@ export function StatsPage() {
           decision,
           sprintAll,
           sprintAddSub,
-          sprintMixed
+          sprintMixed,
+          sessions
         ]) => {
         if (cancelled) {
           return;
@@ -598,9 +652,11 @@ export function StatsPage() {
         setSprintAllData(sprintAll);
         setSprintAddSubData(sprintAddSub as SprintMathDailyPoint[]);
         setSprintMixedData(sprintMixed as SprintMathDailyPoint[]);
+        setAllSessions(sessions);
       })
       .catch(() => {
         if (!cancelled) {
+          setAllSessions([]);
           setError("Не удалось загрузить статистику.");
         }
       })
@@ -718,6 +774,24 @@ export function StatsPage() {
     }
     return sprintAllData;
   }, [sprintAddSubData, sprintAllData, sprintFilter, sprintMixedData]);
+
+  const skillProfile = useMemo(() => buildSkillProfile(allSessions), [allSessions]);
+  const skillRoadmap = useMemo(() => buildSkillRoadmap(allSessions), [allSessions]);
+  const skillRadarData = useMemo(
+    () =>
+      skillProfile.axes.map((axis) => ({
+        skill: axis.shortLabel,
+        value: axis.score,
+        fullMark: 100
+      })),
+    [skillProfile.axes]
+  );
+  const skillProfileHeadline = skillProfile.hasData
+    ? `${skillProfile.strongest?.label || 'Навыки'} сейчас впереди`
+    : "Пока формируем стартовый профиль";
+  const skillProfileLead = skillProfile.hasData
+    ? `Сильнее всего сейчас выглядит ${skillProfile.strongest?.label.toLowerCase() || 'навык'}, а основная зона роста — ${skillProfile.focus?.label.toLowerCase() || 'навык'}.`
+    : "После первых сессий здесь появится живая карта навыков: что уже растёт быстрее, а что пока требует фокуса.";
 
   const classicChartData = useMemo(
     () =>
@@ -1241,14 +1315,276 @@ export function StatsPage() {
     visibleTimedChartData.length
   ]);
 
+  useEffect(() => {
+    const nextHash = activeTab === "achievements" ? "#achievements" : "";
+    const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
+    window.history.replaceState(null, "", nextUrl);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (location.hash === "#achievements") {
+      setActiveTab("achievements");
+      return;
+    }
+    setActiveTab("stats");
+  }, [location.hash]);
+
+  const statsTabs = (
+    <div className="stats-tabs">
+      <button
+        className={`stats-tab ${activeTab === "stats" ? "active" : ""}`}
+        onClick={() => setActiveTab("stats")}
+      >
+        📊 Статистика
+      </button>
+      <button
+        className={`stats-tab ${activeTab === "skills" ? "active" : ""}`}
+        onClick={() => setActiveTab("skills")}
+      >
+        🎯 Навыки
+      </button>
+      <button
+        className={`stats-tab ${activeTab === "achievements" ? "active" : ""}`}
+        onClick={() => setActiveTab("achievements")}
+      >
+        🏆 Достижения
+      </button>
+    </div>
+  );
+
+  if (activeTab === "skills") {
+    return (
+      <section className="panel" data-testid="stats-page">
+        {statsTabs}
+        <SkillStatsTab userId={activeUserId || ""} sessions={allSessions} />
+      </section>
+    );
+  }
+
+  if (activeTab === "achievements") {
+    return (
+      <section className="panel" data-testid="stats-page">
+        {statsTabs}
+        <section
+          id="achievements"
+          className="achievements-tab-section"
+          data-testid="stats-achievements-tab"
+        >
+          <h2>Достижения</h2>
+          <p className="stats-page-intro">
+            Здесь собраны уровень, XP и полный каталог достижений. Этот раздел показывает мотивацию без сокращений.
+          </p>
+          <LevelProgressWidget
+            compact={false}
+            sessions={allSessions}
+            streakDays={challengeStreak?.currentStreakDays ?? 0}
+          />
+          {activeUserId && <AchievementList userId={activeUserId} />}
+        </section>
+      </section>
+    );
+  }
+
   return (
     <section className="panel" data-testid="stats-page">
+      {statsTabs}
       <h2>Статистика</h2>
       <p className="stats-page-intro">
         Сначала — главный вывод по вашему прогрессу. Ниже можно уточнить режим, сравнение и детали.
       </p>
 
       <div className="stats-page-flow">
+        <section className="setup-block stats-skill-profile" data-testid="stats-skill-profile">
+          <div className="stats-skill-profile-head">
+            <div>
+              <p className="stats-section-kicker">Система роста</p>
+              <h3>{skillProfileHeadline}</h3>
+              <p className="comparison-note">{skillProfileLead}</p>
+            </div>
+            <div className="stats-skill-profile-pills" aria-hidden="true">
+              {skillProfile.hasData ? (
+                <>
+                  <span className="stats-skill-profile-pill">Сессий: {skillProfile.totalSessions}</span>
+                  <span className="stats-skill-profile-pill">Опора: {skillProfile.strongest.label}</span>
+                  <span className="stats-skill-profile-pill">Фокус: {skillProfile.focus.label}</span>
+                </>
+              ) : (
+                <>
+                  <span className="stats-skill-profile-pill">Статус: стартовый профиль</span>
+                  <span className="stats-skill-profile-pill">5 осей развития</span>
+                  <span className="stats-skill-profile-pill">Нужны первые сессии</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="stats-skill-profile-layout">
+            <div className="chart-box stats-skill-radar-shell" data-testid="stats-skill-radar">
+              <ResponsiveContainer width="100%" height={320}>
+                <RadarChart data={skillRadarData} outerRadius="72%">
+                  <PolarGrid stroke="#cfe4dc" />
+                  <PolarAngleAxis
+                    dataKey="skill"
+                    tick={{ fill: "#234c46", fontSize: 12, fontWeight: 700 }}
+                  />
+                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar
+                    name="Навык"
+                    dataKey="value"
+                    stroke="#0f766e"
+                    fill="#2fb7a7"
+                    fillOpacity={0.42}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="stats-skill-profile-side">
+              <article className="stats-skill-focus-card">
+                {skillProfile.hasData ? (
+                  <>
+                    <span className="stats-skill-focus-label">Сильная сторона</span>
+                    <strong>{skillProfile.strongest.label}</strong>
+                    <p>{skillProfile.strongest.description}</p>
+                    <span className="stats-skill-focus-meta">
+                      {skillProfile.strongest.score}/100 · Lv. {skillProfile.strongest.level}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="stats-skill-focus-label">Как это работает</span>
+                    <strong>5 осей развития</strong>
+                    <p>Профиль собирается по памяти, вниманию, реакции, счёту и логике.</p>
+                    <span className="stats-skill-focus-meta">
+                      После 3-5 сессий карта станет заметно точнее.
+                    </span>
+                  </>
+                )}
+              </article>
+
+              <article className="stats-skill-focus-card is-focus">
+                {skillProfile.hasData ? (
+                  <>
+                    <span className="stats-skill-focus-label">Зона роста</span>
+                    <strong>{skillProfile.focus.label}</strong>
+                    <p>Сейчас лучший возврат даст фокус именно на этом навыке.</p>
+                    <span className="stats-skill-focus-meta">
+                      Тренировать через {skillProfile.focus.suggestedTraining}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="stats-skill-focus-label">С чего начать</span>
+                    <strong>Соберите базу</strong>
+                    <p>Дайте системе несколько коротких сессий в разных типах тренажёров.</p>
+                    <span className="stats-skill-focus-meta">
+                      Хороший старт: память, внимание и реакция.
+                    </span>
+                  </>
+                )}
+              </article>
+            </div>
+          </div>
+
+          <div className="stats-skill-cards">
+            {skillProfile.axes.map((axis) => (
+              <article
+                key={axis.id}
+                className="stats-skill-card"
+                data-testid={`stats-skill-card-${axis.id}`}
+              >
+                <div className="stats-skill-card-head">
+                  <div>
+                    <p className="stats-skill-card-kicker">Навык</p>
+                    <h4>{axis.label}</h4>
+                  </div>
+                  <span className="stats-skill-card-level">Lv. {axis.level}</span>
+                </div>
+                <p className="stats-skill-card-desc">{axis.description}</p>
+                <div className="stats-skill-card-score">
+                  <strong>{axis.score}/100</strong>
+                  <span className={`stats-skill-card-trend is-${skillTrendTone(axis.trendDelta)}`}>
+                    {skillTrendLabel(axis.trendDelta, skillProfile.hasData)}
+                  </span>
+                </div>
+                <div className="stats-skill-card-track" aria-hidden="true">
+                  <span className="stats-skill-card-fill" style={{ width: `${axis.progressPct}%` }} />
+                </div>
+                <p className="stats-skill-card-note">
+                  {skillProfile.hasData
+                    ? `До следующего уровня: ${axis.progressPct}%. Учитываются форма, качество и регулярность.`
+                    : "Стартовая точка. После первых сессий появится честный прогресс до следующего уровня."}
+                </p>
+                <p className="stats-skill-card-hint">
+                  {skillProfile.hasData
+                    ? `Лучше всего качается через ${axis.suggestedTraining}. Сигналов: ${axis.sessions}.`
+                    : `Лучше всего раскрывается через ${axis.suggestedTraining}.`}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="setup-block stats-growth-plan" data-testid="stats-growth-plan">
+          <div className="stats-growth-plan-head">
+            <div>
+              <p className="stats-section-kicker">Куда расти дальше</p>
+              <h3>{skillRoadmap.headline}</h3>
+              <p className="comparison-note">{skillRoadmap.summary}</p>
+            </div>
+            <div className="stats-growth-plan-pills" aria-hidden="true">
+              <span className="stats-growth-plan-pill">План: 7 дней</span>
+              <span className="stats-growth-plan-pill">Фокус: {skillRoadmap.guidance.focusLabel}</span>
+              <span className="stats-growth-plan-pill">
+                Опора: {skillRoadmap.guidance.strongestLabel}
+              </span>
+            </div>
+          </div>
+
+          <div className="stats-growth-plan-summary">
+            <article className="stats-growth-plan-card">
+              <span className="stats-growth-plan-label">Цель недели</span>
+              <strong>{skillRoadmap.weekGoal}</strong>
+              <p>{skillRoadmap.cadence}</p>
+            </article>
+
+            <article className="stats-growth-plan-card is-accent">
+              <span className="stats-growth-plan-label">Главный старт</span>
+              <strong>{skillRoadmap.guidance.primaryModuleTitle}</strong>
+              <p>{skillRoadmap.guidance.nextStep}</p>
+            </article>
+          </div>
+
+          <div className="stats-growth-plan-steps">
+            {skillRoadmap.days.map((step) => (
+              <article
+                key={`${step.day}-${step.moduleId}`}
+                className={`stats-growth-plan-step is-${step.tone}`}
+                data-testid={`stats-growth-plan-step-${step.day}`}
+              >
+                <div className="stats-growth-plan-step-head">
+                  <span className="stats-growth-plan-step-day">{step.dayLabel}</span>
+                  <span className={`stats-growth-plan-step-tone is-${step.tone}`}>{step.toneLabel}</span>
+                </div>
+                <h4>{step.moduleTitle}</h4>
+                <p className="stats-growth-plan-step-title">{step.title}</p>
+                <p className="stats-growth-plan-step-note">{step.note}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="stats-growth-plan-footer">
+            <p>{skillRoadmap.checkpoint}</p>
+            <Link
+              className="button stats-growth-plan-action"
+              to={moduleLaunchPath(skillRoadmap.guidance.primaryModuleId)}
+              data-testid="stats-growth-plan-cta"
+            >
+              {skillRoadmap.guidance.ctaLabel}
+            </Link>
+          </div>
+        </section>
+
         <section className="setup-block stats-summary-block" data-testid="stats-primary-summary">
         <div className="stats-summary-hero">
           <div className="stats-summary-copy">
@@ -2131,26 +2467,11 @@ export function StatsPage() {
               </LineChart>
             )}
           </ResponsiveContainer>
-          </div>
+        </div>
         </div>
       )}
       </div>
     </section>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -28,6 +28,7 @@ const MEMORY_GRID_MODE_IDS: TrainingModeId[] = [
   "memory_grid_rush_kids_4x4",
   "memory_grid_rush_pro_4x4"
 ];
+const SPATIAL_MEMORY_MODE_IDS: TrainingModeId[] = ["spatial_memory_classic"];
 const DECISION_RUSH_MODE_IDS: TrainingModeId[] = [
   "decision_kids",
   "decision_standard",
@@ -54,6 +55,9 @@ export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
   }
   if (MEMORY_GRID_MODE_IDS.includes(modeId)) {
     return "memory_grid";
+  }
+  if (SPATIAL_MEMORY_MODE_IDS.includes(modeId)) {
+    return "spatial_memory";
   }
   if (DECISION_RUSH_MODE_IDS.includes(modeId)) {
     return "decision_rush";
@@ -85,6 +89,10 @@ export function isMemoryGridMode(modeId: TrainingModeId): boolean {
 
 export function isDecisionRushMode(modeId: TrainingModeId): boolean {
   return DECISION_RUSH_MODE_IDS.includes(modeId);
+}
+
+export function isSpatialMemoryMode(modeId: TrainingModeId): boolean {
+  return SPATIAL_MEMORY_MODE_IDS.includes(modeId);
 }
 
 export function isMemoryMatchMode(modeId: TrainingModeId): boolean {
