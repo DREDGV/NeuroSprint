@@ -71,6 +71,13 @@ function toReactionVariantId(modeId: string | null): ReactionVariantId | null {
   return null;
 }
 
+interface Particle {
+  id: string;
+  tx: string;
+  ty: string;
+  color: string;
+}
+
 export function ReactionPage() {
   const [searchParams] = useSearchParams();
   const { activeUserId, activeUserName } = useActiveUserDisplayName();
@@ -81,6 +88,7 @@ export function ReactionPage() {
   const sessionStartedAtRef = useRef<number | null>(null);
   const finalSessionDurationRef = useRef<number | null>(null);
   const savedSeriesKeyRef = useRef<string | null>(null);
+  const padRef = useRef<HTMLButtonElement | null>(null);
 
   const [targetAttempts, setTargetAttempts] = useState<number>(5);
   const [variantId, setVariantId] = useState<ReactionVariantId>(
@@ -95,6 +103,10 @@ export function ReactionPage() {
   const [roundElapsedMs, setRoundElapsedMs] = useState(0);
   const [countdownMs, setCountdownMs] = useState(0);
   const [status, setStatus] = useState("Нажмите «Начать раунд», затем ждите сигнал.");
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [padPressed, setPadPressed] = useState(false);
+  const [padError, setPadError] = useState(false);
+  const [padSuccess, setPadSuccess] = useState(false);
 
   const requestedVariantId = useMemo(
     () => toReactionVariantId(searchParams.get("mode")),
@@ -138,6 +150,53 @@ export function ReactionPage() {
     [attempts]
   );
   const avg = useMemo(() => (attempts.length > 0 ? average(attempts) : null), [attempts]);
+
+  function createParticles(x: number, y: number, count: number = 12) {
+    const colors = ["#1e7f71", "#2ba884", "#71c77d", "#f2a93b", "#4ecdc4"];
+    const newParticles: Particle[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      const angle = (360 / count) * i + Math.random() * 30;
+      const distance = 80 + Math.random() * 60;
+      const radians = (angle * Math.PI) / 180;
+      const tx = `${Math.cos(radians) * distance}px`;
+      const ty = `${Math.sin(radians) * distance}px`;
+      
+      newParticles.push({
+        id: `${Date.now()}-${i}`,
+        tx,
+        ty,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
+    
+    setParticles(newParticles);
+    setTimeout(() => setParticles([]), 800);
+  }
+
+  function triggerPadAnimation(type: "press" | "success" | "error") {
+    if (type === "press") {
+      setPadPressed(true);
+      setTimeout(() => setPadPressed(false), 150);
+    } else if (type === "success") {
+      setPadSuccess(true);
+      setTimeout(() => setPadSuccess(false), 500);
+    } else if (type === "error") {
+      setPadError(true);
+      setTimeout(() => setPadError(false), 400);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (delayTimerRef.current != null) {
+        window.clearTimeout(delayTimerRef.current);
+      }
+      if (clockTimerRef.current != null) {
+        window.clearInterval(clockTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (phase !== "finished" || !activeUserId) {
@@ -294,8 +353,16 @@ export function ReactionPage() {
 
     if (isCorrect && reactionMs != null) {
       setAttempts((current) => [...current, reactionMs]);
+      triggerPadAnimation("success");
+      if (padRef.current) {
+        const rect = padRef.current.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        createParticles(centerX, centerY, 16);
+      }
     } else {
       setMistakes((current) => current + 1);
+      triggerPadAnimation("error");
     }
 
     readyAtRef.current = null;
