@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { sessionRepository } from "../entities/session/sessionRepository";
@@ -104,9 +104,11 @@ export function ReactionPage() {
   const [countdownMs, setCountdownMs] = useState(0);
   const [status, setStatus] = useState("Нажмите «Начать раунд», затем ждите сигнал.");
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [particlesPosition, setParticlesPosition] = useState<{ x: number; y: number } | null>(null);
   const [padPressed, setPadPressed] = useState(false);
   const [padError, setPadError] = useState(false);
   const [padSuccess, setPadSuccess] = useState(false);
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const requestedVariantId = useMemo(
     () => toReactionVariantId(searchParams.get("mode")),
@@ -154,14 +156,14 @@ export function ReactionPage() {
   function createParticles(x: number, y: number, count: number = 12) {
     const colors = ["#1e7f71", "#2ba884", "#71c77d", "#f2a93b", "#4ecdc4"];
     const newParticles: Particle[] = [];
-    
+
     for (let i = 0; i < count; i++) {
       const angle = (360 / count) * i + Math.random() * 30;
       const distance = 80 + Math.random() * 60;
       const radians = (angle * Math.PI) / 180;
       const tx = `${Math.cos(radians) * distance}px`;
       const ty = `${Math.sin(radians) * distance}px`;
-      
+
       newParticles.push({
         id: `${Date.now()}-${i}`,
         tx,
@@ -169,9 +171,13 @@ export function ReactionPage() {
         color: colors[Math.floor(Math.random() * colors.length)]
       });
     }
-    
+
+    setParticlesPosition({ x, y });
     setParticles(newParticles);
-    setTimeout(() => setParticles([]), 800);
+    setTimeout(() => {
+      setParticles([]);
+      setParticlesPosition(null);
+    }, 800);
   }
 
   function triggerPadAnimation(type: "press" | "success" | "error") {
@@ -448,6 +454,18 @@ export function ReactionPage() {
     }
 
     const reactionMs = Math.max(1, Date.now() - readyAt);
+    
+    // Создаём частицы для правильной кнопки
+    if (selected.isCorrect) {
+      const optionEl = optionRefs.current[index];
+      if (optionEl) {
+        const rect = optionEl.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        createParticles(centerX, centerY, 16);
+      }
+    }
+    
     finalizeRound(selected.isCorrect, selected.isCorrect ? reactionMs : undefined);
   }
 
@@ -530,26 +548,45 @@ export function ReactionPage() {
         </p>
 
         {activeVariantId === "signal" || phase !== "ready" ? (
-          <button
-            type="button"
-            className={
-              phase === "ready"
-                ? "reaction-pad is-ready"
+          <div className="reaction-pad-wrapper" style={{ position: "relative", display: "inline-block" }}>
+            <button
+              ref={padRef}
+              type="button"
+              className={[
+                "reaction-pad",
+                phase === "ready" ? "is-ready" : "",
+                phase === "waiting" ? "is-waiting" : "",
+                padPressed ? "pressed" : "",
+                padSuccess ? "success" : "",
+                padError ? "error" : ""
+              ].filter(Boolean).join(" ")}
+              onClick={handlePadClick}
+              data-testid="reaction-pad"
+            >
+              {phase === "ready"
+                ? "ЖМИ!"
                 : phase === "waiting"
-                  ? "reaction-pad is-waiting"
-                  : "reaction-pad"
-            }
-            onClick={handlePadClick}
-            data-testid="reaction-pad"
-          >
-            {phase === "ready"
-              ? "ЖМИ!"
-              : phase === "waiting"
-                ? "Ждите сигнал..."
-                : phase === "finished"
-                  ? "Серия завершена"
-                  : "Поле готово к сигналу"}
-          </button>
+                  ? "Ждите сигнал..."
+                  : phase === "finished"
+                    ? "Серия завершена"
+                    : "Поле готово к сигналу"}
+            </button>
+            {particlesPosition && particles.map((particle) => (
+              <span
+                key={particle.id}
+                className="reaction-particle"
+                style={
+                  {
+                    left: particlesPosition.x,
+                    top: particlesPosition.y,
+                    backgroundColor: particle.color,
+                    "--tx": particle.tx,
+                    "--ty": particle.ty
+                  } as CSSProperties
+                }
+              />
+            ))}
+          </div>
         ) : (
           <section className="reaction-challenge" data-testid="reaction-challenge">
             <h4 className="reaction-challenge-title">{challenge?.prompt}</h4>
@@ -557,6 +594,7 @@ export function ReactionPage() {
               {challenge?.options.map((option, index) => (
                 <button
                   key={option.id}
+                  ref={(el) => { optionRefs.current[index] = el; }}
                   type="button"
                   className="reaction-option-btn"
                   onClick={() => handleOptionClick(index)}
