@@ -610,6 +610,19 @@ export function ReactionPage() {
         </span>
       </div>
 
+      {/* Кнопка управления */}
+      <div className="reaction-control-row" data-testid="reaction-control-row">
+        <button
+          type="button"
+          className="btn-primary reaction-start-btn"
+          onClick={startSeries}
+          disabled={phase === "waiting"}
+          data-testid="reaction-start-btn"
+        >
+          {primaryActionLabel}
+        </button>
+      </div>
+
       <section className="reaction-arena" data-testid="reaction-arena">
         <h3 className="reaction-arena-title">Игровое окно</h3>
         
@@ -701,9 +714,19 @@ export function ReactionPage() {
                   type="button"
                   className="reaction-option-btn"
                   onClick={() => handleOptionClick(index)}
-                  style={option.textColor ? { color: option.textColor } : undefined}
+                  style={option.textColor ? { 
+                    color: option.textColor,
+                    borderColor: option.textColor
+                  } : undefined}
+                  data-has-color={option.textColor ? "true" : undefined}
                   data-testid={`reaction-option-${index}`}
                 >
+                  {option.textColor && (
+                    <span 
+                      className="reaction-option-color-indicator"
+                      style={{ backgroundColor: option.textColor }}
+                    />
+                  )}
                   <span className="reaction-option-main">{option.label}</span>
                   {option.secondaryLabel ? (
                     <span className="reaction-option-secondary">{option.secondaryLabel}</span>
@@ -795,18 +818,9 @@ export function ReactionPage() {
         </section>
       ) : null}
 
-      <div className="action-row">
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={startSeries}
-          disabled={phase === "waiting"}
-          data-testid="reaction-start-btn"
-        >
-          {primaryActionLabel}
-        </button>
+      <div className="reaction-footer">
         <Link className="btn-ghost" to="/training">
-          К модулям
+          ← К модулям
         </Link>
       </div>
     </section>

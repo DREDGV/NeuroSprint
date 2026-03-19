@@ -94,43 +94,56 @@ function pickUniqueNumbers(count: number): number[] {
 }
 
 function buildStroopChallenge(): ReactionChallenge {
-  const correct = pickOne(COLOR_WORDS);
+  // Создаём 2-3 правильных варианта (где цвет текста совпадает с надписью)
+  const correctCount = 2;
+  const correctOptions: ReactionOption[] = [];
+  const usedCorrect = new Set<string>();
+  
+  while (correctOptions.length < correctCount) {
+    const item = pickOne(COLOR_WORDS);
+    if (usedCorrect.has(item.name)) {
+      continue;
+    }
+    usedCorrect.add(item.name);
+    correctOptions.push({
+      id: `correct:${item.name}`,
+      label: item.name,
+      textColor: item.value,
+      isCorrect: true
+    });
+  }
+  
+  // Создаём 2-3 неправильных варианта (где цвет ≠ надпись)
   const distractors: ReactionOption[] = [];
-  const usedPairs = new Set<string>([`${correct.name}:${correct.value}`]);
-
-  while (distractors.length < 3) {
+  const usedPairs = new Set<string>();
+  
+  while (distractors.length < 2) {
     const word = pickOne(COLOR_WORDS);
     const color = pickOne(COLOR_WORDS);
+    
+    // Пропускаем если цвет совпадает с текстом (это будет правильный вариант)
     if (word.name === color.name) {
       continue;
     }
-
+    
     const key = `${word.name}:${color.value}`;
     if (usedPairs.has(key)) {
       continue;
     }
-
+    
     usedPairs.add(key);
     distractors.push({
-      id: key,
+      id: `distractor:${key}`,
       label: word.name,
       textColor: color.value,
       isCorrect: false
     });
   }
-
-  const options = shuffle([
-    {
-      id: `${correct.name}:${correct.value}`,
-      label: correct.name,
-      textColor: correct.value,
-      isCorrect: true
-    },
-    ...distractors
-  ]);
-
+  
+  const options = shuffle([...correctOptions, ...distractors]);
+  
   return {
-    prompt: "Найдите карточку, где цвет текста совпадает с надписью.",
+    prompt: "Найдите карточку, где цвет текста СОВПАДАЕТ с надписью.",
     options
   };
 }
