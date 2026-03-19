@@ -108,6 +108,12 @@ export function ReactionPage() {
   const [padPressed, setPadPressed] = useState(false);
   const [padError, setPadError] = useState(false);
   const [padSuccess, setPadSuccess] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [bonusPoints, setBonusPoints] = useState(0);
+  const [lastReactionTime, setLastReactionTime] = useState<number | null>(null);
+  const [showNewRecord, setShowNewRecord] = useState(false);
+  const [personalBest, setPersonalBest] = useState<number | null>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const requestedVariantId = useMemo(
@@ -115,6 +121,18 @@ export function ReactionPage() {
     [searchParams]
   );
   const activeVariantId = requestedVariantId ?? variantId;
+
+  // Загрузка персонального рекорда
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("neurosprint:reaction:personalBest");
+      if (stored) {
+        setPersonalBest(JSON.parse(stored));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -142,6 +160,7 @@ export function ReactionPage() {
   );
   const roundsDone = attempts.length + mistakes;
   const accuracy = targetAttempts > 0 ? Math.round((attempts.length / targetAttempts) * 100) : 0;
+  const roundProgress = targetAttempts > 0 ? (roundsDone / targetAttempts) * 100 : 0;
 
   const best = useMemo(
     () => (attempts.length > 0 ? Math.min(...attempts) : null),
@@ -152,6 +171,17 @@ export function ReactionPage() {
     [attempts]
   );
   const avg = useMemo(() => (attempts.length > 0 ? average(attempts) : null), [attempts]);
+  
+  // Вычисление цвета времени реакции
+  const getReactionColor = (ms: number | null): "excellent" | "good" | "average" | "slow" => {
+    if (!ms) return "average";
+    if (ms < 200) return "excellent";
+    if (ms < 300) return "good";
+    if (ms < 400) return "average";
+    return "slow";
+  };
+  
+  const reactionColor = getReactionColor(lastReactionTime);
 
   function createParticles(x: number, y: number, count: number = 12) {
     const colors = ["#1e7f71", "#2ba884", "#71c77d", "#f2a93b", "#4ecdc4"];
@@ -318,6 +348,10 @@ export function ReactionPage() {
     setSessionElapsedMs(0);
     setRoundElapsedMs(0);
     setCountdownMs(0);
+    setCurrentStreak(0);
+    setBonusPoints(0);
+    setLastReactionTime(null);
+    setShowNewRecord(false);
     setStatus(
       nextVariantId
         ? "Режим обновлен. Нажмите «Начать раунд», затем ждите сигнал."
@@ -359,6 +393,7 @@ export function ReactionPage() {
 
     if (isCorrect && reactionMs != null) {
       setAttempts((current) => [...current, reactionMs]);
+      setLastReactionTime(reactionMs);
       triggerPadAnimation("success");
       if (padRef.current) {
         const rect = padRef.current.getBoundingClientRect();
@@ -366,9 +401,31 @@ export function ReactionPage() {
         const centerY = rect.top + rect.height / 2;
         createParticles(centerX, centerY, 16);
       }
+      
+      // Combo логика
+      const newStreak = currentStreak + 1;
+      setCurrentStreak(newStreak);
+      if (newStreak > bestStreak) {
+        setBestStreak(newStreak);
+      }
+      
+      // Бонус за быструю реакцию (< 250мс)
+      if (reactionMs < 250) {
+        const bonus = Math.floor((250 - reactionMs) / 10);
+        setBonusPoints((prev) => prev + bonus);
+      }
+      
+      // Проверка персонального рекорда
+      if (!personalBest || reactionMs < personalBest) {
+        setPersonalBest(reactionMs);
+        setShowNewRecord(true);
+        localStorage.setItem("neurosprint:reaction:personalBest", JSON.stringify(reactionMs));
+        setTimeout(() => setShowNewRecord(false), 2000);
+      }
     } else {
       setMistakes((current) => current + 1);
       triggerPadAnimation("error");
+      setCurrentStreak(0); // Сброс серии при ошибке
     }
 
     readyAtRef.current = null;
@@ -536,13 +593,59 @@ export function ReactionPage() {
         <StatCard title="Ошибки выбора" value={String(mistakes)} />
         <StatCard title="Ранние нажатия" value={String(falseStarts)} />
         <StatCard title="Лучшее время" value={best != null ? formatMs(best) : "—"} />
+        <StatCard title="Серия" value={currentStreak > 0 ? `x${currentStreak}` : "—"} />
+        <StatCard title="Бонусы" value={bonusPoints > 0 ? `+${bonusPoints}` : "—"} />
+      </div>
+      
+      {/* Прогресс-бар раунда */}
+      <div className="reaction-round-progress" aria-hidden="true">
+        <div className="reaction-round-progress-track">
+          <div 
+            className="reaction-round-progress-fill" 
+            style={{ width: `${roundProgress}%` }}
+          />
+        </div>
+        <span className="reaction-round-progress-label">
+          {roundsDone} / {targetAttempts}
+        </span>
       </div>
 
       <section className="reaction-arena" data-testid="reaction-arena">
         <h3 className="reaction-arena-title">Игровое окно</h3>
+        
+        {/* Уведомление о новом рекорде */}
+        {showNewRecord && (
+          <div className="reaction-new-record" data-testid="reaction-new-record">
+            <span className="reaction-new-record-icon">🏆</span>
+            <span className="reaction-new-record-text">Новый рекорд!</span>
+          </div>
+        )}
+        
+        {/* Индикатор комбо */}
+        {currentStreak > 1 && (
+          <div className="reaction-combo-indicator" data-testid="reaction-combo">
+            <span className="reaction-combo-fire">🔥</span>
+            <span className="reaction-combo-count">x{currentStreak}</span>
+          </div>
+        )}
+        
         <p className="reaction-live-timer" data-testid="reaction-live-timer">
           {liveTimerLabel}
         </p>
+        
+        {/* Визуализация последнего времени реакции */}
+        {lastReactionTime && phase === "idle" && roundsDone < targetAttempts && (
+          <div className={`reaction-time-display is-${reactionColor}`} data-testid="reaction-time-display">
+            <span className="reaction-time-value">{formatMs(lastReactionTime)}</span>
+            <span className="reaction-time-label">
+              {reactionColor === "excellent" && "Отлично!"}
+              {reactionColor === "good" && "Хорошо"}
+              {reactionColor === "average" && "Нормально"}
+              {reactionColor === "slow" && "Медленно"}
+            </span>
+          </div>
+        )}
+        
         <p className="status-line reaction-status" data-testid="reaction-status">
           {status}
         </p>
@@ -615,12 +718,77 @@ export function ReactionPage() {
       {phase === "finished" ? (
         <section className="result-box" data-testid="reaction-result">
           <h3>Результат серии</h3>
-          <p>Точность: {accuracy}%</p>
-          <p>Среднее время верных ответов: {avg != null ? formatMs(avg) : "—"}</p>
-          <p>Лучшее время: {best != null ? formatMs(best) : "—"}</p>
-          <p>Худшее время: {worst != null ? formatMs(worst) : "—"}</p>
-          <p>Ошибки выбора: {mistakes}</p>
-          <p>Ранние нажатия: {falseStarts}</p>
+          
+          {/* Персональный рекорд */}
+          {personalBest && (
+            <div className="reaction-personal-best" data-testid="reaction-personal-best">
+              <span className="reaction-personal-best-label">Личный рекорд</span>
+              <strong className="reaction-personal-best-value">{formatMs(personalBest)}</strong>
+            </div>
+          )}
+          
+          <div className="reaction-result-grid">
+            <div className="reaction-result-stat">
+              <span className="reaction-result-stat-label">Точность</span>
+              <strong className="reaction-result-stat-value">{accuracy}%</strong>
+            </div>
+            <div className="reaction-result-stat">
+              <span className="reaction-result-stat-label">Среднее время</span>
+              <strong className="reaction-result-stat-value">{avg != null ? formatMs(avg) : "—"}</strong>
+            </div>
+            <div className="reaction-result-stat">
+              <span className="reaction-result-stat-label">Лучшее время</span>
+              <strong className="reaction-result-stat-value">{best != null ? formatMs(best) : "—"}</strong>
+            </div>
+            <div className="reaction-result-stat">
+              <span className="reaction-result-stat-label">Худшее время</span>
+              <strong className="reaction-result-stat-value">{worst != null ? formatMs(worst) : "—"}</strong>
+            </div>
+            <div className="reaction-result-stat">
+              <span className="reaction-result-stat-label">Лучшая серия</span>
+              <strong className="reaction-result-stat-value">{bestStreak > 0 ? `x${bestStreak}` : "—"}</strong>
+            </div>
+            <div className="reaction-result-stat">
+              <span className="reaction-result-stat-label">Бонусы</span>
+              <strong className="reaction-result-stat-value">{bonusPoints > 0 ? `+${bonusPoints}` : "—"}</strong>
+            </div>
+          </div>
+          
+          {/* Мини-график попыток */}
+          {attempts.length > 0 && (
+            <div className="reaction-attempts-chart" data-testid="reaction-attempts-chart">
+              <h4>Время по попыткам</h4>
+              <div className="reaction-chart-bars">
+                {attempts.map((time, index) => {
+                  const maxTime = Math.max(...attempts, 400);
+                  const heightPercent = (time / maxTime) * 100;
+                  const isBest = time === best;
+                  return (
+                    <div key={index} className="reaction-chart-column">
+                      <div 
+                        className={`reaction-chart-bar ${isBest ? "is-best" : ""}`}
+                        style={{ height: `${heightPercent}%` }}
+                        title={formatMs(time)}
+                      />
+                      <span className="reaction-chart-label">{index + 1}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {/* Сравнение с прошлым результатом */}
+          {attempts.length > 0 && (
+            <div className="reaction-comparison-note">
+              {personalBest && best && best === personalBest ? (
+                <p>🎉 Поздравляем! Вы повторили или улучшили личный рекорд!</p>
+              ) : (
+                <p>Попробуйте ещё раз, чтобы улучшить результат.</p>
+              )}
+            </div>
+          )}
+          
           <p className="status-line">
             Подсказка: сначала стабильная точность, затем ускорение.
           </p>

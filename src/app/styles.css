@@ -2226,6 +2226,22 @@ textarea:focus-visible {
   margin-top: 2px;
 }
 
+@media (max-width: 700px) {
+  .result-summary-head {
+    flex-direction: column;
+  }
+
+  .result-summary-highlight {
+    width: 100%;
+    text-align: left;
+  }
+
+  .result-summary-metrics,
+  .result-summary-insights {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Session Result - XP/Level Up Display */
 .level-up-banner {
   display: flex;
@@ -3159,6 +3175,325 @@ textarea:focus-visible {
 .reaction-option-btn:hover {
   transform: translateY(-1px);
   border-color: #1e7f71;
+}
+
+/* Reaction: Progress Bar */
+.reaction-round-progress {
+  margin: 16px auto;
+  width: min(92vw, 560px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reaction-round-progress-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(20, 91, 83, 0.12);
+  overflow: hidden;
+}
+
+.reaction-round-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1e7f71 0%, #4ab892 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.reaction-round-progress-label {
+  min-width: 60px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1c5f52;
+  text-align: right;
+}
+
+/* Reaction: New Record Badge */
+.reaction-new-record {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin: 12px auto;
+  width: fit-content;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f2c14e 0%, #e8a83a 100%);
+  color: #fff;
+  font-weight: 900;
+  font-size: 1.06rem;
+  animation: reaction-record-pop 0.5s ease-out;
+  box-shadow: 0 6px 16px rgba(242, 193, 78, 0.4);
+}
+
+.reaction-new-record-icon {
+  font-size: 1.4rem;
+}
+
+@keyframes reaction-record-pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Reaction: Combo Indicator */
+.reaction-combo-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin: 10px auto;
+  width: fit-content;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+  color: #fff;
+  font-weight: 900;
+  font-size: 1.2rem;
+  animation: reaction-combo-pulse 0.6s ease-out;
+  box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
+}
+
+.reaction-combo-fire {
+  font-size: 1.4rem;
+  animation: reaction-fire-flicker 0.8s ease-in-out infinite;
+}
+
+.reaction-combo-count {
+  font-size: 1.4rem;
+}
+
+@keyframes reaction-combo-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes reaction-fire-flicker {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+/* Reaction: Time Display */
+.reaction-time-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 18px;
+  margin: 12px auto;
+  border-radius: 14px;
+  font-weight: 800;
+  animation: reaction-time-slide 0.3s ease-out;
+  max-width: fit-content;
+}
+
+.reaction-time-display.is-excellent {
+  background: linear-gradient(135deg, #71c77d 0%, #4ab892 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(74, 184, 146, 0.4);
+}
+
+.reaction-time-display.is-good {
+  background: linear-gradient(135deg, #4ecdc4 0%, #2ba884 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(78, 205, 196, 0.4);
+}
+
+.reaction-time-display.is-average {
+  background: linear-gradient(135deg, #f2c14e 0%, #e8a83a 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(242, 193, 78, 0.3);
+}
+
+.reaction-time-display.is-slow {
+  background: linear-gradient(135deg, #ff9f7f 0%, #ff6b6b 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(255, 159, 127, 0.3);
+}
+
+.reaction-time-value {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.reaction-time-label {
+  font-size: 0.82rem;
+  opacity: 0.95;
+  margin-top: 4px;
+}
+
+@keyframes reaction-time-slide {
+  0% {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Reaction: Result Grid */
+.reaction-result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.reaction-result-stat {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(20, 91, 83, 0.06);
+  border: 1px solid rgba(20, 91, 83, 0.12);
+}
+
+.reaction-result-stat-label {
+  font-size: 0.76rem;
+  color: #52726b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.reaction-result-stat-value {
+  font-size: 1.25rem;
+  color: #1c5f52;
+  margin-top: 4px;
+}
+
+/* Reaction: Personal Best */
+.reaction-personal-best {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 20px;
+  margin: 12px 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f2c14e 0%, #e8a83a 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(242, 193, 78, 0.35);
+}
+
+.reaction-personal-best-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.95;
+}
+
+.reaction-personal-best-value {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+/* Reaction: Attempts Chart */
+.reaction-attempts-chart {
+  margin: 20px 0 16px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(20, 91, 83, 0.05);
+  border: 1px solid rgba(20, 91, 83, 0.12);
+}
+
+.reaction-attempts-chart h4 {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  color: #1c5f52;
+}
+
+.reaction-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 8px;
+  height: 120px;
+  padding: 0 8px;
+}
+
+.reaction-chart-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.reaction-chart-bar {
+  width: 100%;
+  max-width: 40px;
+  background: linear-gradient(180deg, #4ab892 0%, #2ba884 100%);
+  border-radius: 6px 6px 0 0;
+  transition: height 0.4s ease;
+  box-shadow: 0 2px 6px rgba(43, 168, 132, 0.3);
+}
+
+.reaction-chart-bar.is-best {
+  background: linear-gradient(180deg, #f2c14e 0%, #e8a83a 100%);
+  box-shadow: 0 2px 8px rgba(242, 193, 78, 0.45);
+}
+
+.reaction-chart-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #52726b;
+}
+
+/* Reaction: Comparison Note */
+.reaction-comparison-note {
+  padding: 12px 14px;
+  margin: 14px 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(74, 184, 146, 0.12), rgba(43, 168, 132, 0.08));
+  border: 1px solid rgba(20, 91, 83, 0.14);
+}
+
+.reaction-comparison-note p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #1c5f52;
+  font-weight: 600;
+}
+
+/* Reaction: Responsive */
+@media (max-width: 640px) {
+  .reaction-result-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .reaction-chart-bars {
+    height: 100px;
+  }
+  
+  .reaction-personal-best-value {
+    font-size: 1.6rem;
+  }
 }
 
 .reaction-option-main {
