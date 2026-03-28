@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  PATTERN_MODES,
-  PATTERN_LEVELS,
   CONTENT_TYPES,
-  DEFAULT_PATTERN_SETUP,
+  getPatternDifficultySummary,
   normalizePatternSetup,
-  type PatternModeId,
+  PATTERN_LEVELS,
+  PATTERN_MODES,
+  type PatternContentType,
   type PatternLevel,
-  type PatternContentType
-} from '../features/pattern-recognition/engine/patternConfig';
-import { getPatternSetup, savePatternSetup, resetPatternSetup } from '../features/pattern-recognition/setupStorage';
-import { InfoHint } from '../shared/ui/InfoHint';
+  type PatternModeId
+} from "../features/pattern-recognition/engine/patternConfig";
+import {
+  getPatternSetup,
+  resetPatternSetup,
+  savePatternSetup
+} from "../features/pattern-recognition/setupStorage";
+import { InfoHint } from "../shared/ui/InfoHint";
 
 interface PatternSessionNavState {
   setup: ReturnType<typeof normalizePatternSetup>;
@@ -24,7 +28,7 @@ export function PatternRecognitionSetupPage() {
   function startSession(): void {
     const normalized = normalizePatternSetup(setup);
     savePatternSetup(normalized);
-    navigate('/training/pattern-recognition/session', {
+    navigate("/training/pattern-recognition/session", {
       state: { setup: normalized } satisfies PatternSessionNavState
     });
   }
@@ -36,24 +40,29 @@ export function PatternRecognitionSetupPage() {
   return (
     <section className="panel pattern-setup-page" data-testid="pattern-setup-page">
       <h2>Pattern Recognition</h2>
-      <p>Тренировка логического мышления: «Что будет следующим?»</p>
+      <p>Тренировка на чтение закономерностей: увидеть правило ряда и продолжить его без случайных догадок.</p>
 
       <InfoHint title="Как играть" testId="pattern-setup-hint">
-        <p>1. Смотрите на последовательность фигур или чисел вверху.</p>
-        <p>2. Найдите закономерность (цвет, форма, размер или математика).</p>
-        <p>3. Выберите вариант, который продолжит паттерн.</p>
-        <p>4. Подсказки показывают тип паттерна — используйте в обучающем режиме!</p>
+        <p>1. Смотрите на ряд сверху и ищите правило: цикл, чередование, зеркало, прогрессию или числовой шаг.</p>
+        <p>2. Сначала поймите ритм паттерна, а уже потом выбирайте ответ.</p>
+        <p>3. В multi-gap режиме заполняйте пропуски по порядку, слева направо.</p>
+        <p>4. В обучающем режиме используйте подсказки, а в рабочих режимах проверяйте себя без опоры.</p>
       </InfoHint>
 
       <section className="setup-block">
-        <h3>Режим игры</h3>
+        <h3>Режим</h3>
         <div className="segmented-row">
           {PATTERN_MODES.map((mode) => (
             <button
               key={mode.id}
               type="button"
-              className={setup.modeId === mode.id ? 'btn-secondary is-active' : 'btn-secondary'}
-              onClick={() => setSetup((current: typeof setup) => ({ ...current, modeId: mode.id as PatternModeId }))}
+              className={setup.modeId === mode.id ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() =>
+                setSetup((current) => ({
+                  ...current,
+                  modeId: mode.id as PatternModeId
+                }))
+              }
               data-testid={`mode-${mode.id}`}
             >
               {mode.title}
@@ -61,7 +70,7 @@ export function PatternRecognitionSetupPage() {
           ))}
         </div>
         <p className="status-line">
-          {PATTERN_MODES.find((m: { id: PatternModeId }) => m.id === setup.modeId)?.description}
+          {PATTERN_MODES.find((mode) => mode.id === setup.modeId)?.description}
         </p>
       </section>
 
@@ -72,8 +81,13 @@ export function PatternRecognitionSetupPage() {
             <button
               key={type.id}
               type="button"
-              className={setup.contentType === type.id ? 'btn-secondary is-active' : 'btn-secondary'}
-              onClick={() => setSetup((current: typeof setup) => ({ ...current, contentType: type.id as PatternContentType }))}
+              className={setup.contentType === type.id ? "btn-secondary is-active" : "btn-secondary"}
+              onClick={() =>
+                setSetup((current) => ({
+                  ...current,
+                  contentType: type.id as PatternContentType
+                }))
+              }
               data-testid={`content-type-${type.id}`}
             >
               <span>{type.icon}</span> {type.title}
@@ -81,9 +95,9 @@ export function PatternRecognitionSetupPage() {
           ))}
         </div>
         <p className="status-line">
-          {setup.contentType === 'visual' && '🎨 Только визуальные паттерны (фигуры, цвета)'}
-          {setup.contentType === 'numeric' && '🔢 Только математические паттерны (числа)'}
-          {setup.contentType === 'mixed' && '🔀 Смешанные визуальные и математические паттерны'}
+          {setup.contentType === "visual" && "Фигуры, цвет, форма и размер без числовой нагрузки."}
+          {setup.contentType === "numeric" && "Числовые ряды, арифметика и чередование операций."}
+          {setup.contentType === "mixed" && "Смешанный режим: визуальные и числовые паттерны в одной сессии."}
         </p>
       </section>
 
@@ -95,7 +109,7 @@ export function PatternRecognitionSetupPage() {
             id="pattern-level"
             value={setup.level}
             onChange={(event) =>
-              setSetup((current: typeof setup) =>
+              setSetup((current) =>
                 normalizePatternSetup({
                   ...current,
                   level: event.target.value as PatternLevel
@@ -112,11 +126,11 @@ export function PatternRecognitionSetupPage() {
           </select>
         </div>
         <p className="status-line">
-          {PATTERN_LEVELS.find((l: { id: PatternLevel }) => l.id === setup.level)?.description}
+          {PATTERN_LEVELS.find((level) => level.id === setup.level)?.description}
         </p>
       </section>
 
-      {setup.modeId === 'pattern_timed' && (
+      {setup.modeId === "pattern_timed" && (
         <section className="setup-block">
           <h3>Длительность</h3>
           <div className="settings-form">
@@ -125,7 +139,7 @@ export function PatternRecognitionSetupPage() {
               id="pattern-duration"
               value={setup.durationSec}
               onChange={(event) =>
-                setSetup((current: typeof setup) =>
+                setSetup((current) =>
                   normalizePatternSetup({
                     ...current,
                     durationSec: Number(event.target.value) as 45 | 60 | 90
@@ -142,16 +156,16 @@ export function PatternRecognitionSetupPage() {
         </section>
       )}
 
-      {setup.modeId === 'pattern_classic' && (
+      {setup.modeId === "pattern_classic" && (
         <section className="setup-block">
-          <h3>Количество вопросов</h3>
+          <h3>Длина серии</h3>
           <div className="settings-form">
             <label htmlFor="pattern-questions">Вопросов в сессии</label>
             <select
               id="pattern-questions"
               value={setup.questionCount}
               onChange={(event) =>
-                setSetup((current: typeof setup) => ({
+                setSetup((current) => ({
                   ...current,
                   questionCount: Number(event.target.value)
                 }))
@@ -166,16 +180,16 @@ export function PatternRecognitionSetupPage() {
         </section>
       )}
 
-      {setup.modeId === 'pattern_multi' && (
+      {setup.modeId === "pattern_multi" && (
         <section className="setup-block">
-          <h3>Количество пропусков</h3>
+          <h3>Пропуски</h3>
           <div className="segmented-row">
             {[2, 3].map((gapCount) => (
               <button
                 key={gapCount}
                 type="button"
-                className={(setup.gaps ?? 2) === gapCount ? 'btn-secondary is-active' : 'btn-secondary'}
-                onClick={() => setSetup((current: typeof setup) => ({ ...current, gaps: gapCount }))}
+                className={(setup.gaps ?? 2) === gapCount ? "btn-secondary is-active" : "btn-secondary"}
+                onClick={() => setSetup((current) => ({ ...current, gaps: gapCount }))}
                 data-testid={`gaps-${gapCount}`}
               >
                 {gapCount} пропуска
@@ -183,7 +197,7 @@ export function PatternRecognitionSetupPage() {
             ))}
           </div>
           <p className="status-line">
-            {setup.gaps ?? 2} пропуска в последовательности — выберите все правильные ответы
+            {setup.gaps ?? 2} пропуска в хвосте ряда. Слоты нужно заполнять строго по порядку.
           </p>
         </section>
       )}
@@ -195,36 +209,41 @@ export function PatternRecognitionSetupPage() {
             <input
               id="show-hints"
               type="checkbox"
-              checked={setup.showHints || setup.modeId === 'pattern_learning'}
+              checked={setup.showHints || setup.modeId === "pattern_learning"}
               onChange={(event) =>
-                setSetup((current: typeof setup) => ({
+                setSetup((current) => ({
                   ...current,
                   showHints: event.target.checked
                 }))
               }
-              disabled={setup.modeId === 'pattern_learning'}
+              disabled={setup.modeId === "pattern_learning"}
             />
-            Показывать тип паттерна во время игры
+            Показывать тип паттерна во время сессии
           </label>
         </div>
         <p className="status-line">
-          {setup.modeId === 'pattern_learning' 
-            ? '✅ В обучающем режиме подсказки включены всегда' 
-            : setup.showHints
-              ? '✅ Подсказки включены — вы будете видеть тип паттерна'
-              : '❌ Подсказки выключены — угадывайте тип сами'}
+          {setup.modeId === "pattern_learning" &&
+            "В обучающем режиме подсказки включены всегда, чтобы внимание уходило в правило, а не в угадывание."}
+          {setup.modeId !== "pattern_learning" &&
+            (setup.showHints
+              ? "Подсказки включены. Это мягче вводит новые семьи, но снижает чистоту контроля."
+              : "Подсказки выключены. Это честный рабочий режим без внешней опоры.")}
         </p>
       </section>
 
       <section className="session-brief" data-testid="pattern-session-brief">
         <h3>Перед стартом</h3>
-        <p>Режим: {PATTERN_MODES.find((m: { id: PatternModeId }) => m.id === setup.modeId)?.title}</p>
-        <p>Уровень: {PATTERN_LEVELS.find((l: { id: PatternLevel }) => l.id === setup.level)?.title}</p>
-        <p>Контент: {CONTENT_TYPES.find(t => t.id === setup.contentType)?.icon} {CONTENT_TYPES.find(t => t.id === setup.contentType)?.title}</p>
-        {setup.modeId === 'pattern_timed' && <p>Время: {setup.durationSec} сек</p>}
-        {setup.modeId === 'pattern_classic' && <p>Вопросов: {setup.questionCount}</p>}
-        {setup.modeId === 'pattern_multi' && <p>Пропусков: {setup.gaps ?? 2}</p>}
-        <p>Подсказки: {setup.showHints || setup.modeId === 'pattern_learning' ? '✅ Вкл' : '❌ Выкл'}</p>
+        <p>Режим: {PATTERN_MODES.find((mode) => mode.id === setup.modeId)?.title}</p>
+        <p>Уровень: {PATTERN_LEVELS.find((level) => level.id === setup.level)?.title}</p>
+        <p>
+          Контент: {CONTENT_TYPES.find((type) => type.id === setup.contentType)?.icon}{" "}
+          {CONTENT_TYPES.find((type) => type.id === setup.contentType)?.title}
+        </p>
+        {setup.modeId === "pattern_timed" && <p>Время: {setup.durationSec} сек</p>}
+        {setup.modeId === "pattern_classic" && <p>Вопросов: {setup.questionCount}</p>}
+        {setup.modeId === "pattern_multi" && <p>Пропусков: {setup.gaps ?? 2}</p>}
+        <p>Подсказки: {setup.showHints || setup.modeId === "pattern_learning" ? "вкл" : "выкл"}</p>
+        <p>Профиль сложности: {getPatternDifficultySummary(setup)}</p>
       </section>
 
       <div className="action-row">

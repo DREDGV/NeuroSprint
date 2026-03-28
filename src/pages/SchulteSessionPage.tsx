@@ -27,8 +27,11 @@ import {
   gridSizeToNumbersCount,
   withLevelDefaults
 } from "../shared/lib/training/presets";
-import { getTrainingSetup } from "../shared/lib/training/setupStorage";
-import { resolveSchulteTheme } from "../shared/lib/training/themes";
+import { getTrainingSetup, saveTrainingSetup } from "../shared/lib/training/setupStorage";
+import {
+  SCHULTE_QUICK_THEME_OPTIONS,
+  resolveSchulteTheme
+} from "../shared/lib/training/themes";
 import { SchulteGrid } from "../shared/ui/SchulteGrid";
 import { SessionResultSummary } from "../shared/ui/SessionResultSummary";
 import { StatCard } from "../shared/ui/StatCard";
@@ -36,6 +39,7 @@ import type {
   AdaptiveDecision,
   AdaptiveSource,
   AudioSettings,
+  SchulteThemeId,
   Session,
   TrainingModeId,
   TrainingSetup
@@ -494,6 +498,22 @@ export function SchulteSessionPage() {
     [setup.customTheme, setup.visualThemeId]
   );
 
+  function handleQuickThemeSwitch(themeId: SchulteThemeId) {
+    setSetup((current) => {
+      const nextSetup = {
+        ...current,
+        visualThemeId: themeId,
+        customTheme: null
+      };
+      saveTrainingSetup(modeId, nextSetup);
+      return nextSetup;
+    });
+
+    if (activeUserId) {
+      void preferenceRepository.saveSchulteTheme(activeUserId, themeId, null);
+    }
+  }
+
   function setFlashState(index: number, type: "correct" | "error") {
     setFlash({ index, type });
     if (flashTimerRef.current != null) {
@@ -660,23 +680,23 @@ export function SchulteSessionPage() {
         Активный пользователь: <strong>{activeUserName}</strong>
       </p>
 
+      {/* Крупный индикатор текущего задания */}
+      {!finished && (
+        <div className="schulte-current-task" data-testid="schulte-current-task">
+          <div className="schulte-task-label">Найдите число</div>
+          <div className="schulte-task-value">{expected}</div>
+        </div>
+      )}
+
       <div className="stats-grid">
         {modeId === "timed_plus" ? (
           <StatCard title="Осталось" value={`${(remainingMs / 1000).toFixed(1)} с`} />
         ) : (
           <StatCard title="Время" value={`${(elapsedMs / 1000).toFixed(1)} с`} />
         )}
-        <StatCard
-          title="Следующее число"
-          value={finished ? "Готово" : String(expected)}
-        />
         <StatCard title="Ошибки" value={String(errors)} />
         <StatCard title="Уровень" value={String(level)} />
       </div>
-
-      {setup.hintsEnabled && !finished ? (
-        <p className="status-line">Подсказка: найдите число {expected}</p>
-      ) : null}
 
       {!isRunning && !finished ? (
         <section className="session-brief">
@@ -698,6 +718,30 @@ export function SchulteSessionPage() {
           <p>Старт автоматически при первом клике по клетке.</p>
         </section>
       ) : null}
+
+      <section className="schulte-quick-theme-panel" data-testid="schulte-quick-theme-panel">
+        <div>
+          <strong>Вид цифр</strong>
+          <p className="status-line">
+            Быстрое переключение между светлой и тёмной Ч/Б темой без выхода из сессии.
+          </p>
+        </div>
+        <div className="segmented-row">
+          {SCHULTE_QUICK_THEME_OPTIONS.map((themeOption) => (
+            <button
+              key={themeOption.id}
+              type="button"
+              className={
+                setup.visualThemeId === themeOption.id ? "btn-secondary is-active" : "btn-secondary"
+              }
+              onClick={() => handleQuickThemeSwitch(themeOption.id)}
+              data-testid={`schulte-quick-theme-${themeOption.id}`}
+            >
+              {themeOption.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <SchulteGrid
         values={grid}

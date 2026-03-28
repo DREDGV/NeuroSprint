@@ -361,15 +361,23 @@ export function SprintMathSessionPage() {
         Активный пользователь: <strong>{activeUserName}</strong>
       </p>
 
+      {/* Sprint Math HUD с крупными индикаторами */}
+      <div className="sprint-math-hud">
+        <div className="sprint-math-timer">
+          <span className="sprint-math-timer-label">{isRunning ? "Осталось" : "Готов"}</span>
+          <span className="sprint-math-timer-value">{formatSeconds(remainingMs)}</span>
+        </div>
+        <div className="sprint-math-streak">
+          <span className="sprint-math-streak-icon">🔥</span>
+          <span className="sprint-math-streak-value">{currentStreak}</span>
+        </div>
+      </div>
+
       <div className="stats-grid">
-        <StatCard title="Осталось времени" value={formatSeconds(remainingMs)} />
-        <StatCard title="Прошло времени" value={formatSeconds(elapsedMs)} />
-        <StatCard title="Верных ответов" value={String(correctCount)} />
-        <StatCard title="Ошибок" value={String(errors)} />
-        <StatCard
-          title="Серия (текущая / лучшая)"
-          value={`${currentStreak} / ${bestStreak}`}
-        />
+        <StatCard title="Прошло" value={formatSeconds(elapsedMs)} />
+        <StatCard title="Верно" value={String(correctCount)} />
+        <StatCard title="Ошибки" value={String(errors)} />
+        <StatCard title="Лучшая серия" value={String(bestStreak)} />
       </div>
 
       {!isRunning && !finished ? (
@@ -384,22 +392,21 @@ export function SprintMathSessionPage() {
         </section>
       ) : null}
 
-      <section className="setup-block">
-        <h3>Текущий пример</h3>
-        <p style={{ fontSize: "2rem", fontWeight: 800, margin: "8px 0 14px" }}>
-          {task.expression} = ?
-        </p>
+      <section className="sprint-math-problem-section">
+        <div className="sprint-math-problem-display">
+          <span className="sprint-math-problem-expression">{task.expression}</span>
+          <span className="sprint-math-problem-equals">=</span>
+          <span className="sprint-math-problem-question">?</span>
+        </div>
 
         <form
-          className="inline-form"
+          className="sprint-math-form"
           onSubmit={(event) => {
             event.preventDefault();
             submitAnswer();
           }}
         >
-          <label htmlFor="sprint-math-answer">Введите ответ</label>
           <input
-            id="sprint-math-answer"
             type="text"
             inputMode="numeric"
             value={answerInput}
@@ -415,13 +422,14 @@ export function SprintMathSessionPage() {
               }
               submitAnswer(nextValue);
             }}
-            placeholder="Введите ответ"
+            placeholder="Ваш ответ"
             autoComplete="off"
             disabled={finished}
+            className={feedback === "correct" ? "is-correct" : feedback === "error" ? "is-error" : ""}
           />
           <button
             type="submit"
-            className="btn-primary"
+            className="btn-primary sprint-math-submit-btn"
             data-testid="sprint-math-submit-btn"
             disabled={finished}
           >
@@ -429,9 +437,21 @@ export function SprintMathSessionPage() {
           </button>
         </form>
 
-        {feedback === "correct" ? <p className="status-line">Верно</p> : null}
+        {feedback === "correct" ? (
+          <div className="sprint-math-feedback sprint-math-feedback-correct" data-testid="sprint-math-feedback-correct">
+            <span className="feedback-icon">✓</span>
+            <span className="feedback-text">Верно!</span>
+          </div>
+        ) : null}
+        
         {feedback === "error" ? (
-          <p className="error-text">Ошибка. Правильный ответ: {lastExpectedAnswer ?? "-"}</p>
+          <div className="sprint-math-feedback sprint-math-feedback-error" data-testid="sprint-math-feedback-error">
+            <span className="feedback-icon">✗</span>
+            <div className="feedback-content">
+              <span className="feedback-text">Ошибка</span>
+              <span className="feedback-correct-answer">Правильный ответ: <strong>{lastExpectedAnswer}</strong></span>
+            </div>
+          </div>
         ) : null}
       </section>
 

@@ -5,7 +5,12 @@ import { groupRepository } from "../entities/group/groupRepository";
 import { normalizeUserRole } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
+import { ClassDashboardWidget } from "../widgets/ClassDashboardWidget";
+import { LeaderboardWidget } from "../widgets/LeaderboardWidget";
+import { useChallenges } from "../features/competitions/hooks/useChallenges";
+import { ChallengeModal } from "../features/competitions/components/ChallengeModal";
 import type { ClassGroup, User } from "../shared/types/domain";
+import type { UserChallenge } from "../shared/types/classes";
 
 const AVATAR_EMOJIS = ["👤", "👦", "👧", "👨", "👩", "🧑", "🎓", "👨‍🎓", "👩‍🎓"];
 
@@ -35,6 +40,26 @@ export function ClassesPage() {
   
   // Массовые операции
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+
+  // Вызовы и соревнования
+  const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+
+  // Получаем активного пользователя из localStorage
+  useEffect(() => {
+    const activeProfile = localStorage.getItem("activeProfile");
+    if (activeProfile) {
+      try {
+        const profile = JSON.parse(activeProfile);
+        setActiveUserId(profile.id || null);
+      } catch {
+        setActiveUserId(null);
+      }
+    }
+  }, []);
+
+  // Хук для вызовов
+  const { challenges, incoming, sendChallenge, respondToChallenge } = useChallenges(activeUserId);
 
   async function refreshBase(targetClassId?: string): Promise<void> {
     const [loadedGroups, loadedUsers] = await Promise.all([
@@ -371,6 +396,12 @@ export function ClassesPage() {
       {/* Выбранный класс */}
       {selectedClass && (
         <>
+          {/* Дашборд класса */}
+          <ClassDashboardWidget
+            classGroup={selectedClass}
+            students={students}
+          />
+
           {/* Статистика класса */}
           {classStats && (
             <section className="classes-section">
@@ -499,6 +530,78 @@ export function ClassesPage() {
               </div>
             )}
           </section>
+
+          {/* Секция соревнований и вызовов */}
+          {activeUserId && students.length > 1 && (
+            <section className="classes-section">
+              <div className="class-header">
+                <h3>⚔️ Соревнования и вызовы</h3>
+                <div className="class-actions">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => setShowChallengeModal(true)}
+                  >
+                    🎯 Создать вызов
+                  </button>
+                </div>
+              </div>
+
+              {/* Входящие вызовы */}
+              {incoming.length > 0 && (
+                <div className="challenges-list">
+                  <h4>📥 Входящие вызовы ({incoming.length})</h4>
+                  {incoming.map((challenge) => {
+                    const challenger = allUsers.find(u => u.id === challenge.challengerId);
+                    return (
+                      <div key={challenge.id} className="challenge-card">
+                        <div className="challenge-info">
+                          <span className="challenge-from">
+                            От: {challenger?.name || "Неизвестный"}
+                          </span>
+                          <span className="challenge-mode">
+                            🎮 {challenge.modeId}
+                          </span>
+                          <span className="challenge-duration">
+                            ⏱️ {challenge.durationMinutes} мин
+                          </span>
+                        </div>
+                        <div className="challenge-actions">
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={() => respondToChallenge(challenge.id, true)}
+                          >
+                            ✓ Принять
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() => respondToChallenge(challenge.id, false)}
+                          >
+                            ✕ Отклонить
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Лидерборд класса */}
+              <LeaderboardWidget
+                entries={students.map((student, index) => ({
+                  rank: index + 1,
+                  userId: student.id,
+                  name: student.name,
+                  score: (student as any).userLevel?.totalXP || 0,
+                  xpEarned: (student as any).userLevel?.totalXP || 0
+                })).sort((a, b) => b.score - a.score)}
+                period="week"
+                isLoading={false}
+              />
+            </section>
+          )}
         </>
       )}
 
@@ -559,6 +662,27 @@ export function ClassesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Модальное окно вызова */}
+      {showChallengeModal && activeUserId && (
+        <ChallengeModal
+          isOpen={showChallengeModal}
+          onClose={() => setShowChallengeModal(false)}
+          onSubmit={async (challenge: Partial<UserChallenge>) => {
+            if (challenge.challengedId && challenge.modeId && challenge.durationMinutes) {
+              await sendChallenge(
+                challenge.challengedId,
+                challenge.modeId,
+                challenge.durationMinutes
+              );
+              setShowChallengeModal(false);
+              setStatus("Вызов отправлен!");
+            }
+          }}
+          challenger={allUsers.find(u => u.id === activeUserId) || { id: activeUserId, name: "Вы", role: "student" } as User}
+          students={students.filter(s => s.id !== activeUserId)}
+        />
       )}
 
       {status && <p className="status-line success">{status}</p>}

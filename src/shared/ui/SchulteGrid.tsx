@@ -72,7 +72,7 @@ export function SchulteGrid({
             }}
             data-testid={`cell-${index}`}
           >
-            {isEmpty ? "" : value}
+            {isEmpty ? "" : <span className="grid-cell-value">{value}</span>}
           </button>
         );
       })}

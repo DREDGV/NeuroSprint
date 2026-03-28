@@ -21,6 +21,13 @@ import {
   saveSettings
 } from "../shared/lib/settings/settings";
 import {
+  FEATURE_FLAG_DEFINITIONS,
+  clearFeatureFlagOverrides,
+  getFeatureFlagOverride,
+  setFeatureFlagOverride,
+  useFeatureFlags
+} from "../shared/lib/online/featureFlags";
+import {
   getDevModeEnabled,
   setDevModeEnabled
 } from "../shared/lib/settings/devMode";
@@ -49,6 +56,7 @@ function benchmarkThresholdMs(period: BenchmarkPeriod): number {
 export function SettingsPage() {
   const { activeUserId, setActiveUserId } = useActiveUser();
   const access = useRoleAccess();
+  const featureFlags = useFeatureFlags();
   const initial = getSettings();
   const initialAudio = getAudioSettings();
 
@@ -458,6 +466,9 @@ export function SettingsPage() {
     activeUserId != null &&
     activeUserRole === "teacher" &&
     teachersCount <= 1;
+  const hasFeatureOverrides = FEATURE_FLAG_DEFINITIONS.some(
+    (definition) => getFeatureFlagOverride(definition.key) !== null
+  );
 
   const canPersistSettings =
     access.settings.updateTraining ||
@@ -704,6 +715,64 @@ export function SettingsPage() {
       </section>
 
       {access.settings.devtools && devModeEnabled ? (
+        <section className="setup-block" data-testid="settings-feature-flags-block">
+          <h3>Предпросмотр скрытых функций</h3>
+          <p className="status-line">
+            Эти переключатели работают только в текущем браузере. Они нужны для локальной
+            разработки и проверки preview-сборок без показа функций на основном сайте.
+          </p>
+
+          {FEATURE_FLAG_DEFINITIONS.map((definition) => {
+            const override = getFeatureFlagOverride(definition.key);
+            const enabled = featureFlags[definition.key];
+
+            return (
+              <div key={definition.key} className="settings-feature-flag-row">
+                <label htmlFor={`feature-flag-${definition.key}`}>
+                  <input
+                    id={`feature-flag-${definition.key}`}
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(event) =>
+                      setFeatureFlagOverride(definition.key, event.target.checked)
+                    }
+                    data-testid={`feature-flag-toggle-${definition.key}`}
+                  />
+                  {definition.label}
+                </label>
+                <p className="status-line">{definition.description}</p>
+                <p className="status-line">
+                  Источник: {override === null ? "env / deployment config" : "локальный override"}
+                </p>
+                <div className="action-row">
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => setFeatureFlagOverride(definition.key, null)}
+                    disabled={override === null}
+                  >
+                    Вернуть к env
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="action-row">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => clearFeatureFlagOverrides()}
+              disabled={!hasFeatureOverrides}
+              data-testid="feature-flags-reset-btn"
+            >
+              Сбросить все local overrides
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {access.settings.devtools && devModeEnabled ? (
         <section className="setup-block" data-testid="settings-fixture-block">
           <h3>Тестовые данные для класса</h3>
           <p>
@@ -786,6 +855,5 @@ export function SettingsPage() {
     </section>
   );
 }
-
 
 

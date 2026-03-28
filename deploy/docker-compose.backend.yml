@@ -1,0 +1,28 @@
+services:
+  neurosprint-backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: neurosprint-backend
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    depends_on:
+      - neurosprint-redis
+    ports:
+      - "127.0.0.1:3211:3211"
+      - "127.0.0.1:3212:3212"
+    volumes:
+      - neurosprint_backend_data:/app/backend/data
+
+  neurosprint-redis:
+    image: redis:7-alpine
+    container_name: neurosprint-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - neurosprint_redis_data:/data
+
+volumes:
+  neurosprint_backend_data:
+  neurosprint_redis_data:

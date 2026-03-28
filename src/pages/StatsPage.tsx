@@ -19,6 +19,7 @@ import { dailyChallengeRepository } from "../entities/challenge/dailyChallengeRe
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { buildSkillProfile } from "../shared/lib/training/skillProfile";
 import { buildSkillRoadmap } from "../shared/lib/training/skillRoadmap";
+import { useFeatureFlag } from "../shared/lib/online/featureFlags";
 import { StatCard } from "../shared/ui/StatCard";
 import { AchievementList } from "../widgets/AchievementList";
 import { LevelProgressWidget } from "../widgets/LevelProgressWidget";
@@ -560,7 +561,8 @@ export function StatsPage() {
   const { activeUserId } = useActiveUser();
   const location = useLocation();
   const access = useRoleAccess();
-  const canViewGroupStatsAccess = access.stats.viewGroup;
+  const groupStatsEnabled = useFeatureFlag("group_stats_ui");
+  const canViewGroupStatsAccess = access.stats.viewGroup && groupStatsEnabled;
   const [activeTab, setActiveTab] = useState<"stats" | "skills" | "achievements">(() =>
     location.hash === "#achievements" ? "achievements" : "stats"
   );
@@ -642,6 +644,10 @@ export function StatsPage() {
         ]) => {
         if (cancelled) {
           return;
+        }
+        console.log("[StatsPage] Загружено сессий:", sessions.length, "User ID:", activeUserId);
+        if (sessions.length > 0) {
+          console.log("[StatsPage] Первая сессия:", sessions[0]);
         }
         setClassicData(classic);
         setTimedData(timed);
@@ -775,7 +781,16 @@ export function StatsPage() {
     return sprintAllData;
   }, [sprintAddSubData, sprintAllData, sprintFilter, sprintMixedData]);
 
-  const skillProfile = useMemo(() => buildSkillProfile(allSessions), [allSessions]);
+  const skillProfile = useMemo(() => {
+    const profile = buildSkillProfile(allSessions);
+    // Отладка: проверяем, есть ли сессии
+    if (allSessions.length === 0) {
+      console.log("[Skill Profile] Сессий не найдено:", allSessions.length);
+    } else {
+      console.log("[Skill Profile] Найдено сессий:", allSessions.length, "Profile hasData:", profile.hasData);
+    }
+    return profile;
+  }, [allSessions]);
   const skillRoadmap = useMemo(() => buildSkillRoadmap(allSessions), [allSessions]);
   const skillRadarData = useMemo(
     () =>

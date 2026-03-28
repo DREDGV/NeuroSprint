@@ -108,7 +108,7 @@ function getSkillTrendLabel(trend: "up" | "down" | "steady", hasData: boolean): 
     return "\u0421\u043f\u0430\u0434";
   }
 
-  return "\u0420\u043e\u0432\u043d\u043e";
+  return "\u0420\u043e\u0441\u0442";
 }
 
 export function HomePage() {
@@ -172,7 +172,7 @@ export function HomePage() {
           setDailyChallenge(null);
         }
 
-        if (trainingResult.status === "fulfilled") {
+        if (trainingResult.status === "fulfilled" && trainingResult.value) {
           setDailyTraining(trainingResult.value);
 
           // Показываем celebration только если:
@@ -217,6 +217,7 @@ export function HomePage() {
   const progressPercent = Math.min(100, Math.round((progressValue / dailyGoalSessions) * 100));
   const skillGuidance = useMemo(() => buildSkillGuidance(allSessions), [allSessions]);
   const skillRoadmap = useMemo(() => buildSkillRoadmap(allSessions), [allSessions]);
+  const hasSkillSignals = skillGuidance.hasData || allSessions.length > 0;
   const adaptiveChallengeModeId = useMemo(
     () =>
       dailyChallenge
@@ -248,15 +249,27 @@ export function HomePage() {
     ? skillRoadmap.cadence
     : "3-5 коротких сессий уже дадут системе рабочую карту навыков.";
   const weeklyFocusDay = skillRoadmap.days[0];
-  const skillSystemTitle = skillGuidance.hasData
+  const weeklyFocusSummaryTitle = hasSkillSignals
+    ? `Навык: ${weeklyFocusTitle}`
+    : weeklyFocusTitle;
+  const skillSystemTitle = hasSkillSignals
     ? "Система навыков уже работает"
     : "Система навыков собирает стартовый профиль";
   const skillSystemLead = skillGuidance.hasData
     ? `Сейчас сильнее всего у вас ${skillGuidance.strongestLabel.toLowerCase()}, а следующим лучшим шагом выглядит ${skillGuidance.focusLabel.toLowerCase()}.`
-    : "После нескольких завершённых сессий система покажет сильные стороны, зону роста и следующий полезный фокус.";
+    : hasSkillSignals
+      ? "Первые сессии уже дают системе сигнал: можно собирать рабочий профиль без перегруза деталями."
+      : "После нескольких завершённых сессий система покажет сильные стороны, зону роста и следующий полезный фокус.";
   const skillSystemStatus = skillGuidance.hasData
     ? `Профиль собран на основе ${skillGuidance.profile.totalSessions} сессий`
-    : "Нужно 3-5 коротких сессий в основных тренажёрах";
+    : "Стартовый профиль";
+  const focusStatusText = hasSkillSignals
+    ? `Навык: ${skillGuidance.focusLabel}`
+    : "Нужен старт";
+  const strongestStatusText = hasSkillSignals
+    ? `Опора: ${skillGuidance.strongestLabel}`
+    : `Старт: ${skillGuidance.primaryModuleTitle}`;
+  const skillStatsPath = dailyChallenge ? "/stats" : "/stats#skills";
   const challengeProgressPercent = dailyChallenge
     ? Math.min(
         100,
@@ -360,8 +373,8 @@ export function HomePage() {
         </div>
       </header>
 
-      <div className="home-priority-grid">
-        {dailyChallenge && (
+      {dailyChallenge ? (
+        <div className="home-priority-grid">
           <section className="challenge-highlight" data-testid="home-daily-challenge">
             <div className="challenge-highlight-header">
               <div className="challenge-highlight-icon">
@@ -441,9 +454,10 @@ export function HomePage() {
               </div>
             </div>
           </section>
-        )}
+        </div>
+      ) : null}
 
-        <section className="home-skill-growth" data-testid="home-skill-growth">
+      <section className="home-skill-growth" data-testid="home-skill-growth">
           <div className="home-skill-growth-head">
             <div className="home-skill-growth-heading">
               <p className="stats-section-kicker">Система навыков</p>
@@ -477,11 +491,11 @@ export function HomePage() {
             </article>
             <article className="home-skill-growth-status-card">
               <span className="home-skill-growth-status-label">{"\u0413\u043b\u0430\u0432\u043d\u044b\u0439 \u0444\u043e\u043a\u0443\u0441"}</span>
-              <strong>{skillGuidance.focusLabel}</strong>
+              <strong>{focusStatusText}</strong>
             </article>
             <article className="home-skill-growth-status-card">
               <span className="home-skill-growth-status-label">{"\u041b\u0443\u0447\u0448\u0430\u044f \u043e\u043f\u043e\u0440\u0430"}</span>
-              <strong>{skillGuidance.strongestLabel}</strong>
+              <strong>{strongestStatusText}</strong>
             </article>
           </div>
 
@@ -505,7 +519,7 @@ export function HomePage() {
                   <div className="home-skill-mini-top">
                     <span className="home-skill-mini-name">{axis.shortLabel}</span>
                     <span className={`home-skill-mini-trend is-${axis.trend}`}>
-                      {getSkillTrendLabel(axis.trend, skillGuidance.hasData)}
+                      {isFocus && hasSkillSignals ? "Рост" : getSkillTrendLabel(axis.trend, hasSkillSignals)}
                     </span>
                   </div>
 
@@ -532,13 +546,6 @@ export function HomePage() {
           </div>
 
           <article className="home-skill-growth-card is-focus" data-testid="home-weekly-focus">
-            <span className="home-skill-growth-card-label">{"\u0427\u0442\u043e \u0434\u0435\u043b\u0430\u0442\u044c \u0434\u0430\u043b\u044c\u0448\u0435"}</span>
-            <strong>{weeklyFocusTitle}</strong>
-            <p>{weeklyFocusLead}</p>
-            <span className="home-skill-growth-meta">{weeklyFocusMeta}</span>
-          </article>
-
-          <article className="home-skill-growth-card" data-testid="home-skill-growth-next">
             <span className="home-skill-growth-card-label">{weeklyFocusStartLabel}</span>
             <strong>{weeklyFocusDay?.moduleTitle ?? skillGuidance.primaryModuleTitle}</strong>
             <p>
@@ -546,6 +553,13 @@ export function HomePage() {
                 ? `${weeklyFocusDay.title}. ${weeklyFocusDay.note}`
                 : skillGuidance.nextStep}
             </p>
+            <span className="home-skill-growth-meta">{weeklyFocusMeta}</span>
+          </article>
+
+          <article className="home-skill-growth-card" data-testid="home-skill-growth-next">
+            <span className="home-skill-growth-card-label">Фокус недели</span>
+            <strong>{weeklyFocusSummaryTitle}</strong>
+            <p>{weeklyFocusLead}</p>
             <span className="home-skill-growth-meta">{weeklyFocusMeta}</span>
           </article>
 
@@ -561,14 +575,13 @@ export function HomePage() {
             </Link>
             <Link
               className="home-skill-growth-action"
-              to="/stats#skills"
+              to={skillStatsPath}
               data-testid="home-skill-growth-stats"
             >
               Открыть навыки в статистике
             </Link>
           </div>
-        </section>
-      </div>
+      </section>
 
       <div className="home-secondary-flow">
         <DailyTrainingWidget compact={true} showHeatmap={true} showSummary={false} />

@@ -139,12 +139,12 @@ describe("MemoryMatchPage", () => {
     });
     fireEvent.click(screen.getByTestId("memory-match-restart"));
 
-    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("6СЃ");
+    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("до старта");
 
     act(() => {
       vi.advanceTimersByTime(3500);
     });
-    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("Р—Р°РїРѕРјРёРЅР°Р№С‚Рµ");
+    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("Запоминайте");
 
     const previewButtons = within(grid).getAllByRole("button") as HTMLButtonElement[];
     const pairs = collectPairs(previewButtons);
@@ -154,7 +154,7 @@ describe("MemoryMatchPage", () => {
       vi.advanceTimersByTime(2700);
     });
 
-    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("РЎРѕР±РёСЂР°Р№С‚Рµ РїР°СЂС‹");
+    expect(screen.getByTestId("memory-match-live-summary")).toHaveTextContent("Собирайте пары");
 
     for (const [first, second] of pairs) {
       const currentButtons = within(screen.getByTestId("memory-match-grid")).getAllByRole("button") as HTMLButtonElement[];
@@ -187,6 +187,7 @@ describe("MemoryMatchPage", () => {
     expect(screen.getByTestId("memory-match-result-insight")).toBeInTheDocument();
     expect(screen.getByTestId("memory-match-result-next-step")).toBeInTheDocument();
     expect(screen.getByTestId("memory-match-result-comparison")).toBeInTheDocument();
+    expect(screen.getByTestId("memory-match-result-stats-link")).toHaveAttribute("href", "/stats");
     expect(screen.getByTestId("memory-match-result-next-step")).toHaveTextContent("Следующий шаг");
     expect(screen.getByTestId("trainer-feedback-card")).toBeInTheDocument();
 

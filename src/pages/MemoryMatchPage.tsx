@@ -452,6 +452,7 @@ export function MemoryMatchPage() {
   const [baselineBestSession, setBaselineBestSession] = useState<Session | null>(null);
   const [sessionProgress, setSessionProgress] = useState<SessionSaveResult | null>(null);
   const [feedbackHandled, setFeedbackHandled] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const previewTimerRef = useRef<number | null>(null);
   const mismatchTimerRef = useRef<number | null>(null);
@@ -811,6 +812,7 @@ export function MemoryMatchPage() {
   useEffect(() => {
     if (!activeUserId || phase !== "result") {
       setFeedbackHandled(false);
+      setFeedbackSubmitted(false);
       return;
     }
 
@@ -841,6 +843,7 @@ export function MemoryMatchPage() {
     });
     markTrainerFeedbackHandled(activeUserId, "memory_match", feedbackLocalDate);
     setFeedbackHandled(true);
+    setFeedbackSubmitted(true);
   }
 
   function clearRoundTimers(): void {
@@ -883,6 +886,7 @@ export function MemoryMatchPage() {
     setLastMismatchSymbols([]);
     setFeedbackTone("neutral");
     setFeedbackText(`Запоминайте расположение карт. Время предпросмотра: ${config.previewSec} сек.`);
+    setFeedbackSubmitted(false);
     setPhase("preview");
   }
 
@@ -909,6 +913,7 @@ export function MemoryMatchPage() {
     setPreviousSession(null);
     setBestSession(null);
     setBaselineBestSession(null);
+    setFeedbackSubmitted(false);
   }
 
   function onCardClick(index: number): void {
@@ -1338,7 +1343,7 @@ export function MemoryMatchPage() {
                   ) : null}
                   <p className="comparison-note memory-match-inline-result-save-note">{saveSummaryText}</p>
 
-                  {hasActiveUser && !feedbackHandled ? (
+                  {hasActiveUser && (!feedbackHandled || feedbackSubmitted) ? (
                     <TrainerFeedbackCard
                       title="Как вам этот раунд Memory Match?"
                       subtitle="Короткий отзыв поможет нам спокойнее доводить модуль без навязчивых popup-окон."
@@ -1354,8 +1359,8 @@ export function MemoryMatchPage() {
                     <button type="button" className="btn-ghost" onClick={resetToSetup}>
                       Сменить уровень
                     </button>
-                    <Link className="btn-ghost" to="/training" data-testid="memory-match-result-stats-link">
-                      К тренировкам
+                    <Link className="btn-ghost" to="/stats" data-testid="memory-match-result-stats-link">
+                      К статистике
                     </Link>
                   </div>
                 </div>

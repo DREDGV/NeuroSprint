@@ -139,6 +139,8 @@ interface ModuleMeta {
   timeLabel: string;
   benefit: string;
   bestFor: string;
+  routeLabel: string;
+  formatLabel: string;
   skillId: SkillId;
 }
 
@@ -166,6 +168,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "2-4 мин",
     benefit: "Помогает быстрее замечать нужное и удерживать фокус.",
     bestFor: "Когда нужно собраться и включить внимание",
+    routeLabel: "Быстрый старт",
+    formatLabel: "Поиск в таблице",
     skillId: "attention"
   },
   {
@@ -179,6 +183,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "2-5 мин",
     benefit: "Разгоняет устный счёт и уверенность в вычислениях.",
     bestFor: "Когда хочется бодрой нагрузки на математику",
+    routeLabel: "Основной модуль",
+    formatLabel: "Устный счёт",
     skillId: "math"
   },
   {
@@ -192,6 +198,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "1-3 мин",
     benefit: "Даёт быструю разминку и помогает включиться без длинных правил.",
     bestFor: "Когда есть мало времени и нужен быстрый старт",
+    routeLabel: "Экспресс-вход",
+    formatLabel: "Сигнал и отклик",
     skillId: "reaction"
   },
   {
@@ -205,6 +213,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "2-4 мин",
     benefit: "Тренирует запоминание поля, поиск пар и более аккуратную работу без повторных ошибок.",
     bestFor: "Когда нужен понятный и комфортный вход в тренировку памяти",
+    routeLabel: "Лучший первый шаг",
+    formatLabel: "Поле и пары",
     skillId: "memory"
   },
   {
@@ -218,6 +228,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "2-4 мин",
     benefit: "Тренирует удержание карты поля, зон и опорных точек без перехода в последовательность.",
     bestFor: "Когда хотите прокачать именно расположение и форму на поле",
+    routeLabel: "Следующий шаг",
+    formatLabel: "Зоны и форма",
     skillId: "memory"
   },
   {
@@ -231,6 +243,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "2-5 мин",
     benefit: "Тренирует зрительную память и воспроизведение последовательности без перегруза.",
     bestFor: "Когда хочется понятной тренировки на память",
+    routeLabel: "После базы",
+    formatLabel: "Паттерн и порядок",
     skillId: "memory"
   },
   {
@@ -244,6 +258,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "2-4 мин",
     benefit: "Помогает удерживать информацию в голове и не терять последовательность.",
     bestFor: "Когда хотите нагрузку именно на удержание в памяти",
+    routeLabel: "Интенсивнее",
+    formatLabel: "Удержание шагов",
     skillId: "memory"
   },
   {
@@ -257,6 +273,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "2-4 мин",
     benefit: "Учит быстро менять правило и не теряться в потоке решений.",
     bestFor: "Когда хотите проверить скорость и точность одновременно",
+    routeLabel: "Смена правил",
+    formatLabel: "Решения на скорости",
     skillId: "logic"
   },
   {
@@ -270,6 +288,8 @@ const MODULE_META: ModuleMeta[] = [
     timeLabel: "3-5 мин",
     benefit: "Помогает видеть закономерности и быстрее находить следующий правильный ход.",
     bestFor: "Когда хочется спокойной интеллектуальной тренировки",
+    routeLabel: "Лучший первый шаг",
+    formatLabel: "Закономерности",
     skillId: "logic"
   }
 ];
@@ -378,6 +398,19 @@ function getModule(moduleId: string) {
   return TRAINING_MODULES.find((item) => item.id === moduleId);
 }
 
+function describeGuidanceConfidence(sessions: number): string {
+  if (sessions === 0) {
+    return "Пока это стартовый ориентир без личной истории. После первых сессий рекомендации станут точнее.";
+  }
+  if (sessions < 4) {
+    return "Пока это ранний ориентир: данных уже хватает для первого шага, но профиль ещё уточняется.";
+  }
+  if (sessions < 10) {
+    return "Это уже рабочий ориентир. После ещё нескольких сессий система будет увереннее различать сильные стороны и зону роста.";
+  }
+  return "Ориентир уже достаточно устойчивый: можно спокойно использовать его как основу для выбора следующего тренажёра.";
+}
+
 interface TrainingModuleCardProps {
   module: (typeof TRAINING_MODULES)[number];
   meta: ModuleMeta;
@@ -401,6 +434,10 @@ function TrainingModuleCard({ module, meta, variant = "default" }: TrainingModul
         </div>
         <div className="module-card-content">
           {variant === "featured" ? <span className="module-card-priority">Рекомендуем начать с этого</span> : null}
+          <div className="module-card-badges" aria-hidden="true">
+            <span className="module-card-badge">{meta.routeLabel}</span>
+            <span className="module-card-badge is-soft">{meta.formatLabel}</span>
+          </div>
           <div className="module-card-head">
             <h3 className="module-card-title">{module.title}</h3>
             <span className="module-card-time">{meta.timeLabel}</span>
@@ -523,7 +560,7 @@ export function TrainingHubPage() {
     activeSkillAxis.sessions
   );
   const growthStatusLine = skillGuidance.hasData
-    ? `По последним сессиям сейчас лучше сфокусироваться на ${skillGuidance.focusLabel.toLowerCase()}. Этот навык уже открыт как стартовый, но вы можете переключиться вручную.`
+    ? `Сейчас система ведёт к ${skillGuidance.focusLabel.toLowerCase()}. Если хотите, можно сразу переключиться на другой навык вручную.`
     : "Сначала выберите навык. Сразу под ним откроются лучшие тренажёры для старта.";
   const strongestSkillMessage = skillGuidance.hasData
     ? skillGuidance.strongestSkillId === activeSkillId
@@ -531,15 +568,29 @@ export function TrainingHubPage() {
       : `Сильнее всего уже выглядит навык «${skillGuidance.strongestLabel}». Здесь сейчас лучший следующий шаг для роста.`
     : `Пока профиль ещё собирается. Начните с 2-3 коротких сессий, чтобы увидеть сильные стороны.`;
   const skillSystemHeadline = skillGuidance.hasData
-    ? "Система навыков уже собирает ваш профиль"
+    ? "Профиль уже помогает выбирать точнее"
     : "Система навыков пока собирает первую базу";
   const skillSystemSummary = skillGuidance.hasData
-    ? `Сейчас система видит, что сильнее всего у вас ${skillGuidance.strongestLabel.toLowerCase()}, а следующим шагом стоит подтянуть ${skillGuidance.focusLabel.toLowerCase()}.`
+    ? `Сильнее всего сейчас выглядит ${skillGuidance.strongestLabel.toLowerCase()}, а следующим рабочим шагом система считает ${skillGuidance.focusLabel.toLowerCase()}.`
     : "После 3-5 завершённых сессий в основных тренажёрах здесь появятся сильные стороны, зона роста и персональный фокус.";
   const skillSystemActionPath = skillGuidance.hasData ? "/stats#skills" : recommendedLaunchPath;
   const skillSystemActionLabel = skillGuidance.hasData
     ? "Открыть навыки в статистике"
     : "Собрать первые сессии";
+  const todayCardTitle = skillGuidance.hasData ? `Фокус: ${skillGuidance.focusLabel}` : activeSkill.title;
+  const todayCardBody = skillGuidance.hasData ? skillGuidance.summary : activeSkill.recommendation;
+  const todayCardActionPath = skillGuidance.hasData
+    ? recommendedLaunchPath
+    : modulePrimaryRouteById[activeScenario?.moduleId ?? activeModulePairs[0]?.module.id ?? "schulte"];
+  const todayCardActionLabel = skillGuidance.hasData
+    ? skillGuidance.ctaLabel
+    : activeScenario?.cta ?? `Открыть ${activeModulePairs[0]?.module.title ?? activeSkill.shortTitle}`;
+  const activeStarter = featuredModules[0];
+  const nextModule = featuredModules[1] ?? extraModules[0];
+  const activeRouteSummary = nextModule
+    ? `Сначала ${activeStarter?.module.title ?? activeSkill.shortTitle}, затем ${nextModule.module.title}.`
+    : `Начните с ${activeStarter?.module.title ?? activeSkill.shortTitle} и закрепите навык 2-3 короткими сессиями.`;
+  const activeSkillConfidence = describeGuidanceConfidence(activeSkillAxis.sessions);
   return (
     <section className="panel training-hub-panel" data-testid="training-hub-page">
       <div className="training-hub-top-shell">
@@ -548,32 +599,30 @@ export function TrainingHubPage() {
             <p className="training-hub-kicker">Экран выбора тренировки</p>
             <h1 className="training-hub-title">Тренировки</h1>
             <p className="training-hub-subtitle">
-              Сначала выберите навык. Затем сразу запустите лучший тренажёр для старта или посмотрите дополнительные варианты по той же цели.
+              Выберите навык ниже или возьмите готовый старт справа. Внутри каждой ветки сначала показаны лучшие модули для входа, затем более глубокие варианты по той же цели.
             </p>
           </div>
           <div className="training-hub-today-card" data-testid="training-hub-today-card">
             <p className="training-hub-today-kicker">
               {skillGuidance.hasData ? "По вашему профилю" : "Что выбрать сейчас"}
             </p>
-            <h2>{skillGuidance.hasData ? `Фокус: ${skillGuidance.focusLabel}` : activeSkill.title}</h2>
-            <p>{skillGuidance.hasData ? skillGuidance.summary : activeSkill.recommendation}</p>
-            {skillGuidance.hasData ? (
-              <>
-                <div className="training-hub-today-pills" aria-hidden="true">
-                  <span className="training-hub-today-pill">Опора: {skillGuidance.strongestLabel}</span>
-                  <span className="training-hub-today-pill">
-                    Сессий: {skillGuidance.profile.totalSessions}
-                  </span>
-                </div>
-                <Link
-                  to={recommendedLaunchPath}
-                  className="training-hub-today-action"
-                  data-testid="training-hub-guidance-start"
-                >
-                  {skillGuidance.ctaLabel}
-                </Link>
-              </>
-            ) : null}
+            <h2>{todayCardTitle}</h2>
+            <p>{todayCardBody}</p>
+            <div className="training-hub-today-pills" aria-hidden="true">
+              <span className="training-hub-today-pill">
+                {skillGuidance.hasData ? `Опора: ${skillGuidance.strongestLabel}` : `Старт: ${activeStarter?.module.title ?? activeSkill.shortTitle}`}
+              </span>
+              <span className="training-hub-today-pill">
+                {skillGuidance.hasData ? `Сессий: ${skillGuidance.profile.totalSessions}` : `${activeModulePairs.length} тренажёра в ветке`}
+              </span>
+            </div>
+            <Link
+              to={todayCardActionPath}
+              className="training-hub-today-action"
+              data-testid="training-hub-guidance-start"
+            >
+              {todayCardActionLabel}
+            </Link>
           </div>
         </header>
 
@@ -601,14 +650,14 @@ export function TrainingHubPage() {
               {skillSystemActionLabel}
             </Link>
             {skillGuidance.hasData ? (
-              <Link to={recommendedLaunchPath} className="btn-secondary">
-                {skillGuidance.ctaLabel}
+              <Link to={recommendedLaunchPath} className="training-skill-system-link">
+                {skillGuidance.ctaLabel} →
               </Link>
             ) : null}
           </div>
         </section>
 
-        <section className="training-skill-tabs-shell" data-testid="training-skill-tabs">'
+        <section className="training-skill-tabs-shell" data-testid="training-skill-tabs">
           <div className="training-skill-tabs-head">
             <div>
               <p className="stats-section-kicker">Навигатор по навыкам</p>
@@ -658,6 +707,39 @@ export function TrainingHubPage() {
               <h3>{activeSkill.title}</h3>
               <p className="training-skill-panel-description">{activeSkill.description}</p>
               <p className="training-skill-panel-why">{activeSkill.whyItMatters}</p>
+              <div className="training-skill-route-grid" aria-hidden="true">
+                <div className="training-skill-route-card">
+                  <span className="training-skill-route-label">Лучший старт</span>
+                  <strong>{activeStarter?.module.title ?? activeSkill.shortTitle}</strong>
+                  <span>{activeStarter?.meta.routeLabel ?? "Первый шаг по навыку"}</span>
+                </div>
+                <div className="training-skill-route-card">
+                  <span className="training-skill-route-label">Формат ветки</span>
+                  <strong>{activeModulePairs.length} тренажёра</strong>
+                  <span>{activeStarter?.meta.timeLabel ?? "2-4 мин"} на сессию</span>
+                </div>
+                <div className="training-skill-route-card">
+                  <span className="training-skill-route-label">Маршрут</span>
+                  <strong>{activeStarter?.meta.formatLabel ?? activeSkill.shortTitle}</strong>
+                  <span>{activeRouteSummary}</span>
+                </div>
+              </div>
+              <div className="training-skill-featured" data-testid={`training-featured-modules-${activeSkillId}`}>
+                <div className="training-skill-featured-head">
+                  <div>
+                    <h3>Лучшие варианты для старта</h3>
+                    <p>Сначала посмотрите эти варианты: они быстрее всего дают понятный вход в выбранный навык.</p>
+                  </div>
+                  <div className="training-skill-featured-pill">
+                    {featuredModules.length} тренажёра для быстрого старта
+                  </div>
+                </div>
+                <div className="training-modules-grid training-modules-grid-featured-inline">
+                  {featuredModules.map(({ module, meta }) => (
+                    <TrainingModuleCard key={module.id} module={module} meta={meta} variant="featured" />
+                  ))}
+                </div>
+              </div>
               <div className="training-skill-progress" data-testid={`training-skill-progress-${activeSkillId}`}>
                 <div className="training-skill-progress-head">
                   <strong>Ваш ориентир по навыку</strong>
@@ -682,6 +764,7 @@ export function TrainingHubPage() {
                 <div className="training-skill-progress-bar" aria-hidden="true">
                   <span className="training-skill-progress-fill" style={{ width: `${activeSkillAxis.progressPct}%` }} />
                 </div>
+                <p className="training-skill-progress-confidence">{activeSkillConfidence}</p>
                 <p className="training-skill-progress-note">{activeSkillNextStep}</p>
               </div>
             </div>
@@ -707,24 +790,8 @@ export function TrainingHubPage() {
                 <p>{strongestSkillMessage}</p>
               </div>
               <div className="training-skill-panel-callout muted">
-                <span className="training-skill-panel-callout-label">Что это даст</span>
-                <p>{activeSkill.recommendation}</p>
-              </div>
-            </div>
-            <div className="training-skill-featured" data-testid={`training-featured-modules-${activeSkillId}`}>
-              <div className="training-skill-featured-head">
-                <div>
-                  <h3>Лучшие варианты для старта</h3>
-                  <p>Сначала посмотрите эти варианты: они быстрее всего дают понятный вход в выбранный навык.</p>
-                </div>
-                <div className="training-skill-featured-pill">
-                  {featuredModules.length} тренажёра для быстрого старта
-                </div>
-              </div>
-              <div className="training-modules-grid training-modules-grid-featured-inline">
-                {featuredModules.map(({ module, meta }) => (
-                  <TrainingModuleCard key={module.id} module={module} meta={meta} variant="featured" />
-                ))}
+                <span className="training-skill-panel-callout-label">Следующий шаг</span>
+                <p>{activeRouteSummary}</p>
               </div>
             </div>
           </div>
@@ -733,10 +800,9 @@ export function TrainingHubPage() {
 
       <section className="training-main-catalog" data-testid="training-main-catalog">
         <div className="training-main-catalog-head">
-          <h2>Ещё тренажёры для навыка: {activeSkill.shortTitle}</h2>
+          <h2>Следующие варианты по навыку: {activeSkill.shortTitle}</h2>
           <p>
-            Ниже оставлены дополнительные варианты того же направления. Они нужны, когда хочется
-            глубже развивать навык, а не только быстро начать.
+            Здесь оставлены режимы того же направления для тех случаев, когда нужен не только быстрый старт, но и более глубокая работа по навыку.
           </p>
         </div>
         {extraModules.length > 0 ? (
@@ -830,10 +896,13 @@ export function TrainingHubPage() {
       </section>
 
       <section className="training-quick-actions">
-        <h2 className="section-title">
-          <span className="section-title-icon">⚡</span>
-          Полезные ссылки
-        </h2>
+        <div className="training-quick-actions-head">
+          <div>
+            <p className="stats-section-kicker">Навигация</p>
+            <h2>Если нужен другой путь</h2>
+          </div>
+          <p>Когда не хотите выбирать модуль вручную и проще перейти сразу к готовому плану, статистике или настройкам.</p>
+        </div>
         <div className="quick-actions-grid">
           <Link className="quick-action-card" to="/training/pre-session">
             <span className="quick-action-icon">📋</span>

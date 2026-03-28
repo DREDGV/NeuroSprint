@@ -134,13 +134,16 @@ function getReactionModeTip(modeId: TrainingModeId): string | null {
     return "Pattern Classic: 15 вопросов без таймера, фокус на точность.";
   }
   if (modeId === "pattern_timed") {
-    return "Pattern Timed: 60 секунд на максимум правильных ответов.";
+    return "Pattern Timed: короткий раунд на темп, где важно не развалить точность из-за спешки.";
   }
   if (modeId === "pattern_progressive") {
-    return "Pattern Progressive: адаптивная сложность, игра до 3 ошибок.";
+    return "Pattern Progressive: адаптивный режим, который по ходу серии может и поднимать, и смягчать ступень.";
   }
   if (modeId === "pattern_learning") {
     return "Pattern Learning: обучающий режим с подсказками и разбором ошибок.";
+  }
+  if (modeId === "pattern_multi") {
+    return "Pattern Multi: несколько пропусков подряд в хвосте ряда, ответы нужно заполнять строго по порядку.";
   }
   if (modeId.startsWith("memory_grid_classic")) {
     return "Memory Grid Classic: запомните последовательность и повторите без ошибок.";

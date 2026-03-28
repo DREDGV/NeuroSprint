@@ -5,20 +5,20 @@ import type {
 
 export const SCHULTE_THEME_PRESETS: Record<SchulteThemeId, SchulteThemeConfig> = {
   classic_bw: {
-    boardBg: "#f8fcfa",
+    boardBg: "#f1f4f3",
     cellBg: "#ffffff",
-    numberColor: "#143b36",
+    numberColor: "#111111",
     highlightColor: "#f2a93b",
     successColor: "#1e7f71",
     errorColor: "#b74343"
   },
   contrast: {
-    boardBg: "#0d1f1b",
-    cellBg: "#132f2a",
-    numberColor: "#f4fff9",
-    highlightColor: "#f4d03f",
-    successColor: "#2ecc71",
-    errorColor: "#ff6b6b"
+    boardBg: "#0f1215",
+    cellBg: "#171b21",
+    numberColor: "#ffffff",
+    highlightColor: "#ffd166",
+    successColor: "#34d399",
+    errorColor: "#fb7185"
   },
   soft: {
     boardBg: "#f4f8ff",
@@ -102,12 +102,20 @@ export function resolveSchulteTheme(
   };
 }
 
+export const SCHULTE_QUICK_THEME_OPTIONS: Array<{
+  id: SchulteThemeId;
+  label: string;
+}> = [
+  { id: "classic_bw", label: "Светлая Ч/Б" },
+  { id: "contrast", label: "Тёмная Ч/Б" }
+];
+
 export const SCHULTE_THEME_OPTIONS: Array<{
   id: SchulteThemeId;
   label: string;
 }> = [
-  { id: "classic_bw", label: "Ч/Б" },
-  { id: "contrast", label: "Контраст" },
+  { id: "classic_bw", label: "Светлая Ч/Б" },
+  { id: "contrast", label: "Тёмная Ч/Б" },
   { id: "soft", label: "Мягкая" },
   { id: "rainbow", label: "Радуга" },
   { id: "kid_candy", label: "Конфетки" },

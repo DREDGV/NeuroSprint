@@ -8,22 +8,16 @@ import { buildProgressGoalSummary, describeProgressGoal } from "../shared/lib/pr
 import { getLevelProgress, getXPSourceDescription } from "../shared/lib/progress/xpCalculator";
 import type { Session, UserAchievement, UserLevel, XPLog } from "../shared/types/domain";
 
-const StarIcon = ({ size = 24 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-);
-
 const TrophyIcon = ({ size = 24 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
-    <path d="M18 5v1h-2V4.5c0-.83-.67-1.5-1.5-1.5S13 3.67 13 4.5V6H6C4.89 6 4 6.89 4 8v4c0 1.1.9 2 2 2h1v7c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-7h1c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-7zm-2 12h-8v-8h8v8zm-2-9c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" />
-  </svg>
+  <span style={{ fontSize: size, lineHeight: 1 }}>🏆</span>
 );
 
 const LightningIcon = ({ size = 24 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
-    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-  </svg>
+  <span style={{ fontSize: size, lineHeight: 1 }}>⚡</span>
+);
+
+const StarIcon = ({ size = 24 }: { size?: number }) => (
+  <span style={{ fontSize: size, lineHeight: 1 }}>⭐</span>
 );
 
 interface LevelProgressWidgetProps {

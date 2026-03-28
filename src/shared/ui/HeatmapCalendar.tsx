@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import type { DailyTrainingHeatmapCell } from "../../shared/types/domain";
 
 interface HeatmapCalendarProps {
@@ -9,6 +9,7 @@ interface HeatmapCalendarProps {
 
 interface HeatmapWeek {
   label: string;
+  marker: string;
   cells: DailyTrainingHeatmapCell[];
 }
 
@@ -81,16 +82,22 @@ function buildWeeks(cells: DailyTrainingHeatmapCell[]): HeatmapWeek[] {
   }
 
   let lastMonth = -1;
-  return weeks.map((week) => {
+  const totalWeeks = weeks.length;
+  return weeks.map((week, index) => {
     const firstRealCell = week.find((cell) => cell.localDate);
     if (!firstRealCell) {
-      return { label: "", cells: week };
+      return { label: "", marker: "", cells: week };
     }
 
-    const month = parseLocalDate(firstRealCell.localDate).getMonth();
+    const firstRealDate = parseLocalDate(firstRealCell.localDate);
+    const month = firstRealDate.getMonth();
     const label = month !== lastMonth ? RU_MONTHS[month] : "";
+    const showMarker = index === 0 || Boolean(label) || index === totalWeeks - 1;
+    const marker = showMarker
+      ? firstRealDate.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
+      : "";
     lastMonth = month;
-    return { label, cells: week };
+    return { label, marker, cells: week };
   });
 }
 
@@ -114,6 +121,10 @@ export function HeatmapCalendar({
   onCellClick
 }: HeatmapCalendarProps) {
   const weeks = useMemo(() => buildWeeks(cells), [cells]);
+  const boardStyle = useMemo(
+    () => ({ "--heatmap-weeks": weeks.length } as CSSProperties),
+    [weeks.length]
+  );
 
   if (cells.length === 0) {
     return (
@@ -128,9 +139,10 @@ export function HeatmapCalendar({
   return (
     <div className="heatmap-calendar" data-testid="heatmap-calendar">
       <div className="heatmap-scroll">
-        <div className="heatmap-months" aria-hidden="true">
-          <div className="heatmap-month-spacer" />
-          <div className="heatmap-month-track">
+        <div className="heatmap-board" style={boardStyle}>
+          <div className="heatmap-corner" aria-hidden="true" />
+
+          <div className="heatmap-month-track" aria-hidden="true">
             {weeks.map((week, index) => (
               <div
                 key={`${week.label || "month"}:${index}`}
@@ -140,9 +152,7 @@ export function HeatmapCalendar({
               </div>
             ))}
           </div>
-        </div>
 
-        <div className="heatmap-content">
           <div className="heatmap-days" aria-hidden="true">
             {dayLabels.map((day) => (
               <div key={day} className="heatmap-day-label">
@@ -163,7 +173,13 @@ export function HeatmapCalendar({
                     <div
                       key={`${cell.localDate || "empty"}:${cellIndex}`}
                       aria-label={tooltip || undefined}
-                      className={`heatmap-cell ${intensityClass} ${interactive ? "heatmap-cell-clickable" : ""}`}
+                      className={[
+                        "heatmap-cell",
+                        intensityClass,
+                        interactive ? "heatmap-cell-clickable" : "",
+                        cell.completed ? "heatmap-cell-complete" : "",
+                        cell.localDate ? "" : "heatmap-cell-padding"
+                      ].filter(Boolean).join(" ")}
                       onClick={() => {
                         if (interactive) {
                           onCellClick?.(cell);
@@ -184,7 +200,28 @@ export function HeatmapCalendar({
               </div>
             ))}
           </div>
+
+          <div className="heatmap-corner heatmap-corner-bottom" aria-hidden="true">
+            Даты
+          </div>
+
+          <div className="heatmap-date-track" aria-hidden="true">
+            {weeks.map((week, index) => (
+              <div
+                key={`marker:${week.marker || "week"}:${index}`}
+                className={`heatmap-date-marker ${week.marker ? "" : "heatmap-date-marker-hidden"}`}
+              >
+                {week.marker}
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
+
+      <div className="heatmap-guide" aria-hidden="true">
+        <span>Столбец = неделя</span>
+        <span>Строка = день недели</span>
+        <span>Контуром отмечены закрытые дни</span>
       </div>
 
       <div className="heatmap-legend" aria-hidden="true">

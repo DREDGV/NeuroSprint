@@ -94,6 +94,13 @@ describe("TrainingHubPage", () => {
     expect(screen.getByTestId("training-featured-modules-attention")).toBeInTheDocument();
   });
 
+  it("shows a usable top recommendation even before history is collected", () => {
+    renderHub();
+
+    expect(screen.getByTestId("training-hub-today-card")).toHaveTextContent("Внимание и концентрация");
+    expect(screen.getByTestId("training-hub-guidance-start")).toHaveAttribute("href", "/training/schulte");
+  });
+
   it("updates visible modules when the active skill changes", () => {
     renderHub();
 

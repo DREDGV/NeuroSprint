@@ -91,7 +91,7 @@ export function SkillStatsTab({ userId, sessions }: SkillStatsTabProps) {
     );
   }
 
-  const hasData = skillProfile.hasData && summary && summary.skills.length > 0;
+  const hasData = skillProfile.hasData && summary;
 
   if (!hasData) {
     return (

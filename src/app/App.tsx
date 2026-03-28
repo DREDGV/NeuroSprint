@@ -4,6 +4,7 @@ import { ActiveUserProvider } from "./ActiveUserContext";
 import { RequireActiveUser } from "./RequireActiveUser";
 import { RequirePermission } from "./RequirePermission";
 import { AppShell } from "../widgets/AppShell";
+import { useFeatureFlag } from "../shared/lib/online/featureFlags";
 
 const HomePage = lazy(() =>
   import("../pages/HomePage").then((module) => ({ default: module.HomePage }))
@@ -26,6 +27,11 @@ const PreSessionPage = lazy(() =>
 const ClassesPage = lazy(() =>
   import("../pages/ClassesPage").then((module) => ({
     default: module.ClassesPage
+  }))
+);
+const CompetitionsPage = lazy(() =>
+  import("../pages/CompetitionsPage").then((module) => ({
+    default: module.CompetitionsPage
   }))
 );
 const SchulteSetupPage = lazy(() =>
@@ -138,6 +144,10 @@ const BlockPatternRecallPage = lazy(() =>
 );
 
 export function App() {
+  const classesEnabled = useFeatureFlag("classes_ui");
+  const competitionsEnabled = useFeatureFlag("competitions_ui");
+  const groupStatsEnabled = useFeatureFlag("group_stats_ui");
+
   return (
     <BrowserRouter>
       <ActiveUserProvider>
@@ -165,21 +175,43 @@ export function App() {
               <Route
                 path="/classes"
                 element={
-                  <RequireActiveUser>
-                    <RequirePermission permission="classes:view" sectionTitle="Классы">
-                      <ClassesPage />
-                    </RequirePermission>
-                  </RequireActiveUser>
+                  classesEnabled ? (
+                    <RequireActiveUser>
+                      <RequirePermission permission="classes:view" sectionTitle="Классы">
+                        <ClassesPage />
+                      </RequirePermission>
+                    </RequireActiveUser>
+                  ) : (
+                    <Navigate to="/training" replace />
+                  )
                 }
               />
               <Route
                 path="/classes/:classId"
                 element={
-                  <RequireActiveUser>
-                    <RequirePermission permission="classes:view" sectionTitle="Классы">
-                      <ClassesPage />
-                    </RequirePermission>
-                  </RequireActiveUser>
+                  classesEnabled ? (
+                    <RequireActiveUser>
+                      <RequirePermission permission="classes:view" sectionTitle="Классы">
+                        <ClassesPage />
+                      </RequirePermission>
+                    </RequireActiveUser>
+                  ) : (
+                    <Navigate to="/training" replace />
+                  )
+                }
+              />
+              <Route
+                path="/competitions"
+                element={
+                  competitionsEnabled ? (
+                    <RequireActiveUser>
+                      <RequirePermission permission="classes:manage" sectionTitle="Соревнования">
+                        <CompetitionsPage />
+                      </RequirePermission>
+                    </RequireActiveUser>
+                  ) : (
+                    <Navigate to="/training" replace />
+                  )
                 }
               />
               <Route
@@ -345,14 +377,18 @@ export function App() {
               <Route
                 path="/stats/group"
                 element={
-                  <RequireActiveUser>
-                    <RequirePermission
-                      permission="stats:group:view"
-                      sectionTitle="Групповая статистика"
-                    >
-                      <StatsGroupPage />
-                    </RequirePermission>
-                  </RequireActiveUser>
+                  groupStatsEnabled ? (
+                    <RequireActiveUser>
+                      <RequirePermission
+                        permission="stats:group:view"
+                        sectionTitle="Групповая статистика"
+                      >
+                        <StatsGroupPage />
+                      </RequirePermission>
+                    </RequireActiveUser>
+                  ) : (
+                    <Navigate to="/stats" replace />
+                  )
                 }
               />
               <Route path="/help" element={<HelpPage />} />
@@ -365,5 +401,3 @@ export function App() {
     </BrowserRouter>
   );
 }
-
-

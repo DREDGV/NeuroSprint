@@ -696,6 +696,30 @@ export function DecisionRushSessionPage() {
     []
   );
 
+  // Управление клавиатурой: стрелки ←/→ или A/D
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      // Блокируем обработку если сессия не активна или есть заблокированный ответ
+      if (!isRunning || finished || isPaused || currentAnswerLocked || isTransitioning) {
+        return;
+      }
+
+      // Стрелка влево или A = ДА (yes) — левая кнопка
+      if (event.key === "ArrowLeft" || event.key === "a" || event.key === "A" || event.key === "ф" || event.key === "Ф") {
+        event.preventDefault();
+        answer("yes");
+      }
+      // Стрелка вправо или D = НЕТ (no) — правая кнопка
+      else if (event.key === "ArrowRight" || event.key === "d" || event.key === "D" || event.key === "в" || event.key === "В") {
+        event.preventDefault();
+        answer("no");
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isRunning, finished, isPaused, currentAnswerLocked, isTransitioning]);
+
   useEffect(() => {
     if (!activeUserId || !result || saved) {
       return;
@@ -773,6 +797,27 @@ export function DecisionRushSessionPage() {
         <StatCard title="Осталось" value={formatSeconds(remainingMs)} />
       </div>
 
+      {/* Прогресс-бар сессии с индикатором фазы */}
+      {isRunning && (
+        <div className="decision-session-progress" data-testid="decision-session-progress">
+          <div className="decision-session-progress-bar">
+            <div 
+              className="decision-session-progress-fill" 
+              style={{ width: `${progressPct}%` }}
+              role="progressbar"
+              aria-valuenow={progressPct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
+          </div>
+          <div className="decision-phase-indicators">
+            <span className={`decision-phase-dot ${currentPhase === "warmup" ? "is-active" : ""}`} title="Разминка" />
+            <span className={`decision-phase-dot ${currentPhase === "core" ? "is-active" : ""}`} title="Основной блок" />
+            <span className={`decision-phase-dot ${currentPhase === "boss" ? "is-active" : ""}`} title="Boss" />
+          </div>
+        </div>
+      )}
+
       {!isRunning && !finished ? (
         <section className="session-brief" data-testid="decision-session-intro">
           <h3>Перед стартом</h3>
@@ -836,14 +881,19 @@ export function DecisionRushSessionPage() {
           {currentTrial ? (
             <>
               {currentTrial.stimulus.stroopWord ? (
-                <p
-                  className="decision-stimulus-main"
-                  style={{
-                    color: COLOR_HEX[currentTrial.stimulus.stroopInk ?? currentTrial.stimulus.color]
-                  }}
-                >
-                  {colorLabel(currentTrial.stimulus.stroopWord).toUpperCase()}
-                </p>
+                <div className="decision-stroop-display">
+                  <p
+                    className="decision-stimulus-main decision-stroop-word"
+                    style={{
+                      color: COLOR_HEX[currentTrial.stimulus.stroopInk ?? currentTrial.stimulus.color]
+                    }}
+                  >
+                    {colorLabel(currentTrial.stimulus.stroopWord).toUpperCase()}
+                  </p>
+                  <p className="decision-stroop-hint">
+                    Сравните <strong>цвет слова</strong> с <strong>значением слова</strong>
+                  </p>
+                </div>
               ) : (
                 <div className="decision-visual-main">
                   <div
@@ -895,8 +945,12 @@ export function DecisionRushSessionPage() {
               onClick={() => answer("yes")}
               disabled={!isRunning || isPaused || currentAnswerLocked || isTransitioning}
               data-testid="decision-answer-yes"
+              aria-keyshortcuts="ArrowLeft, a, A, ф, Ф"
             >
-              ДА
+              <span className="decision-answer-label">ДА</span>
+              <span className="decision-answer-keyboard-hint">
+                <kbd>←</kbd> <kbd>A</kbd>
+              </span>
             </button>
             <button
               type="button"
@@ -908,8 +962,12 @@ export function DecisionRushSessionPage() {
               onClick={() => answer("no")}
               disabled={!isRunning || isPaused || currentAnswerLocked || isTransitioning}
               data-testid="decision-answer-no"
+              aria-keyshortcuts="ArrowRight, d, D, в, В"
             >
-              НЕТ
+              <span className="decision-answer-label">НЕТ</span>
+              <span className="decision-answer-keyboard-hint">
+                <kbd>→</kbd> <kbd>D</kbd>
+              </span>
             </button>
           </div>
         ) : null}

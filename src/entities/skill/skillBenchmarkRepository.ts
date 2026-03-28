@@ -10,11 +10,18 @@ const VIRTUAL_BENCHMARKS: Record<SkillProfileId, Omit<SkillBenchmark, "skillId" 
 };
 
 export async function getSkillBenchmarks(skillId: SkillProfileId): Promise<SkillBenchmark> {
-  const cached = await db.skillBenchmarks.get(skillId as string);
-  if (cached && cached.source === "virtual") return cached;
-  const benchmark: SkillBenchmark = { skillId, ...VIRTUAL_BENCHMARKS[skillId], lastUpdated: new Date().toISOString(), source: "virtual" };
-  await db.skillBenchmarks.put(benchmark);
-  return benchmark;
+  try {
+    const cached = await db.skillBenchmarks.get(skillId as string);
+    if (cached && cached.source === "virtual") return cached;
+    const benchmark: SkillBenchmark = { skillId, ...VIRTUAL_BENCHMARKS[skillId], lastUpdated: new Date().toISOString(), source: "virtual" };
+    await db.skillBenchmarks.put(benchmark);
+    return benchmark;
+  } catch (error) {
+    // Таблица skillBenchmarks может не существовать у старых пользователей
+    // Возвращаем виртуальные бенчмарки без кэширования
+    console.warn("[SkillBenchmarks] Using fallback benchmarks for", skillId, error);
+    return { skillId, ...VIRTUAL_BENCHMARKS[skillId], lastUpdated: new Date().toISOString(), source: "virtual" };
+  }
 }
 
 export async function getAllBenchmarks(): Promise<SkillBenchmark[]> {

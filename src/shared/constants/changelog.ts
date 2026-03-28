@@ -8,6 +8,22 @@ export interface ReleaseEntry {
 
 export const RELEASE_HISTORY: ReleaseEntry[] = [
   {
+    version: "0.7.0-dev.2",
+    date: "2026-03-26",
+    title: "Pattern Recognition: Новые паттерны, подсказки и Survival Mode",
+    status: "dev",
+    highlights: [
+      "4 новых типа математических паттернов: Fibonacci (сумма двух предыдущих), Geometric (умножение), Prime (простые числа), Squares (квадраты).",
+      "Survival Mode: игра до 3 ошибок с растущей сложностью.",
+      "Система подсказок: 💡 информационная (правило + пример) и 🏆 подсказка-ответ (3 на сессию).",
+      "Визуальные улучшения: градиенты для фигур, stagger-анимация, центрирование иконок.",
+      "Keyboard navigation: клавиши 1-9 для выбора, Enter/Space подтвердить, Escape сбросить.",
+      "Прогресс-бар для Classic режима.",
+      "Исправлено: вкладка «Навыки» теперь отображает данные (обработка бенчмарков).",
+      "Исправлено: иконки в карточках статистики идеально по центру (🏆⚡⭐)."
+    ]
+  },
+  {
     version: "0.7.0-dev.1",
     date: "2026-03-12",
     title: "Spatial Memory promoted to main",

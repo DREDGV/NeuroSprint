@@ -511,7 +511,7 @@ export function MemoryGridSessionPage() {
     <section className="panel memory-grid-session-panel" data-testid="memory-grid-session-page">
       <header className="memory-grid-header">
         <div className="memory-grid-header-content">
-          <h2 className="memory-grid-title">Memory Grid Rush</h2>
+          <h2 className="memory-grid-title">Memory Grid</h2>
           <p className="memory-grid-subtitle">
             {setup.mode === "classic" ? "Classic" : "Rush"} • {difficultyTitle} •{" "}
             {setup.gridSize}x{setup.gridSize}
@@ -522,10 +522,28 @@ export function MemoryGridSessionPage() {
         </div>
         {isRush ? (
           <div className="memory-grid-rush-timer">
+            <span className="timer-label">Осталось</span>
             <span className="timer-value">{formatSeconds(rushRemainingMs)}</span>
           </div>
         ) : null}
       </header>
+
+      {/* Memory Grid HUD */}
+      <div className="memory-grid-hud">
+        <div className="memory-grid-level-indicator">
+          <span className="hud-label">Уровень</span>
+          <span className="hud-value">{currentLevel}</span>
+        </div>
+        <div className="memory-grid-sequence-info">
+          <span className="hud-label">Запомнить</span>
+          <span className="hud-value">{currentSequence.length}</span>
+          <span className="hud-sublabel">клеток</span>
+        </div>
+        <div className="memory-grid-streak">
+          <span className="hud-icon">✓</span>
+          <span className="hud-value">{correctTotal}</span>
+        </div>
+      </div>
 
       <div className="stats-grid compact">
         <StatCard title="Уровень" value={String(currentLevel)} />
@@ -553,6 +571,32 @@ export function MemoryGridSessionPage() {
 
       <section className="setup-block memory-grid-section">
         <h3>Игровое поле</h3>
+        
+        {/* Phase indicator с визуальным акцентом */}
+        <div className={`memory-grid-phase-indicator ${phase}`} data-testid="memory-grid-phase">
+          {phase === "intro" && (
+            <span>👆 Нажмите «Старт», чтобы начать сессию</span>
+          )}
+          {phase === "showing" && (
+            <span>👀 Смотрите на подсветку и запоминайте порядок</span>
+          )}
+          {phase === "recalling" && (
+            <span>✋ Повторите последовательность кликами по клеткам</span>
+          )}
+          {phase === "finished" && (
+            <span>✅ Сессия завершена. Проверьте результаты ниже</span>
+          )}
+        </div>
+
+        {isRush && phase !== "intro" && phase !== "finished" ? (
+          <div className="today-progress" style={{ marginBottom: 12 }}>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: `${rushProgressPct}%` }} />
+            </div>
+            <p className="status-line">Осталось: {formatSeconds(rushRemainingMs)}</p>
+          </div>
+        ) : null}
+
         <div
           className="nback-grid memory-grid"
           style={{ gridTemplateColumns: `repeat(${setup.gridSize}, 1fr)` }}
@@ -578,14 +622,25 @@ export function MemoryGridSessionPage() {
                 onClick={() => handleCellClick(index)}
                 disabled={phase !== "recalling" || isInputLocked}
                 data-testid={activeCell === index ? "memory-grid-active-cell" : undefined}
+                aria-label={`Клетка ${index + 1}`}
               />
             );
           })}
         </div>
 
         {phase === "showing" ? (
-          <div className="memory-grid-progress-bar">
-            <div className="memory-grid-progress-fill" style={{ width: `${showingProgress}%` }} />
+          <div className="memory-grid-showing-progress">
+            <div className="showing-progress-track">
+              <div 
+                className="showing-progress-fill" 
+                style={{ width: `${showingProgress}%` }}
+                role="progressbar"
+                aria-valuenow={showingProgress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              />
+            </div>
+            <p className="showing-progress-label">Запомните последовательность...</p>
           </div>
         ) : null}
 
@@ -594,7 +649,7 @@ export function MemoryGridSessionPage() {
         </p>
         {lastStepCorrect != null && phase !== "showing" ? (
           <p className={lastStepCorrect ? "status-line success" : "status-line error"}>
-            {lastStepCorrect ? "Последний ход: верно" : "Последний ход: ошибка"}
+            {lastStepCorrect ? "✓ Последний ход: верно" : "✗ Последний ход: ошибка"}
           </p>
         ) : null}
       </section>

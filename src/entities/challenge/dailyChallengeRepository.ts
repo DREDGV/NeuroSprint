@@ -85,7 +85,8 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   pattern_timed: "Pattern Recognition Timed",
   pattern_progressive: "Pattern Recognition Progressive",
   pattern_learning: "Pattern Recognition Learning",
-  pattern_multi: "Pattern Recognition Multi"
+  pattern_multi: "Pattern Recognition Multi",
+  pattern_survival: "Pattern Recognition Survival"
 };
 
 function addDays(localDate: string, days: number): string {

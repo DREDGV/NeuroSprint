@@ -17,10 +17,12 @@ import type {
   SkillComparison,
   SkillBenchmark,
   UserSkillAchievement,
+  UserChallenge,
   UserPvPProfile,
   LeaderboardSeason,
   LeaderboardEntry
 } from "../shared/types/domain";
+import type { Competition, CompetitionNotification } from "../shared/types/classes";
 
 export class NeuroSprintDatabase extends Dexie {
   users!: Table<User, string>;
@@ -40,6 +42,12 @@ export class NeuroSprintDatabase extends Dexie {
   skillBenchmarks!: Table<SkillBenchmark, string>;
   // Phase 3C — Skill Achievements
   userSkillAchievements!: Table<UserSkillAchievement, string>;
+  // Classes & Competitions Phase 1
+  challenges!: Table<UserChallenge, string>;
+  // Competitions
+  competitions!: Table<Competition, string>;
+  // Notifications
+  notifications!: Table<CompetitionNotification, string>;
   // PvP Foundation (Phase 3C — зарезервировано)
   userPvPProfiles!: Table<UserPvPProfile, string>;
   leaderboardSeasons!: Table<LeaderboardSeason, string>;
@@ -274,7 +282,7 @@ export class NeuroSprintDatabase extends Dexie {
       skillBenchmarks: "id, skillId, source, [skillId+source]"
     });
 
-    this.version(13).stores({
+    this.version(14).stores({
       users: "id, name, role, createdAt",
       sessions:
         "id, userId, taskId, mode, timestamp, localDate, score, moduleId, modeId, level, [userId+localDate], [userId+mode+localDate], [userId+moduleId+modeId], [modeId+localDate], [userId+moduleId+modeId+localDate], [userId+moduleId+modeId+timestamp]",
@@ -297,7 +305,71 @@ export class NeuroSprintDatabase extends Dexie {
       skillBenchmarks: "id, skillId, source, [skillId+source]",
       // Phase 3C — Skill Achievements
       userSkillAchievements: "id, userId, skillAchievementId, completed, [userId+skillAchievementId], [userId+completed]",
+      // Classes & Competitions Phase 1
+      challenges: "id, challengerId, challengedId, status, modeId, createdAt, expiresAt, [challengerId+status], [challengedId+status], [challengerId+challengedId]",
+      // Competitions
+      competitions: "id, status, startTime, endTime, organizerId, [status+startTime], [organizerId+status]",
       // PvP Foundation (Phase 3C — зарезервировано для Phase 4)
+      userPvPProfiles: "id, userId, currentLeague, [userId+currentLeague]",
+      leaderboardSeasons: "id, isActive, startDate, endDate",
+      leaderboardEntries: "id, seasonId, userId, skillId, rank, [seasonId+userId], [seasonId+skillId], [userId+rank]"
+    });
+
+    this.version(15).stores({
+      users: "id, name, role, createdAt",
+      sessions:
+        "id, userId, taskId, mode, timestamp, localDate, score, moduleId, modeId, level, [userId+localDate], [userId+mode+localDate], [userId+moduleId+modeId], [modeId+localDate], [userId+moduleId+modeId+localDate], [userId+moduleId+modeId+timestamp]",
+      userModeProfiles:
+        "id, userId, moduleId, modeId, updatedAt, [userId+moduleId+modeId]",
+      classGroups: "id, name, createdAt",
+      groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]",
+      userPreferences: "id, userId, updatedAt",
+      dailyChallenges: "id, userId, localDate, modeId, status, [userId+localDate]",
+      dailyChallengeAttempts:
+        "id, challengeId, userId, sessionId, localDate, createdAt, [challengeId+sessionId], [challengeId+createdAt], [userId+localDate]",
+      dailyTrainings:
+        "id, userId, localDate, status, [userId+localDate], [userId+status+localDate]",
+      dailyTrainingSessions:
+        "id, dailyTrainingId, userId, sessionId, createdAt, [dailyTrainingId+sessionId], [userId+sessionId]",
+      userLevels: "id, userId, level, [userId+level]",
+      userAchievements: "id, userId, achievementId, completed, [userId+completed], [userId+achievementId]",
+      xpLogs: "id, userId, source, createdAt, [userId+source], [userId+createdAt]",
+      skillComparisons: "id, userId, skillId, percentile, [userId+skillId], [userId+percentile]",
+      skillBenchmarks: "id, skillId, source, [skillId+source]",
+      userSkillAchievements: "id, userId, skillAchievementId, completed, [userId+skillAchievementId], [userId+completed]",
+      challenges: "id, challengerId, challengedId, status, modeId, createdAt, expiresAt, [challengerId+status], [challengedId+status], [challengerId+challengedId]",
+      competitions: "id, status, startTime, endTime, organizerId, [status+startTime], [organizerId+status], [id+participants.userId]",
+      notifications: "id, userId, type, isRead, createdAt, [userId+isRead], [userId+type], [userId+createdAt]",
+      userPvPProfiles: "id, userId, currentLeague, [userId+currentLeague]",
+      leaderboardSeasons: "id, isActive, startDate, endDate",
+      leaderboardEntries: "id, seasonId, userId, skillId, rank, [seasonId+userId], [seasonId+skillId], [userId+rank]"
+    });
+
+    this.version(16).stores({
+      users: "id, name, role, createdAt",
+      sessions:
+        "id, userId, taskId, mode, timestamp, localDate, score, moduleId, modeId, level, [userId+localDate], [userId+mode+localDate], [userId+moduleId+modeId], [modeId+localDate], [userId+moduleId+modeId+localDate], [userId+moduleId+modeId+timestamp]",
+      userModeProfiles:
+        "id, userId, moduleId, modeId, updatedAt, [userId+moduleId+modeId]",
+      classGroups: "id, name, createdAt",
+      groupMembers: "id, groupId, userId, joinedAt, [groupId+userId]",
+      userPreferences: "id, userId, updatedAt",
+      dailyChallenges: "id, userId, localDate, modeId, status, [userId+localDate]",
+      dailyChallengeAttempts:
+        "id, challengeId, userId, sessionId, localDate, createdAt, [challengeId+sessionId], [challengeId+createdAt], [userId+localDate]",
+      dailyTrainings:
+        "id, userId, localDate, status, [userId+localDate], [userId+status+localDate]",
+      dailyTrainingSessions:
+        "id, dailyTrainingId, userId, sessionId, createdAt, [dailyTrainingId+sessionId], [userId+sessionId]",
+      userLevels: "id, userId, level, [userId+level]",
+      userAchievements: "id, userId, achievementId, completed, [userId+completed], [userId+achievementId]",
+      xpLogs: "id, userId, source, createdAt, [userId+source], [userId+createdAt]",
+      skillComparisons: "id, userId, skillId, percentile, [userId+skillId], [userId+percentile]",
+      skillBenchmarks: "id, skillId, source, [skillId+source]",
+      userSkillAchievements: "id, userId, skillAchievementId, completed, [userId+skillAchievementId], [userId+completed]",
+      challenges: "id, challengerId, challengedId, status, modeId, createdAt, expiresAt, [challengerId+status], [challengedId+status], [challengerId+challengedId]",
+      competitions: "id, status, startTime, endTime, organizerId, [status+startTime], [organizerId+status]",
+      notifications: "id, userId, type, isRead, createdAt, [userId+isRead], [userId+type], [userId+createdAt], [relatedCompetitionId], [relatedChallengeId]",
       userPvPProfiles: "id, userId, currentLeague, [userId+currentLeague]",
       leaderboardSeasons: "id, isActive, startDate, endDate",
       leaderboardEntries: "id, seasonId, userId, skillId, rank, [seasonId+userId], [seasonId+skillId], [userId+rank]"

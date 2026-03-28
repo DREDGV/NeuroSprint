@@ -263,17 +263,28 @@ function buildBossRule(level: DecisionRushLevel): DecisionRushRule {
       evaluate: (stimulus) => stimulus.color === "red" || stimulus.shape === "circle"
     };
   }
+  // Для standard и pro используем Струп-тест
+  // Проверяем ТОЛЬКО соответствие слова и цвета чернил
   if (level === "pro") {
     return {
       title: "Boss: Струп",
-      description: "Жми ДА, если цвет НЕ равен слову",
-      evaluate: (stimulus) => stimulus.stroopInk !== stimulus.stroopWord
+      description: "Жми ДА, если цвет чернил НЕ совпадает со словом",
+      evaluate: (stimulus) => {
+        // Для Струп-теста проверяем только stroopInk и stroopWord
+        // stimulus.color (цвет фигуры) не имеет значения
+        return stimulus.stroopInk !== stimulus.stroopWord;
+      }
     };
   }
+  // standard уровень
   return {
     title: "Boss: Струп",
-    description: "Жми ДА, если цвет равен слову",
-    evaluate: (stimulus) => stimulus.stroopInk === stimulus.stroopWord
+    description: "Жми ДА, если цвет чернил совпадает со словом",
+    evaluate: (stimulus) => {
+      // Для Струп-теста проверяем только stroopInk и stroopWord
+      // stimulus.color (цвет фигуры) не имеет значения
+      return stimulus.stroopInk === stimulus.stroopWord;
+    }
   };
 }
 
@@ -320,13 +331,17 @@ export function createDecisionRushTrial(
 ): DecisionRushTrial {
   if (phase === "boss") {
     const rule = buildBossRule(level);
+    // Для всех уровней кроме kids используем Струп-стимул в Boss-фазе
     const stimulusFactory =
-      level === "kids" ? () => buildStimulus(random) : () => buildStroopStimulus(level, random);
+      level === "kids" 
+        ? () => buildStimulus(random) 
+        : () => buildStroopStimulus(level, random);
     return buildBalancedTrial(rule, phase, random, stimulusFactory);
   }
 
   const rules = phase === "warmup" ? buildWarmupRules(level) : buildCoreRules(level);
   const rule = randomFrom(rules, random);
+  // В обычных фазах используем простой стимул (без Струп)
   return buildBalancedTrial(rule, phase, random, () => buildStimulus(random));
 }
 

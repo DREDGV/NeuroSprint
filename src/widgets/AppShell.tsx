@@ -1,9 +1,12 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
+import { useActiveUser } from "../app/ActiveUserContext";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { useAppRole } from "../app/useAppRole";
 import { APP_NAME, APP_VERSION } from "../shared/constants/appMeta";
 import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
+import { useFeatureFlags } from "../shared/lib/online/featureFlags";
 import type { AppRole } from "../shared/types/domain";
+import { NotificationBell } from "../features/notifications/components/NotificationBell";
 import { MainNav } from "./MainNav";
 import { PwaStatusBar } from "./PwaStatusBar";
 
@@ -22,7 +25,9 @@ function roleIcon(role: AppRole): string {
 
 export function AppShell({ children }: PropsWithChildren) {
   const { activeUserName, activeUserRole } = useActiveUserDisplayName();
+  const { activeUserId } = useActiveUser();
   const appRole = useAppRole();
+  const featureFlags = useFeatureFlags();
   const [wordmarkMissing, setWordmarkMissing] = useState(false);
 
   useEffect(() => {
@@ -52,6 +57,13 @@ export function AppShell({ children }: PropsWithChildren) {
             )}
           </div>
         </div>
+
+        {/* Колокольчик уведомлений */}
+        {featureFlags.classes_ui || featureFlags.competitions_ui ? (
+          <div className="header-notification-bell">
+            <NotificationBell userId={activeUserId} />
+          </div>
+        ) : null}
       </header>
 
       <div className="active-user-banner" data-testid="active-user-banner">

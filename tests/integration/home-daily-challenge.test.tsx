@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
 import { HomePage } from "../../src/pages/HomePage";
 import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
@@ -114,6 +114,10 @@ function SprintSetupMarker() {
 }
 
 describe("HomePage daily challenge", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();

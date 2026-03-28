@@ -58,7 +58,8 @@ export type TrainingModeId =
   | "pattern_timed"
   | "pattern_progressive"
   | "pattern_learning"
-  | "pattern_multi";
+  | "pattern_multi"
+  | "pattern_survival";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
 export type TrainingPresetId =
   | "easy"
@@ -443,6 +444,31 @@ export interface DailyChallengeTrendPoint {
   completed: boolean;
   completionPct: number;
   attemptsCount: number;
+}
+
+// ==================== PvP Challenges ====================
+
+export type ChallengeStatus = "pending" | "accepted" | "declined" | "completed" | "cancelled";
+
+export interface UserChallenge {
+  id: string;
+  challengerId: string; // кто вызвал
+  challengedId: string; // кого вызвали
+  
+  modeId: TrainingModeId;
+  durationMinutes: number;
+  
+  status: ChallengeStatus;
+  expiresAt: string;
+  
+  // Результаты
+  challengerScore?: number;
+  challengedScore?: number;
+  winnerId?: string;
+  
+  createdAt: string;
+  respondedAt?: string;
+  completedAt?: string;
 }
 
 export interface ModeRecommendation {
