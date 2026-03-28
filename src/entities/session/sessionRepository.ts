@@ -11,6 +11,7 @@ import { DEFAULT_AUDIO_SETTINGS } from "../../shared/lib/audio/audioSettings";
 import { buildProgressGoalSummary, type ProgressGoalSummary } from "../../shared/lib/progress/nextGoal";
 import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
 import { recommendModeByPerformance } from "../../shared/lib/training/recommendation";
+import { trackTrainingSessionSaved } from "../../shared/lib/analytics/siteAnalytics";
 import type {
   Achievement,
   ClassicDailyPoint,
@@ -908,6 +909,7 @@ export const sessionRepository = {
       console.error("Error granting XP/achievements:", error);
     }
 
+    trackTrainingSessionSaved(normalized, result);
     return result;
   },
 

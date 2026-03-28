@@ -11,6 +11,10 @@ import {
 } from "../entities/user/userRole";
 import { guardAccess } from "../shared/lib/auth/permissions";
 import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
+import {
+  trackProfileActivated,
+  trackProfileCreated
+} from "../shared/lib/analytics/siteAnalytics";
 import type { AppRole, User } from "../shared/types/domain";
 import { ProfileCard, AVATAR_EMOJIS } from "../shared/ui/ProfileCard";
 import { AvatarSelector } from "../shared/ui/AvatarSelector";
@@ -115,6 +119,7 @@ export function ProfilesPage() {
       
       setActiveUserId(created.id);
       saveAppRole(normalizeUserRole(created.role));
+      trackProfileCreated(normalizeUserRole(created.role));
       setName("");
       setNewAvatar("👤");
       setNewRole("student");
@@ -197,6 +202,7 @@ export function ProfilesPage() {
     }
     setActiveUserId(user.id);
     saveAppRole(normalizeUserRole(user.role));
+    trackProfileActivated(normalizeUserRole(user.role));
     setStatus(`Активный профиль: ${user.name} (${appRoleLabel(normalizeUserRole(user.role))}).`);
   }
 
