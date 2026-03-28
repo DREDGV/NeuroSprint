@@ -17,6 +17,9 @@ export type FeatureFlagsSnapshot = Record<FeatureFlagKey, boolean>;
 type FeatureFlagOverrides = Partial<Record<FeatureFlagKey, boolean>>;
 
 const FEATURE_FLAGS_EVENT = "neurosprint:feature-flags-changed";
+const DEFAULT_FEATURE_FLAGS = getDefaultFeatureFlags();
+
+let cachedSnapshot: FeatureFlagsSnapshot = DEFAULT_FEATURE_FLAGS;
 
 export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
   {
@@ -98,10 +101,20 @@ function emitFeatureFlagsChange(): void {
 }
 
 export function getFeatureFlagsSnapshot(): FeatureFlagsSnapshot {
-  return {
-    ...getDefaultFeatureFlags(),
+  const nextSnapshot: FeatureFlagsSnapshot = {
+    ...DEFAULT_FEATURE_FLAGS,
     ...readOverrides()
   };
+
+  const hasChanged = FEATURE_FLAG_DEFINITIONS.some(
+    (definition) => cachedSnapshot[definition.key] !== nextSnapshot[definition.key]
+  );
+
+  if (hasChanged) {
+    cachedSnapshot = nextSnapshot;
+  }
+
+  return cachedSnapshot;
 }
 
 export function getFeatureFlagOverride(key: FeatureFlagKey): boolean | null {

@@ -43,4 +43,17 @@ describe("feature flags", () => {
     expect(getFeatureFlagsSnapshot().competitions_ui).toBe(false);
     expect(hasFeatureFlagOverrides()).toBe(false);
   });
+
+  it("returns a stable snapshot reference until flags actually change", () => {
+    const firstSnapshot = getFeatureFlagsSnapshot();
+    const secondSnapshot = getFeatureFlagsSnapshot();
+
+    expect(secondSnapshot).toBe(firstSnapshot);
+
+    setFeatureFlagOverride("classes_ui", true);
+
+    const thirdSnapshot = getFeatureFlagsSnapshot();
+    expect(thirdSnapshot).not.toBe(firstSnapshot);
+    expect(thirdSnapshot.classes_ui).toBe(true);
+  });
 });
