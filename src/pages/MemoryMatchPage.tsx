@@ -674,7 +674,7 @@ export function MemoryMatchPage() {
     : saveError
       ? "Сохранить результат не удалось. Можно сразу сыграть ещё раз."
       : saved
-        ? "Результат сохранён локально как отдельная сессия Memory Match."
+        ? "Результат сохранён локально как отдельная сессия Пары памяти."
         : "Сохраняем результат локально...";
   const feedbackLocalDate = useMemo(() => toLocalDateKey(new Date()), [phase, roundKey]);
   const inlineRecommendations = [
@@ -970,7 +970,7 @@ export function MemoryMatchPage() {
 
   return (
     <section className="panel memory-match-page" data-testid="memory-match-page">
-      <h2>Memory Match</h2>
+      <h2>Пары памяти</h2>
       <p>
         Новый тренажёр на зрительную память и удержание позиций. Цель — быстро найти все пары и не
         тратить попытки на повтор одних и тех же ошибок.
@@ -985,7 +985,7 @@ export function MemoryMatchPage() {
             <p className="stats-section-kicker">Перед стартом</p>
             <h3>Запомните пары, а потом соберите поле без спешки и лишних промахов</h3>
             <p className="memory-match-hero-text">
-              Memory Match должен ощущаться как короткий, понятный раунд: увидел поле, запомнил опоры,
+              Пары памяти должен ощущаться как короткий, понятный раунд: увидел поле, запомнил опоры,
               собрал пары, понял свой результат.
             </p>
             <div className="memory-match-preview-strip" aria-hidden="true">
@@ -1345,7 +1345,7 @@ export function MemoryMatchPage() {
 
                   {hasActiveUser && (!feedbackHandled || feedbackSubmitted) ? (
                     <TrainerFeedbackCard
-                      title="Как вам этот раунд Memory Match?"
+                      title="Как вам этот раунд Пары памяти?"
                       subtitle="Короткий отзыв поможет нам спокойнее доводить модуль без навязчивых popup-окон."
                       onDismiss={handleDismissTrainerFeedback}
                       onSubmit={handleSubmitTrainerFeedback}

@@ -1,12 +1,12 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
+import { NotificationBell } from "../features/notifications/components/NotificationBell";
 import { useActiveUser } from "../app/ActiveUserContext";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import { useAppRole } from "../app/useAppRole";
 import { APP_NAME, APP_VERSION } from "../shared/constants/appMeta";
-import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
 import { useFeatureFlags } from "../shared/lib/online/featureFlags";
+import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
 import type { AppRole } from "../shared/types/domain";
-import { NotificationBell } from "../features/notifications/components/NotificationBell";
 import { MainNav } from "./MainNav";
 import { PwaStatusBar } from "./PwaStatusBar";
 
@@ -53,12 +53,11 @@ export function AppShell({ children }: PropsWithChildren) {
                 onError={() => setWordmarkMissing(true)}
               />
             ) : (
-              <h1 className="app-title">Тренажер скорости мышления</h1>
+              <h1 className="app-title">Тренажёр скорости мышления</h1>
             )}
           </div>
         </div>
 
-        {/* Колокольчик уведомлений */}
         {featureFlags.classes_ui || featureFlags.competitions_ui ? (
           <div className="header-notification-bell">
             <NotificationBell userId={activeUserId} />
@@ -71,7 +70,9 @@ export function AppShell({ children }: PropsWithChildren) {
           Активный пользователь: <strong>{activeUserName}</strong>
         </span>
         <span className="role-pill" data-testid="app-role-badge">
-          <span className="role-pill-icon" aria-hidden="true">{roleIcon(appRole)}</span>
+          <span className="role-pill-icon" aria-hidden="true">
+            {roleIcon(appRole)}
+          </span>
           {appRoleLabel(appRole)}
         </span>
       </div>

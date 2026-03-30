@@ -989,7 +989,7 @@ export function DecisionRushSessionPage() {
       {result ? (
         <SessionResultSummary
           testId="decision-result"
-          title="Результаты Decision Rush"
+          title="Результаты Быстрых решений"
           metrics={[
             { label: "Score", value: result.score.toFixed(2) },
             { label: "Точность", value: `${(result.accuracy * 100).toFixed(1)}%` },

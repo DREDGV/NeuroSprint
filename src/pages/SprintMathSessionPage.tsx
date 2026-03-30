@@ -258,7 +258,7 @@ export function SprintMathSessionPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          setSaveError("Не удалось сохранить результаты Sprint Math.");
+          setSaveError("Не удалось сохранить результаты Математического спринта.");
         }
       });
 
@@ -352,7 +352,7 @@ export function SprintMathSessionPage() {
 
   return (
     <section className="panel" data-testid="sprint-math-session-page">
-      <h2>Sprint Math</h2>
+      <h2>Математический спринт</h2>
       <p>
         Решайте примеры как можно быстрее. Первый клик по кнопке «Проверить»
         запускает сессию.
@@ -361,7 +361,7 @@ export function SprintMathSessionPage() {
         Активный пользователь: <strong>{activeUserName}</strong>
       </p>
 
-      {/* Sprint Math HUD с крупными индикаторами */}
+      {/* HUD Математического спринта с крупными индикаторами */}
       <div className="sprint-math-hud">
         <div className="sprint-math-timer">
           <span className="sprint-math-timer-label">{isRunning ? "Осталось" : "Готов"}</span>

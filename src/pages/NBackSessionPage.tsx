@@ -345,7 +345,7 @@ export function NBackSessionPage() {
       {/* Header с основной информацией */}
       <header className="nback-header">
         <div className="nback-header-top">
-          <h2>N-Back Lite</h2>
+          <h2>N-Back</h2>
           <p className="nback-subtitle">
             {setup.level}-back • {setup.gridSize}×{setup.gridSize} • {setup.durationSec} сек
           </p>
@@ -480,7 +480,7 @@ export function NBackSessionPage() {
       {result ? (
         <SessionResultSummary
           testId="nback-result"
-          title="Результаты N-Back Lite"
+          title="Результаты N-Back"
           metrics={[
             { label: "Hit (верно совпало)", value: String(result.hit) },
             { label: "Miss (пропустил)", value: String(result.miss) },

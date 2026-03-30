@@ -37,6 +37,7 @@ export function ClassesPage() {
   const [error, setError] = useState<string | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [groupStudentCounts, setGroupStudentCounts] = useState<Record<string, number>>({});
   
   // Массовые операции
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
@@ -77,11 +78,23 @@ export function ClassesPage() {
 
     if (!resolvedClassId) {
       setStudents([]);
+      setGroupStudentCounts({});
       return;
     }
 
     const loadedStudents = await groupRepository.listStudents(resolvedClassId);
     setStudents(loadedStudents);
+
+    const countEntries = await Promise.all(
+      loadedGroups.map(async (group) => {
+        if (group.id === resolvedClassId) {
+          return [group.id, loadedStudents.length] as const;
+        }
+        const members = await groupRepository.listStudents(group.id);
+        return [group.id, members.length] as const;
+      })
+    );
+    setGroupStudentCounts(Object.fromEntries(countEntries));
   }
 
   useEffect(() => {
@@ -89,6 +102,7 @@ export function ClassesPage() {
       setGroups([]);
       setStudents([]);
       setAllUsers([]);
+      setGroupStudentCounts({});
       setSelectedClassId("");
       return;
     }
@@ -289,6 +303,13 @@ export function ClassesPage() {
     };
   }, [students]);
 
+  const totalStudentsAcrossClasses = useMemo(
+    () => groups.reduce((sum, group) => sum + (groupStudentCounts[group.id] ?? 0), 0),
+    [groupStudentCounts, groups]
+  );
+
+  const selectedClassStudentCount = selectedClass ? groupStudentCounts[selectedClass.id] ?? students.length : 0;
+
   if (!canManageClassesAccess) {
     return (
       <section className="panel" data-testid="classes-page">
@@ -309,13 +330,110 @@ export function ClassesPage() {
   return (
     <section className="panel classes-page" data-testid="classes-page">
       <header className="classes-header">
+        <p className="stats-section-kicker">Alpha workspace</p>
         <h2>📚 Классы</h2>
-        <p className="classes-subtitle">Управление классами и учениками</p>
+        <p className="classes-subtitle">Управление учебными группами, составом класса и быстрыми вызовами внутри группы.</p>
       </header>
+
+      <section className="alpha-page-hero alpha-page-hero-classes">
+        <div className="alpha-page-hero-copy">
+          <p className="alpha-page-kicker">Скрыто от обычных пользователей</p>
+          <h3>Раздел для учителя и внутреннего тестирования</h3>
+          <p>
+            Здесь уже можно создавать классы, собирать состав, назначать существующих учеников и тестировать быстрые
+            вызовы внутри учебной группы. Для production этот контур пока остаётся скрытым alpha-разделом.
+          </p>
+        </div>
+        <div className="alpha-summary-grid" aria-hidden="true">
+          <article className="alpha-summary-card">
+            <span className="alpha-summary-label">Классов</span>
+            <strong className="alpha-summary-value">{groups.length}</strong>
+            <span className="alpha-summary-hint">Всего групп в текущем контуре</span>
+          </article>
+          <article className="alpha-summary-card">
+            <span className="alpha-summary-label">Ученики</span>
+            <strong className="alpha-summary-value">{totalStudentsAcrossClasses}</strong>
+            <span className="alpha-summary-hint">Во всех доступных классах</span>
+          </article>
+          <article className="alpha-summary-card">
+            <span className="alpha-summary-label">Текущий класс</span>
+            <strong className="alpha-summary-value">{selectedClass ? selectedClass.name : "Не выбран"}</strong>
+            <span className="alpha-summary-hint">
+              {selectedClass ? `${selectedClassStudentCount} учеников в составе` : "Откройте класс, чтобы увидеть состав и дашборд"}
+            </span>
+          </article>
+          <article className="alpha-summary-card">
+            <span className="alpha-summary-label">Входящие вызовы</span>
+            <strong className="alpha-summary-value">{incoming.length}</strong>
+            <span className="alpha-summary-hint">Столько вызовов ждут ответа прямо сейчас</span>
+          </article>
+        </div>
+      </section>
+
+      <section className="alpha-guide-grid">
+        <article className="alpha-guide-card">
+          <span className="alpha-guide-step">Что уже можно</span>
+          <strong>Создавать и наполнять классы</strong>
+          <p>Рабочий минимум уже есть: новый класс, быстрый набор учеников, массовое добавление и назначение существующих профилей.</p>
+        </article>
+        <article className="alpha-guide-card">
+          <span className="alpha-guide-step">Что важно проверить</span>
+          <strong>Удобен ли сценарий учителя</strong>
+          <p>Сейчас полезно проверять, насколько легко открыть класс, увидеть его состав, выполнить массовые действия и запустить вызов.</p>
+        </article>
+        <article className="alpha-guide-card">
+          <span className="alpha-guide-step">Почему скрыто</span>
+          <strong>Групповой контур ещё доводится</strong>
+          <p>Пока мы не доведём до конца классы, соревнования и групповую статистику, обычный пользователь не должен видеть эти разделы.</p>
+        </article>
+      </section>
+
+      <section className="alpha-workflow-strip" data-testid="classes-alpha-workflow">
+        <article className="alpha-workflow-card is-primary">
+          <span className="alpha-workflow-label">Следующий шаг</span>
+          <strong>
+            {selectedClass
+              ? `После класса «${selectedClass.name}» можно переходить к online-сценарию`
+              : "Сначала откройте класс, затем переходите к соревнованиям"}
+          </strong>
+          <p>
+            {selectedClass
+              ? `В выбранном классе сейчас ${selectedClassStudentCount} учеников. Когда состав готов, учителю проще проверить вызовы и затем перейти к live-событию.`
+              : "Выбор класса делает сценарий линейным: открыть группу, проверить состав, затем перейти к alpha-разделу соревнований."}
+          </p>
+          <div className="alpha-workflow-actions">
+            <Link className="btn-primary" to="/competitions">
+              К соревнованиям
+            </Link>
+            <span className="alpha-workflow-hint">
+              {selectedClass
+                ? "Текущий класс уже под рукой"
+                : "Сначала полезно выбрать группу ниже"}
+            </span>
+          </div>
+        </article>
+
+        <article className="alpha-workflow-card">
+          <span className="alpha-workflow-label">Проверка alpha</span>
+          <strong>Минимальный сценарий учителя</strong>
+          <p>
+            1. Открыть класс. 2. Проверить состав и дашборд. 3. Запустить быстрый вызов или
+            перейти в online-соревнования без лишнего поиска по интерфейсу.
+          </p>
+        </article>
+      </section>
+
+      {status || error ? (
+        <div className="classes-status-stack">
+          {status ? <p className="status-line success">{status}</p> : null}
+          {error ? <p className="status-line error">{error}</p> : null}
+        </div>
+      ) : null}
 
       {/* Создание класса */}
       <section className="classes-section">
         <h3>➕ Новый класс</h3>
+        <p className="classes-section-subtitle">Создайте новую учебную группу, чтобы ниже сразу открыть состав, дашборд и массовые действия.</p>
         <form className="classes-form" onSubmit={handleCreateClass}>
           <input
             type="text"
@@ -334,14 +452,13 @@ export function ClassesPage() {
       {/* Список классов */}
       <section className="classes-section">
         <h3>📋 Мои классы</h3>
+        <p className="classes-section-subtitle">Сначала выберите класс. После этого ниже откроются его дашборд, состав и соревновательные действия.</p>
         {groups.length === 0 ? (
           <p className="status-line">Пока нет классов. Создайте первый класс выше.</p>
         ) : (
           <div className="classes-grid" data-testid="classes-list">
             {groups.map((group) => {
-              const studentCount = students.filter((s) => 
-                group.id === selectedClassId ? true : false
-              ).length;
+              const studentCount = groupStudentCounts[group.id] ?? 0;
               return (
                 <article
                   key={group.id}
@@ -357,7 +474,10 @@ export function ClassesPage() {
                   <div className="class-card-info">
                     <h4 className="class-card-name">{group.name}</h4>
                     <p className="class-card-meta">
-                      Создан: {new Date(group.createdAt).toLocaleDateString("ru-RU")}
+                      {studentCount} ученик(ов) • создан {new Date(group.createdAt).toLocaleDateString("ru-RU")}
+                    </p>
+                    <p className="class-card-caption">
+                      {group.id === selectedClassId ? "Сейчас открыт ниже" : "Нажмите, чтобы открыть состав и дашборд"}
                     </p>
                   </div>
                   <div className="class-card-actions">
@@ -684,9 +804,6 @@ export function ClassesPage() {
           students={students.filter(s => s.id !== activeUserId)}
         />
       )}
-
-      {status && <p className="status-line success">{status}</p>}
-      {error && <p className="status-line error">{error}</p>}
     </section>
   );
 }

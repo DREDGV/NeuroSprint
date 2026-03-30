@@ -443,7 +443,7 @@ export function SpatialMemoryPage() {
       <header className="spatial-memory-hero">
         <div className="spatial-memory-hero-copy">
           <p className="stats-section-kicker">Пространственная память</p>
-          <h2>Spatial Memory</h2>
+          <h2>Пространственная память</h2>
           <p>
             Запоминайте не порядок, а карту поля: зоны, опоры, диагонали и форму
             расположения. Тренажёр развивает удержание позиций, пространственную

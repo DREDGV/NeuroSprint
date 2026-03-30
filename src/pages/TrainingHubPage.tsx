@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+﻿import { useMemo, useState, type CSSProperties, type ReactNode, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
 import { useActiveUser } from "../app/ActiveUserContext";
@@ -29,100 +29,88 @@ const modulePrimaryRouteById: Record<string, string> = {
   pattern_recognition: "/training/pattern-recognition"
 };
 
-const modulePreSessionRouteById: Record<string, string> = {
-  schulte: "/training/pre-session?module=schulte",
-  sprint_math: "/training/pre-session?module=sprint_math",
-  reaction: "/training/pre-session?module=reaction",
-  n_back: "/training/pre-session?module=n_back",
-  memory_grid: "/training/pre-session?module=memory_grid",
-  memory_match: "/training/pre-session?module=memory_match",
-  spatial_memory: "/training/pre-session?module=spatial_memory",
-  decision_rush: "/training/pre-session?module=decision_rush",
-  pattern_recognition: "/training/pre-session?module=pattern_recognition"
+const moduleTitleById: Record<string, string> = {
+  schulte: "Таблица Шульте",
+  sprint_math: "Математический спринт",
+  reaction: "Реакция",
+  n_back: "N-Back",
+  memory_grid: "Сетка памяти",
+  memory_match: "Пары памяти",
+  spatial_memory: "Пространственная память",
+  decision_rush: "Быстрые решения",
+  pattern_recognition: "Распознавание паттернов"
 };
 
-function describeSkillTrend(trend: "up" | "down" | "steady", sessions: number): string {
-  if (sessions === 0) {
-    return "Стартовый ориентир";
+function declensionTrainers(count: number): string {
+  const lastDigit = count % 10;
+  const lastTwoDigits = count % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+    return 'тренажёров';
   }
-  if (trend === "up") {
-    return "Навык растёт";
+  if (lastDigit === 1) {
+    return 'тренажёр';
   }
-  if (trend === "down") {
-    return "Нужна стабилизация";
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return 'тренажёра';
   }
-  return "Форма ровная";
-}
-
-function describeSkillNextStep(
-  skillLabel: string,
-  trend: "up" | "down" | "steady",
-  sessions: number
-): string {
-  if (sessions === 0) {
-    return `Сделайте 2-3 короткие сессии на ${skillLabel.toLowerCase()}, чтобы собрать честный ориентир по навыку.`;
-  }
-  if (trend === "up") {
-    return `${skillLabel} уже идёт вверх. Лучший следующий шаг — сохранить темп ещё 1-2 спокойными сессиями.`;
-  }
-  if (trend === "down") {
-    return `${skillLabel} просел по последним попыткам. Сейчас лучше вернуть ритм через короткий и точный раунд без спешки.`;
-  }
-  return `${skillLabel} держится стабильно. Добавьте ещё одну качественную сессию, чтобы подтолкнуть рост к следующему уровню.`;
+  return 'тренажёров';
 }
 
 const SchulteIcon = ({ size = 32 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
-    <rect x="3" y="3" width="7" height="7" rx="1" />
-    <rect x="14" y="3" width="7" height="7" rx="1" />
-    <rect x="3" y="14" width="7" height="7" rx="1" />
-    <rect x="14" y="14" width="7" height="7" rx="1" />
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+    <rect x="3" y="3" width="7" height="7" rx="1" fill="currentColor" fillOpacity="0.35" />
+    <rect x="14" y="3" width="7" height="7" rx="1" fill="currentColor" fillOpacity="0.65" />
+    <rect x="3" y="14" width="7" height="7" rx="1" fill="currentColor" fillOpacity="0.65" />
+    <rect x="14" y="14" width="7" height="7" rx="1" fill="currentColor" fillOpacity="0.95" />
+    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fillOpacity="0" />
+    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fillOpacity="0" />
+    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fillOpacity="0" />
+    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fillOpacity="0" />
   </svg>
 );
 
 const MathIcon = ({ size = 32 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" width={size} height={size}>
-    <path d="M4 8l4 4-4 4" />
-    <path d="M12 6v12" />
-    <path d="M8 12h8" />
-    <path d="M16 8l4 4-4 4" />
+    <circle cx="12" cy="12" r="9" fill="currentColor" fillOpacity="0.25" />
+    <path d="M8 12h8M12 8v8" strokeWidth="2.8" />
+    <path d="M9 9l6 6M15 9l-6 6" strokeWidth="2" opacity="0.9" />
   </svg>
 );
 
 const ReactionIcon = ({ size = 32 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
-    <circle cx="12" cy="12" r="10" />
-    <circle cx="12" cy="12" r="3" />
-    <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+    <circle cx="12" cy="12" r="9" fill="currentColor" fillOpacity="0.25" />
+    <circle cx="12" cy="12" r="3.5" fill="currentColor" />
+    <path d="M12 3v3M12 18v3M3 12h3M18 12h3" strokeWidth="2.5" strokeLinecap="round" />
   </svg>
 );
 
 const MemoryIcon = ({ size = 32 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
-    <rect x="4" y="4" width="16" height="16" rx="2" />
-    <circle cx="8" cy="8" r="1.5" fill="currentColor" />
-    <circle cx="16" cy="8" r="1.5" fill="currentColor" />
-    <circle cx="8" cy="16" r="1.5" fill="currentColor" />
-    <circle cx="16" cy="16" r="1.5" fill="currentColor" />
-    <path d="M12 8v8" />
+    <rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor" fillOpacity="0.25" />
+    <circle cx="8" cy="8" r="2" fill="currentColor" />
+    <circle cx="16" cy="8" r="2" fill="currentColor" />
+    <circle cx="8" cy="16" r="2" fill="currentColor" />
+    <circle cx="16" cy="16" r="2" fill="currentColor" />
   </svg>
 );
 
 const DecisionIcon = ({ size = 32 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
-    <path d="M12 3l9 4.5v9L12 21l-9-4.5v-9L12 3z" />
-    <path d="M12 12l4-4M12 12l-4 4" />
-    <circle cx="12" cy="12" r="2" fill="currentColor" />
+    <path d="M12 3l9 4.5v9L12 21l-9-4.5v-9L12 3z" fill="currentColor" fillOpacity="0.25" />
+    <path d="M12 7v10M7 12h10" strokeWidth="2.8" strokeLinecap="round" />
+    <circle cx="12" cy="12" r="2.5" fill="currentColor" />
   </svg>
 );
 
 const PatternIcon = ({ size = 32 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
-    <circle cx="6" cy="6" r="2.5" fill="currentColor" />
-    <circle cx="18" cy="6" r="2.5" fill="currentColor" />
-    <circle cx="6" cy="18" r="2.5" fill="currentColor" />
-    <circle cx="18" cy="18" r="2.5" fill="currentColor" />
-    <path d="M6 6l12 12M18 6L6 18" />
+    <circle cx="6" cy="6" r="2.8" fill="currentColor" fillOpacity="0.45" />
+    <circle cx="18" cy="6" r="2.8" fill="currentColor" fillOpacity="0.65" />
+    <circle cx="6" cy="18" r="2.8" fill="currentColor" fillOpacity="0.65" />
+    <circle cx="18" cy="18" r="2.8" fill="currentColor" fillOpacity="0.95" />
+    <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" opacity="0.7" />
   </svg>
 );
 
@@ -303,8 +291,8 @@ const SKILL_TABS: SkillTabDefinition[] = [
     description: "Если хотите меньше отвлекаться, быстрее замечать нужное и увереннее держать фокус.",
     whyItMatters: "Подходит перед учёбой, работой и любым делом, где важно быстро собраться.",
     recommendation: "Начните с короткого раунда Шульте, а потом переходите к Pattern Recognition.",
-    icon: <SchulteIcon size={22} />,
-    accent: "#1e7f71"
+    icon: <SchulteIcon size={32} />,
+    accent: "#1e7f71" // Изумрудный зелёный
   },
   {
     id: "memory",
@@ -314,8 +302,8 @@ const SKILL_TABS: SkillTabDefinition[] = [
     description: "Для удержания образов, последовательностей и опорных элементов в голове.",
     whyItMatters: "Полезно, когда хотите почувствовать прогресс без перегруза и длинных правил.",
     recommendation: "Начните с Memory Match, затем переходите к Spatial Memory и Memory Grid, а для более плотной нагрузки подключайте N-Back Lite.",
-    icon: <MemoryIcon size={22} />,
-    accent: "#0f766e"
+    icon: <MemoryIcon size={32} />,
+    accent: "#2563eb" // Яркий синий
   },
   {
     id: "reaction",
@@ -325,8 +313,8 @@ const SKILL_TABS: SkillTabDefinition[] = [
     description: "Когда нужен быстрый отклик, короткая разминка и чувство темпа.",
     whyItMatters: "Это лучший вход, если времени мало, но хочется всё равно сделать полезную тренировку.",
     recommendation: "Если у вас буквально 2 минуты, начните с Reaction и держите темп короткими сессиями.",
-    icon: <ReactionIcon size={22} />,
-    accent: "#f59e0b"
+    icon: <ReactionIcon size={32} />,
+    accent: "#f59e0b" // Янтарный оранжевый
   },
   {
     id: "math",
@@ -336,8 +324,8 @@ const SKILL_TABS: SkillTabDefinition[] = [
     description: "Для устного счёта, уверенности в вычислениях и более бодрого математического темпа.",
     whyItMatters: "Подходит, когда хочется тренировки с понятной целью и чётким ощущением прогресса.",
     recommendation: "Берите Sprint Math, если хотите короткую, энергичную математическую нагрузку.",
-    icon: <MathIcon size={22} />,
-    accent: "#7c3aed"
+    icon: <MathIcon size={32} />,
+    accent: "#7c3aed" // Фиолетовый
   },
   {
     id: "logic",
@@ -347,46 +335,8 @@ const SKILL_TABS: SkillTabDefinition[] = [
     description: "Когда хочется закономерностей, точных решений и переключения между правилами.",
     whyItMatters: "Подходит для более спокойной, но умственной тренировки без лишней спешки.",
     recommendation: "Сначала попробуйте Pattern Recognition, затем добавьте Decision Rush для скорости решений.",
-    icon: <PatternIcon size={22} />,
-    accent: "#8b5cf6"
-  }
-];
-
-const TODAY_SCENARIOS: Array<{ skillId: SkillId; title: string; description: string; moduleId: string; cta: string }> = [
-  {
-    skillId: "attention",
-    title: "Нужно быстро собраться",
-    description: "Короткий вход, если хочется вернуть концентрацию перед делом.",
-    moduleId: "schulte",
-    cta: "Открыть Шульте"
-  },
-  {
-    skillId: "memory",
-    title: "Хочу спокойную тренировку на зрительную память",
-    description: "Понятный игровой вход, если хочется запоминать поле и пары без перегруза правилами.",
-    moduleId: "memory_match",
-    cta: "Запустить Memory Match"
-  },
-  {
-    skillId: "reaction",
-    title: "Есть только 2 минуты",
-    description: "Самый быстрый вход, если нужен короткий разгон без подготовки.",
-    moduleId: "reaction",
-    cta: "Запустить Reaction"
-  },
-  {
-    skillId: "math",
-    title: "Хочу бодрую математику",
-    description: "Подходит, если хочется счёта, темпа и коротких понятных раундов.",
-    moduleId: "sprint_math",
-    cta: "Открыть Sprint Math"
-  },
-  {
-    skillId: "logic",
-    title: "Хочу подумать и поискать закономерности",
-    description: "Более спокойный сценарий на анализ, гибкость и точность решений.",
-    moduleId: "pattern_recognition",
-    cta: "Открыть Pattern Recognition"
+    icon: <PatternIcon size={32} />,
+    accent: "#db2777" // Розово-малиновый
   }
 ];
 
@@ -398,99 +348,63 @@ function getModule(moduleId: string) {
   return TRAINING_MODULES.find((item) => item.id === moduleId);
 }
 
-function describeGuidanceConfidence(sessions: number): string {
-  if (sessions === 0) {
-    return "Пока это стартовый ориентир без личной истории. После первых сессий рекомендации станут точнее.";
-  }
-  if (sessions < 4) {
-    return "Пока это ранний ориентир: данных уже хватает для первого шага, но профиль ещё уточняется.";
-  }
-  if (sessions < 10) {
-    return "Это уже рабочий ориентир. После ещё нескольких сессий система будет увереннее различать сильные стороны и зону роста.";
-  }
-  return "Ориентир уже достаточно устойчивый: можно спокойно использовать его как основу для выбора следующего тренажёра.";
-}
-
 interface TrainingModuleCardProps {
   module: (typeof TRAINING_MODULES)[number];
   meta: ModuleMeta;
   variant?: "featured" | "default";
+  skillColor?: string;
 }
 
-function TrainingModuleCard({ module, meta, variant = "default" }: TrainingModuleCardProps) {
+function TrainingModuleCard({ module, meta, variant = "default", skillColor }: TrainingModuleCardProps) {
   const primaryRoute = modulePrimaryRouteById[module.id];
-  const preSessionRoute = modulePreSessionRouteById[module.id];
-  const scenarioText = meta.bestFor.replace(/^Когда\s+/u, "");
-  const fitText = [meta.primarySkill, meta.secondarySkills[0]].filter(Boolean).join(" + ");
+  const moduleDescription = module.description ?? meta.benefit;
 
   return (
     <article
       className={`training-module-card${variant === "featured" ? " is-featured" : ""}`}
-      style={{ "--card-bg-light": meta.bgLight, "--card-color": meta.color } as CSSProperties}
+      style={{
+        "--card-bg-light": meta.bgLight,
+        "--card-color": skillColor || meta.color
+      } as CSSProperties}
     >
       <Link to={primaryRoute} className="module-card-link" data-testid={`training-open-${module.id}`}>
         <div className="module-card-icon" style={{ background: meta.gradient }}>
           {meta.icon}
         </div>
         <div className="module-card-content">
-          {variant === "featured" ? <span className="module-card-priority">Рекомендуем начать с этого</span> : null}
-          <div className="module-card-badges" aria-hidden="true">
-            <span className="module-card-badge">{meta.routeLabel}</span>
-            <span className="module-card-badge is-soft">{meta.formatLabel}</span>
-          </div>
+          {variant === "featured" ? <span className="module-card-priority">Рекомендуем начать</span> : null}
           <div className="module-card-head">
             <h3 className="module-card-title">{module.title}</h3>
             <span className="module-card-time">{meta.timeLabel}</span>
           </div>
-          {variant === "featured" ? <p className="module-card-lead">{meta.bestFor}</p> : null}
-          {variant === "featured" ? (
-            <div className="module-card-scenarios">
-              <div className="module-card-scenario">
-                <span className="module-card-scenario-kicker">Подойдёт, если</span>
-                <strong>{scenarioText}</strong>
-              </div>
-              <div className="module-card-scenario subtle">
-                <span className="module-card-scenario-kicker">Лучше для</span>
-                <strong>{fitText}</strong>
-              </div>
-            </div>
-          ) : null}
-          <p className="module-card-skill-line">Тренирует: {meta.primarySkill}</p>
-          <p className="module-card-desc">{meta.benefit}</p>
-          <div className="module-card-tags">
-            {meta.secondarySkills.map((tag) => (
-              <span key={`${module.id}-${tag}`} className="module-card-tag">
-                {tag}
-              </span>
-            ))}
-          </div>
+          <p className="module-card-desc">{moduleDescription}</p>
           <div className="module-card-actions">
             <span className="module-card-cta">
-              {variant === "featured" ? "Запустить сейчас" : "Открыть"} <span className="arrow">→</span>
+              Запустить <span className="arrow">→</span>
             </span>
           </div>
         </div>
       </Link>
-      {preSessionRoute && (
-        <div className="module-card-footer">
-          <span className="module-card-best-for">{meta.bestFor}</span>
-          <Link className="module-presession-link" to={preSessionRoute} data-testid={`training-plan-${module.id}`}>
-            <span>📋</span> План дня
-          </Link>
-        </div>
-      )}
     </article>
   );
 }
+
 export function TrainingHubPage() {
   const { activeUserId } = useActiveUser();
   const [activeSkillId, setActiveSkillId] = useState<SkillId>("attention");
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [hasManualSkillPick, setHasManualSkillPick] = useState(false);
+  const trainersSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setHasManualSkillPick(false);
   }, [activeUserId]);
+
+  useEffect(() => {
+    if (hasManualSkillPick && trainersSectionRef.current) {
+      trainersSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [hasManualSkillPick, trainersSectionRef, activeSkillId]);
 
   useEffect(() => {
     if (!activeUserId) {
@@ -547,135 +461,47 @@ export function TrainingHubPage() {
         .filter((item): item is { module: (typeof TRAINING_MODULES)[number]; meta: ModuleMeta } => item !== null),
     [activeSkillId]
   );
-  const featuredModules = activeModulePairs.slice(0, 2);
-  const extraModules = activeModulePairs.slice(2);
-  const activeScenario = TODAY_SCENARIOS.find((item) => item.skillId === activeSkillId);
-  const scenarioModule = activeScenario ? getModule(activeScenario.moduleId) : undefined;
-  const recommendedLaunchPath = modulePrimaryRouteById[skillGuidance.primaryModuleId];
-  const activeSkillAxis = skillGuidance.profile.axes.find((axis) => axis.id === activeSkillId) ?? skillGuidance.profile.focus;
-  const activeSkillTrendLabel = describeSkillTrend(activeSkillAxis.trend, activeSkillAxis.sessions);
-  const activeSkillNextStep = describeSkillNextStep(
-    activeSkill.shortTitle,
-    activeSkillAxis.trend,
-    activeSkillAxis.sessions
-  );
-  const growthStatusLine = skillGuidance.hasData
-    ? `Сейчас система ведёт к ${skillGuidance.focusLabel.toLowerCase()}. Если хотите, можно сразу переключиться на другой навык вручную.`
-    : "Сначала выберите навык. Сразу под ним откроются лучшие тренажёры для старта.";
+  const featuredModules = activeModulePairs;
   const strongestSkillMessage = skillGuidance.hasData
     ? skillGuidance.strongestSkillId === activeSkillId
       ? `Сейчас это одна из ваших сильных сторон. Можно закрепить результат и спокойно поднять планку.`
       : `Сильнее всего уже выглядит навык «${skillGuidance.strongestLabel}». Здесь сейчас лучший следующий шаг для роста.`
     : `Пока профиль ещё собирается. Начните с 2-3 коротких сессий, чтобы увидеть сильные стороны.`;
-  const skillSystemHeadline = skillGuidance.hasData
-    ? "Профиль уже помогает выбирать точнее"
-    : "Система навыков пока собирает первую базу";
-  const skillSystemSummary = skillGuidance.hasData
-    ? `Сильнее всего сейчас выглядит ${skillGuidance.strongestLabel.toLowerCase()}, а следующим рабочим шагом система считает ${skillGuidance.focusLabel.toLowerCase()}.`
-    : "После 3-5 завершённых сессий в основных тренажёрах здесь появятся сильные стороны, зона роста и персональный фокус.";
-  const skillSystemActionPath = skillGuidance.hasData ? "/stats#skills" : recommendedLaunchPath;
-  const skillSystemActionLabel = skillGuidance.hasData
-    ? "Открыть навыки в статистике"
-    : "Собрать первые сессии";
-  const todayCardTitle = skillGuidance.hasData ? `Фокус: ${skillGuidance.focusLabel}` : activeSkill.title;
-  const todayCardBody = skillGuidance.hasData ? skillGuidance.summary : activeSkill.recommendation;
-  const todayCardActionPath = skillGuidance.hasData
-    ? recommendedLaunchPath
-    : modulePrimaryRouteById[activeScenario?.moduleId ?? activeModulePairs[0]?.module.id ?? "schulte"];
-  const todayCardActionLabel = skillGuidance.hasData
-    ? skillGuidance.ctaLabel
-    : activeScenario?.cta ?? `Открыть ${activeModulePairs[0]?.module.title ?? activeSkill.shortTitle}`;
-  const activeStarter = featuredModules[0];
-  const nextModule = featuredModules[1] ?? extraModules[0];
-  const activeRouteSummary = nextModule
-    ? `Сначала ${activeStarter?.module.title ?? activeSkill.shortTitle}, затем ${nextModule.module.title}.`
-    : `Начните с ${activeStarter?.module.title ?? activeSkill.shortTitle} и закрепите навык 2-3 короткими сессиями.`;
-  const activeSkillConfidence = describeGuidanceConfidence(activeSkillAxis.sessions);
+
   return (
     <section className="panel training-hub-panel" data-testid="training-hub-page">
       <div className="training-hub-top-shell">
         <header className="training-hub-hero">
           <div className="training-hub-hero-content">
-            <p className="training-hub-kicker">Экран выбора тренировки</p>
             <h1 className="training-hub-title">Тренировки</h1>
             <p className="training-hub-subtitle">
-              Выберите навык ниже или возьмите готовый старт справа. Внутри каждой ветки сначала показаны лучшие модули для входа, затем более глубокие варианты по той же цели.
+              Выберите навык для тренировки. Внутри каждой ветки — лучшие тренажёры для старта.
             </p>
-          </div>
-          <div className="training-hub-today-card" data-testid="training-hub-today-card">
-            <p className="training-hub-today-kicker">
-              {skillGuidance.hasData ? "По вашему профилю" : "Что выбрать сейчас"}
-            </p>
-            <h2>{todayCardTitle}</h2>
-            <p>{todayCardBody}</p>
-            <div className="training-hub-today-pills" aria-hidden="true">
-              <span className="training-hub-today-pill">
-                {skillGuidance.hasData ? `Опора: ${skillGuidance.strongestLabel}` : `Старт: ${activeStarter?.module.title ?? activeSkill.shortTitle}`}
-              </span>
-              <span className="training-hub-today-pill">
-                {skillGuidance.hasData ? `Сессий: ${skillGuidance.profile.totalSessions}` : `${activeModulePairs.length} тренажёра в ветке`}
-              </span>
-            </div>
-            <Link
-              to={todayCardActionPath}
-              className="training-hub-today-action"
-              data-testid="training-hub-guidance-start"
-            >
-              {todayCardActionLabel}
-            </Link>
           </div>
         </header>
 
-        <section className="training-skill-system-strip" data-testid="training-skill-system-strip">
-          <div className="training-skill-system-copy">
-            <p className="stats-section-kicker">Система навыков</p>
-            <h3>{skillSystemHeadline}</h3>
-            <p>{skillSystemSummary}</p>
-            <div className="training-skill-system-meta" aria-hidden="true">
-              <span className="training-skill-system-pill">5 навыков</span>
-              <span className="training-skill-system-pill">
-                {skillGuidance.hasData ? `Сессий: ${skillGuidance.profile.totalSessions}` : "Нужны первые сессии"}
-              </span>
-              <span className="training-skill-system-pill">
-                {skillGuidance.hasData ? `Фокус: ${skillGuidance.focusLabel}` : "Память, внимание, реакция"}
-              </span>
-            </div>
-          </div>
-          <div className="training-skill-system-actions">
-            <Link
-              to={skillSystemActionPath}
-              className="button"
-              data-testid="training-skill-system-action"
-            >
-              {skillSystemActionLabel}
-            </Link>
-            {skillGuidance.hasData ? (
-              <Link to={recommendedLaunchPath} className="training-skill-system-link">
-                {skillGuidance.ctaLabel} →
-              </Link>
-            ) : null}
-          </div>
-        </section>
-
         <section className="training-skill-tabs-shell" data-testid="training-skill-tabs">
           <div className="training-skill-tabs-head">
-            <div>
-              <p className="stats-section-kicker">Навигатор по навыкам</p>
-              <h2>Что хотите тренировать сегодня?</h2>
-            </div>
-            <p className="status-line">{growthStatusLine}</p>
+            <h2>Что хотите тренировать сегодня?</h2>
+            <p className="training-skill-tabs-subtitle">
+              Выберите направление — внутри лучшие тренажёры для старта
+            </p>
           </div>
 
-          <div className="training-skill-tabs-row">
+          <div className="training-skill-cards-row">
             {SKILL_TABS.map((item) => {
               const isActive = item.id === activeSkillId;
               const tabModules = MODULE_META.filter((meta) => meta.skillId === item.id);
               const starterMeta = tabModules[0];
+              const starterModuleName = starterMeta?.primarySkill === "Зрительная память"
+                ? "Memory Match"
+                : getModule(starterMeta?.id ?? "")?.title ?? item.shortTitle;
+
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={`training-skill-tab${isActive ? " is-active" : ""}`}
+                  className={`training-skill-card${isActive ? " is-active" : ""}`}
                   data-testid={`training-skill-tab-${item.id}`}
                   onClick={() => {
                     setHasManualSkillPick(true);
@@ -684,141 +510,77 @@ export function TrainingHubPage() {
                   style={{ "--skill-accent": item.accent } as CSSProperties}
                   aria-pressed={isActive}
                 >
-                  <span className="training-skill-tab-icon">{item.icon}</span>
-                  <span className="training-skill-tab-copy">
-                    <span className="training-skill-tab-label">{item.shortTitle}</span>
-                    <span className="training-skill-tab-hint">{item.tabHint}</span>
-                    <span className="training-skill-tab-meta">
-                      {tabModules.length} тренажёра • старт: {starterMeta?.primarySkill === "Зрительная память" ? "Memory Match" : getModule(starterMeta?.id ?? "")?.title ?? item.shortTitle}
+                  <div className="training-skill-card-icon" style={{ background: `color-mix(in srgb, ${item.accent} 12%, white)` }}>
+                    {item.icon}
+                  </div>
+                  <div className="training-skill-card-content">
+                    <h3 className="training-skill-card-title">{item.shortTitle}</h3>
+                    <p className="training-skill-card-hint">{item.tabHint}</p>
+                  </div>
+                  <div className="training-skill-card-meta">
+                    <span className="training-skill-card-count">
+                      {tabModules.length} {declensionTrainers(tabModules.length)}
                     </span>
-                  </span>
+                    <ul className="training-skill-card-trainers-list">
+                      {tabModules.map((meta) => {
+                        const route = modulePrimaryRouteById[meta.id];
+                        const title = moduleTitleById[meta.id] ?? meta.primarySkill;
+                        return (
+                          <li key={meta.id}>
+                            <a
+                              href={route}
+                              className="training-skill-card-trainer-link"
+                              data-testid={`training-skill-trainer-${meta.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="trainer-link-title">{title}</span>
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 </button>
               );
             })}
           </div>
 
           <div
+            ref={trainersSectionRef}
             className="training-skill-panel"
             data-testid={`training-skill-panel-${activeSkillId}`}
             style={{ "--skill-accent": activeSkill.accent } as CSSProperties}
           >
             <div className="training-skill-panel-main">
-              <p className="stats-section-kicker">Вы выбрали</p>
-              <h3>{activeSkill.title}</h3>
-              <p className="training-skill-panel-description">{activeSkill.description}</p>
-              <p className="training-skill-panel-why">{activeSkill.whyItMatters}</p>
-              <div className="training-skill-route-grid" aria-hidden="true">
-                <div className="training-skill-route-card">
-                  <span className="training-skill-route-label">Лучший старт</span>
-                  <strong>{activeStarter?.module.title ?? activeSkill.shortTitle}</strong>
-                  <span>{activeStarter?.meta.routeLabel ?? "Первый шаг по навыку"}</span>
-                </div>
-                <div className="training-skill-route-card">
-                  <span className="training-skill-route-label">Формат ветки</span>
-                  <strong>{activeModulePairs.length} тренажёра</strong>
-                  <span>{activeStarter?.meta.timeLabel ?? "2-4 мин"} на сессию</span>
-                </div>
-                <div className="training-skill-route-card">
-                  <span className="training-skill-route-label">Маршрут</span>
-                  <strong>{activeStarter?.meta.formatLabel ?? activeSkill.shortTitle}</strong>
-                  <span>{activeRouteSummary}</span>
-                </div>
-              </div>
               <div className="training-skill-featured" data-testid={`training-featured-modules-${activeSkillId}`}>
                 <div className="training-skill-featured-head">
-                  <div>
-                    <h3>Лучшие варианты для старта</h3>
-                    <p>Сначала посмотрите эти варианты: они быстрее всего дают понятный вход в выбранный навык.</p>
-                  </div>
+                  <h3>Тренажёры по навыку: {activeSkill.shortTitle}</h3>
                   <div className="training-skill-featured-pill">
-                    {featuredModules.length} тренажёра для быстрого старта
+                    {featuredModules.length} {declensionTrainers(featuredModules.length)}
                   </div>
                 </div>
                 <div className="training-modules-grid training-modules-grid-featured-inline">
                   {featuredModules.map(({ module, meta }) => (
-                    <TrainingModuleCard key={module.id} module={module} meta={meta} variant="featured" />
+                    <TrainingModuleCard
+                      key={module.id}
+                      module={module}
+                      meta={meta}
+                      variant="featured"
+                      skillColor={activeSkill.accent}
+                    />
                   ))}
                 </div>
               </div>
-              <div className="training-skill-progress" data-testid={`training-skill-progress-${activeSkillId}`}>
-                <div className="training-skill-progress-head">
-                  <strong>Ваш ориентир по навыку</strong>
-                  <span className={`training-skill-progress-state is-${activeSkillAxis.trend}`}>
-                    {activeSkillTrendLabel}
-                  </span>
-                </div>
-                <div className="training-skill-progress-metrics">
-                  <div className="training-skill-progress-metric">
-                    <span>Сессий</span>
-                    <strong>{activeSkillAxis.sessions}</strong>
-                  </div>
-                  <div className="training-skill-progress-metric">
-                    <span>Уровень</span>
-                    <strong>{activeSkillAxis.level}</strong>
-                  </div>
-                  <div className="training-skill-progress-metric">
-                    <span>Прогресс</span>
-                    <strong>{activeSkillAxis.progressPct}%</strong>
-                  </div>
-                </div>
-                <div className="training-skill-progress-bar" aria-hidden="true">
-                  <span className="training-skill-progress-fill" style={{ width: `${activeSkillAxis.progressPct}%` }} />
-                </div>
-                <p className="training-skill-progress-confidence">{activeSkillConfidence}</p>
-                <p className="training-skill-progress-note">{activeSkillNextStep}</p>
-              </div>
             </div>
             <div className="training-skill-panel-side">
-              {activeScenario && scenarioModule ? (
-                <Link
-                  to={modulePrimaryRouteById[activeScenario.moduleId]}
-                  className="training-skill-start-card"
-                  data-testid={`training-scenario-${activeScenario.moduleId}`}
-                  style={{ "--scenario-color": getModuleMeta(activeScenario.moduleId)?.color ?? activeSkill.accent } as CSSProperties}
-                >
-                  <span className="training-skill-start-kicker">Быстрый вход</span>
-                  <strong>{activeScenario.title}</strong>
-                  <p>{activeScenario.description}</p>
-                  <span className="training-skill-start-meta">
-                    {scenarioModule.title} • {getModuleMeta(activeScenario.moduleId)?.timeLabel}
-                  </span>
-                  <span className="training-skill-start-cta">{activeScenario.cta}</span>
-                </Link>
-              ) : null}
               <div className="training-skill-panel-callout">
                 <span className="training-skill-panel-callout-label">Что уже получается лучше всего</span>
                 <p>{strongestSkillMessage}</p>
-              </div>
-              <div className="training-skill-panel-callout muted">
-                <span className="training-skill-panel-callout-label">Следующий шаг</span>
-                <p>{activeRouteSummary}</p>
               </div>
             </div>
           </div>
         </section>
       </div>
-
-      <section className="training-main-catalog" data-testid="training-main-catalog">
-        <div className="training-main-catalog-head">
-          <h2>Следующие варианты по навыку: {activeSkill.shortTitle}</h2>
-          <p>
-            Здесь оставлены режимы того же направления для тех случаев, когда нужен не только быстрый старт, но и более глубокая работа по навыку.
-          </p>
-        </div>
-        {extraModules.length > 0 ? (
-          <div className="training-skill-secondary" data-testid={`training-secondary-modules-${activeSkillId}`}>
-            <div className="training-skill-secondary-head">
-              <h3>Ещё по этому навыку</h3>
-              <p>Эти режимы тоже развивают тот же навык, но лучше воспринимаются как следующий шаг, а не как первый вход.</p>
-            </div>
-            <div className="training-modules-grid training-modules-grid-secondary">
-              {extraModules.map(({ module, meta }) => (
-                <TrainingModuleCard key={module.id} module={module} meta={meta} variant="default" />
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </section>
 
       <section className="setup-block training-alpha-section" data-testid="training-alpha-trainers">
         <div className="training-alpha-section-head">

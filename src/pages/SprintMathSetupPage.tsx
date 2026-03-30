@@ -71,15 +71,24 @@ export function SprintMathSetupPage() {
 
   return (
     <section className="panel" data-testid="sprint-math-setup-page">
-      <h2>Sprint Math</h2>
-      <p>
-        Тренировка устного счёта на скорость. Выберите параметры, проверьте пример и
-        нажмите «Начать».
+      <h2>Математический спринт</h2>
+      <p className="session-intro-text">
+        Тренировка устного счёта на скорость. Развивает быстроту вычислений, рабочую память и уверенность в математических операциях.
       </p>
-      <InfoHint title="Как играть в Sprint Math" testId="sprint-setup-hint">
-        <p>1. Нажмите «Начать Sprint Math».</p>
-        <p>2. Введите ответ и подтвердите кнопкой «Проверить».</p>
-        <p>3. Точность выше 85% заметно повышает итоговый score.</p>
+      
+      <InfoHint title="Как играть в Математический спринт" testId="sprint-setup-hint">
+        <p><strong>1.</strong> Нажмите «Начать Математический спринт».</p>
+        <p><strong>2.</strong> Решайте примеры как можно быстрее, вводя ответ в поле.</p>
+        <p><strong>3.</strong> Подтверждайте ответ кнопкой «Проверить» или Enter.</p>
+        <p><strong>4.</strong> Точность выше 85% заметно повышает итоговый score.</p>
+        <hr />
+        <p><strong>Что тренирует:</strong></p>
+        <ul>
+          <li>Скорость устных вычислений</li>
+          <li>Рабочую память при удержании чисел</li>
+          <li>Концентрацию и темп обработки информации</li>
+        </ul>
+        <p><strong>Совет:</strong> Начните с комфортного уровня и постепенно повышайте сложность. Лучше решать медленнее, но с точностью выше 90%.</p>
       </InfoHint>
 
       <section className="setup-block">
@@ -179,7 +188,7 @@ export function SprintMathSetupPage() {
           onClick={startSession}
           data-testid="sprint-math-start-btn"
         >
-          Начать Sprint Math
+          Начать Математический спринт
         </button>
       </div>
     </section>

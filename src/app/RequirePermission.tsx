@@ -1,12 +1,12 @@
 import type { PropsWithChildren } from "react";
 import { Link } from "react-router-dom";
-import { useAppRole } from "./useAppRole";
+import { appRoleLabel } from "../shared/lib/settings/appRole";
 import {
   hasPermission,
   rolesWithPermission,
   type AppPermission
 } from "../shared/lib/auth/permissions";
-import { appRoleLabel } from "../shared/lib/settings/appRole";
+import { useAppRole } from "./useAppRole";
 
 interface RequirePermissionProps extends PropsWithChildren {
   permission: AppPermission;
@@ -51,4 +51,3 @@ export function RequirePermission({
     </section>
   );
 }
-

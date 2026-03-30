@@ -168,7 +168,7 @@ export function PatternRecognitionResultPage() {
           </p>
           <div className="action-row">
             <Link className="btn-primary" to="/training/pattern-recognition">
-              К Pattern Recognition
+              К Распознаванию паттернов
             </Link>
             <Link className="btn-ghost" to="/training">
               К тренировкам

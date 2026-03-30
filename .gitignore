@@ -14,16 +14,6 @@ vite.config.d.ts
 
 # Local tool/runtime artifacts
 .local-tools/
-.mise-cache/
-.mise-data/
-.mise-state/
-.symphony-linux/
-.symphony-logs/
-.symphony-tmp/
-.symphony-tools/
-.symphony-upstream/
-.symphony-workspaces/
-.symphony-workspaces-win/
 .tmp/
 log/
 symplogs/
@@ -33,13 +23,3 @@ symtmp-build/
 .start-dev.cmd
 Program
 $null
-
-# Local Symphony/Codex helpers (machine-specific)
-symphony.memory.WORKFLOW.md
-scripts/codex-app-server-portable.sh
-scripts/codex-app-server-win-test.sh
-scripts/codex-app-server-win.ps1
-scripts/codex-app-server-win.sh
-scripts/run-symphony-once.ps1
-scripts/start-symphony-windows.ps1
-scripts/symphony-run-once.exs

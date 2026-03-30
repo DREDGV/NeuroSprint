@@ -511,7 +511,7 @@ export function MemoryGridSessionPage() {
     <section className="panel memory-grid-session-panel" data-testid="memory-grid-session-page">
       <header className="memory-grid-header">
         <div className="memory-grid-header-content">
-          <h2 className="memory-grid-title">Memory Grid</h2>
+          <h2 className="memory-grid-title">Сетка памяти</h2>
           <p className="memory-grid-subtitle">
             {setup.mode === "classic" ? "Classic" : "Rush"} • {difficultyTitle} •{" "}
             {setup.gridSize}x{setup.gridSize}
@@ -680,7 +680,7 @@ export function MemoryGridSessionPage() {
       {result ? (
         <SessionResultSummary
           testId="memory-grid-result"
-          title="Результаты Memory Grid"
+          title="Результаты Сетки памяти"
           metrics={[
             { label: "Макс. span", value: String(result.spanMax) },
             { label: "Пройдено уровней", value: String(result.levelsCompleted) },

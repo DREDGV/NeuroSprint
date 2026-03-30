@@ -55,17 +55,24 @@ export function NBackSetupPage() {
 
   return (
     <section className="panel" data-testid="nback-setup-page">
-      <h2>N-Back Lite</h2>
-      <p>
-        Тренировка рабочей памяти: запоминайте позицию подсвеченной клетки и
-        отмечайте совпадения с позицией N шагов назад.
+      <h2>N-Back</h2>
+      <p className="session-intro-text">
+        Научно обоснованный тренажёр рабочей памяти. Запоминание позиций с задержкой развивает способность удерживать и обновлять информацию в уме.
       </p>
 
-      <InfoHint title="Как играть" testId="nback-setup-hint">
-        <p><strong>1.</strong> Выберите уровень сложности и длительность.</p>
+      <InfoHint title="Как играть в N-Back" testId="nback-setup-hint">
+        <p><strong>1.</strong> Выберите уровень сложности (1-back, 2-back) и длительность.</p>
         <p><strong>2.</strong> На каждом шаге смотрите на подсвеченную клетку в сетке.</p>
-        <p><strong>3.</strong> Жмите «Совпало», если позиция совпала с <strong>{setup.level}</strong> шаг{setup.level === 1 ? '' : 'а' + (setup.level === 2 ? '' : 'ов')} назад.</p>
+        <p><strong>3.</strong> Нажимайте «Совпало», если позиция совпала с позицией N шагов назад.</p>
         <p><strong>4.</strong> Цвета клеток помогают запоминать позиции.</p>
+        <hr />
+        <p><strong>Что тренирует:</strong></p>
+        <ul>
+          <li>Рабочую память (удержание информации)</li>
+          <li>Концентрацию и фокус внимания</li>
+          <li>Способность обновлять информацию в уме</li>
+        </ul>
+        <p><strong>Совет:</strong> Начните с 1-back и короткой сессии (60 сек). Когда точность достигнет 80%+, переходите на 2-back.</p>
       </InfoHint>
 
       <section className="setup-block">
