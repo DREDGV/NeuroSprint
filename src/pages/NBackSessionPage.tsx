@@ -270,7 +270,7 @@ export function NBackSessionPage() {
       setStimulusVisible(false);
       // Если это задача запоминания (первые N задач) — сразу переходим к следующей
       if (currentTaskIndex < progress.currentLevel) {
-        nextTask();
+        goToNextTask();
       } else {
         // Иначе переходим к фазе ответа
         setPhase('answer');
@@ -297,7 +297,7 @@ export function NBackSessionPage() {
 
     const timer = setTimeout(() => {
       setFeedbackVisible(false);
-      nextTask();
+      goToNextTask();
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -779,3 +779,5 @@ export function NBackSessionPage() {
     </section>
   );
 }
+
+

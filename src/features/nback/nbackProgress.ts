@@ -135,10 +135,18 @@ export function calculateNextLevel(
         emoji: '🎉'
       };
     } else {
+      // Максимальный уровень — показываем достижение
+      if (clampedAccuracy >= 0.95) {
+        return {
+          action: { type: 'stay', level: currentLevel },
+          message: `Мастерство! ${Math.round(clampedAccuracy * 100)}% на ${currentLevel}-back! Вы покорили все уровни. 🏆`,
+          emoji: '👑'
+        };
+      }
       return {
         action: { type: 'stay', level: currentLevel },
-        message: `Отличный результат (${(clampedAccuracy * 100).toFixed(0)}%)! Вы уже на максимуме.`,
-        emoji: '👑'
+        message: `Отлично (${(clampedAccuracy * 100).toFixed(0)}%)! Вы на максимуме — закрепляйте результат.`,
+        emoji: '💪'
       };
     }
   }
