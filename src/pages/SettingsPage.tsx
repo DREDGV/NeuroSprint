@@ -1,13 +1,16 @@
 ﻿import { FormEvent, useEffect, useState } from "react";
 import { db } from "../db/database";
 import { useActiveUser } from "../app/ActiveUserContext";
+import { useAuth } from "../app/useAuth";
 import { useRoleAccess } from "../app/useRoleAccess";
+import { accountSyncService } from "../entities/account/accountSyncService";
 import { preferenceRepository } from "../entities/preferences/preferenceRepository";
 import { groupRepository } from "../entities/group/groupRepository";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { isTeacherRole, isUserRoleGuardError, userRoleGuardMessage } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
 import { guardAccess } from "../shared/lib/auth/permissions";
+import { allowPrivilegedProfileRoles } from "../shared/lib/auth/profileRolePolicy";
 import {
   DEFAULT_AUDIO_SETTINGS,
   getAudioSettings,
@@ -55,6 +58,7 @@ function benchmarkThresholdMs(period: BenchmarkPeriod): number {
 
 export function SettingsPage() {
   const { activeUserId, setActiveUserId } = useActiveUser();
+  const auth = useAuth();
   const access = useRoleAccess();
   const featureFlags = useFeatureFlags();
   const initial = getSettings();
@@ -161,6 +165,12 @@ export function SettingsPage() {
         setTeachersCount(users.filter((entry) => isTeacherRole(entry.role)).length);
         saveAppRole(appRole);
         hasChanges = true;
+      }
+
+      if (activeUserId && auth.account?.id) {
+        void accountSyncService.syncLinkedProfile(activeUserId, auth.account.id).catch((error) => {
+          console.error("settings sync failed", error);
+        });
       }
 
       setMessage(hasChanges ? "Настройки сохранены." : "Для текущей роли доступен только просмотр.");
@@ -469,6 +479,14 @@ export function SettingsPage() {
   const hasFeatureOverrides = FEATURE_FLAG_DEFINITIONS.some(
     (definition) => getFeatureFlagOverride(definition.key) !== null
   );
+  const allowPrivilegedRoles = allowPrivilegedProfileRoles();
+  const accountSettingsHint = !auth.isConfigured
+    ? "Сервис аккаунтов ещё подключается. Пока все настройки сохраняются только на этом устройстве."
+    : auth.isAuthenticated
+      ? auth.account?.email
+        ? `Аккаунт ${auth.account.email} подключён. Настройки профилей аккаунта будут отправлены на синхронизацию после сохранения.`
+        : "Аккаунт подключён. Настройки профилей аккаунта будут отправлены на синхронизацию после сохранения."
+      : "Сейчас вы в гостевом режиме. Настройки и профили работают локально, пока вы не войдёте в аккаунт.";
 
   const canPersistSettings =
     access.settings.updateTraining ||
@@ -488,7 +506,12 @@ export function SettingsPage() {
   return (
     <section className="panel" data-testid="settings-page">
       <h2>Настройки</h2>
-      <p>Настройки применяются локально на этом устройстве.</p>
+      <p>Управляйте локальными параметрами устройства, звуком и поведением активного профиля.</p>
+
+      <section className="settings-account-hint">
+        <strong>Аккаунт и синхронизация</strong>
+        <p>{accountSettingsHint}</p>
+      </section>
 
       <form className="settings-form" onSubmit={handleSubmit}>
         <label htmlFor="default-limit">Timed: лимит по умолчанию</label>
@@ -528,34 +551,38 @@ export function SettingsPage() {
           disabled={!access.settings.updateTraining}
         />
 
-        <h3>Роль активного профиля</h3>
-        <label htmlFor="app-role-select">Роль для текущего активного пользователя</label>
-        <select
-          id="app-role-select"
-          value={appRole}
-          onChange={(event) => setAppRole(event.target.value as AppRole)}
-          data-testid="app-role-select"
-          disabled={!activeUserId || !access.settings.updateRole}
-        >
-          <option value="teacher">Учитель (полный режим)</option>
-          <option value="student" disabled={isLastTeacherActive}>
-            Ученик (упрощенный интерфейс)
-          </option>
-          <option value="home" disabled={isLastTeacherActive}>
-            Домашний (свободный режим)
-          </option>
-        </select>
-        <p className="status-line">
-          {!access.settings.updateRole
-            ? "Смена роли активного профиля доступна только для роли «Учитель»."
-            : activeUserId
-              ? "Роль применяется после нажатия «Сохранить» и синхронизируется с интерфейсом."
-              : "Сначала выберите активный профиль на странице «Профили»."}
-        </p>
-        {isLastTeacherActive ? (
-          <p className="status-line">
-            Это последний учитель в системе. Назначьте другого пользователя учителем перед сменой роли.
-          </p>
+        {allowPrivilegedRoles ? (
+          <>
+            <h3>Роль активного профиля</h3>
+            <label htmlFor="app-role-select">Роль для текущего активного пользователя</label>
+            <select
+              id="app-role-select"
+              value={appRole}
+              onChange={(event) => setAppRole(event.target.value as AppRole)}
+              data-testid="app-role-select"
+              disabled={!activeUserId || !access.settings.updateRole}
+            >
+              <option value="teacher">Учитель (полный режим)</option>
+              <option value="student" disabled={isLastTeacherActive}>
+                Ученик (упрощенный интерфейс)
+              </option>
+              <option value="home" disabled={isLastTeacherActive}>
+                Домашний (свободный режим)
+              </option>
+            </select>
+            <p className="status-line">
+              {!access.settings.updateRole
+                ? "Смена роли активного профиля доступна только для роли «Учитель»."
+                : activeUserId
+                  ? "Роль применяется после нажатия «Сохранить» и синхронизируется с интерфейсом."
+                  : "Сначала выберите активный профиль на странице «Профили»."}
+            </p>
+            {isLastTeacherActive ? (
+              <p className="status-line">
+                Это последний учитель в системе. Назначьте другого пользователя учителем перед сменой роли.
+              </p>
+            ) : null}
+          </>
         ) : null}
 
         <h3>Звук</h3>
@@ -855,5 +882,3 @@ export function SettingsPage() {
     </section>
   );
 }
-
-

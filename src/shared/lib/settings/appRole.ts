@@ -1,7 +1,7 @@
 import { APP_ROLE_KEY } from "../../constants/storage";
 import type { AppRole } from "../../types/domain";
 
-export const DEFAULT_APP_ROLE: AppRole = "teacher";
+export const DEFAULT_APP_ROLE: AppRole = "home";
 const APP_ROLE_CHANGED_EVENT = "ns:app-role-changed";
 
 function normalizeAppRole(value: unknown): AppRole {

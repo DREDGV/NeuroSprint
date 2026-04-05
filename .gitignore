@@ -23,3 +23,5 @@ symtmp-build/
 .start-dev.cmd
 Program
 $null
+.env.local
+.qwen/

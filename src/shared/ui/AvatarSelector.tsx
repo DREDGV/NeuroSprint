@@ -14,14 +14,16 @@ export function AvatarSelector({ selectedAvatar, onSelect }: AvatarSelectorProps
       <button
         type="button"
         className="avatar-selector-btn"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen((current) => !current)}
         data-testid="avatar-selector-btn"
       >
         <span className="avatar-preview">{selectedAvatar}</span>
-        <span className="avatar-arrow">{isOpen ? "✕" : "✎"}</span>
+        <span className="avatar-arrow" aria-hidden="true">
+          {isOpen ? "▴" : "▾"}
+        </span>
       </button>
 
-      {isOpen && (
+      {isOpen ? (
         <div className="avatar-selector-dropdown" data-testid="avatar-dropdown">
           <div className="avatar-grid">
             {AVATAR_EMOJIS.map((emoji) => (
@@ -34,14 +36,14 @@ export function AvatarSelector({ selectedAvatar, onSelect }: AvatarSelectorProps
                   setIsOpen(false);
                 }}
                 data-testid={`avatar-option-${emoji}`}
-                title={emoji}
+                title={`Выбрать ${emoji}`}
               >
                 {emoji}
               </button>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

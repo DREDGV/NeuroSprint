@@ -144,6 +144,14 @@ interface SkillTabDefinition {
   accent: string;
 }
 
+interface ModuleDetailDefinition {
+  overview: string;
+  trains: string;
+  mechanic: string;
+  signal: string;
+  tip: string;
+}
+
 const MODULE_META: ModuleMeta[] = [
   {
     id: "schulte",
@@ -340,6 +348,81 @@ const SKILL_TABS: SkillTabDefinition[] = [
   }
 ];
 
+const MODULE_DETAILS: Record<string, ModuleDetailDefinition> = {
+  schulte: {
+    overview:
+      "Таблица Шульте тренирует не только поиск чисел, а умение держать поле целиком и быстрее замечать нужное без хаотичных рывков взглядом.",
+    trains: "Периферическое зрение, темп сканирования, устойчивость фокуса и скорость визуального поиска.",
+    mechanic: "Вы последовательно находите числа в сетке и постепенно сокращаете паузы между фиксациями.",
+    signal: "Хороший проход ощущается как ровный ритм: взгляд меньше мечется, а поиск становится шире и спокойнее.",
+    tip: "Старайтесь смотреть в поле целиком, а не цепляться за одну ячейку. Чем спокойнее ритм, тем лучше результат."
+  },
+  reaction: {
+    overview:
+      "Реакция нужна как короткий скоростной вход: она быстро включает внимание, проверяет отклик на сигнал и задаёт темп без длинных правил.",
+    trains: "Быстрый отклик, стартовую концентрацию, ритм реакции и готовность работать на коротких сигналах.",
+    mechanic: "Сначала удерживаете готовность, затем реагируете на нужный момент и постепенно ускоряете ответ без лишней суеты.",
+    signal: "Если тренажёр идёт хорошо, уходит лишняя задержка перед нажатием и появляется ощущение точного попадания в момент.",
+    tip: "Не нажимайте заранее. Сначала дождитесь сигнала, потом отвечайте резко и чисто."
+  },
+  sprint_math: {
+    overview:
+      "Математический спринт развивает не просто счёт, а способность быстро держать операцию в голове и не терять точность под давлением времени.",
+    trains: "Устный счёт, рабочую память, темп вычислений и уверенность в базовых операциях.",
+    mechanic: "Видите пример, быстро удерживаете вычисление в уме и выбираете правильный ответ среди близких вариантов.",
+    signal: "Прогресс чувствуется, когда ответы становятся увереннее, а вы реже пересчитываете одно и то же второй раз.",
+    tip: "Не пытайтесь брать темп любой ценой. Лучше держать ровную точность и уже потом ускоряться."
+  },
+  memory_match: {
+    overview:
+      "Пары памяти дают мягкий вход в тренировку памяти: вы удерживаете расположение карточек, учитесь не повторять ошибки и строить карту поля в голове.",
+    trains: "Зрительную память, удержание позиций, аккуратность поиска и стратегию запоминания.",
+    mechanic: "Открываете карточки, фиксируете их расположение и постепенно превращаете случайный поиск в осознанную карту совпадений.",
+    signal: "Если всё идёт хорошо, вы начинаете вспоминать поле целыми фрагментами, а не отдельными случайными карточками.",
+    tip: "Старайтесь запоминать не одну карточку, а сразу мини-области поля: верх, центр, пары по углам."
+  },
+  spatial_memory: {
+    overview:
+      "Пространственная память тренирует удержание расположения зон и фигур, когда важно помнить не только объект, но и его место на поле.",
+    trains: "Пространственную карту, ориентацию по зонам и связь между формой и позицией.",
+    mechanic: "Вы запоминаете, где именно находились элементы, и удерживаете схему размещения без перехода в длинную последовательность.",
+    signal: "Результат растёт, когда вы начинаете видеть поле как карту с опорными зонами, а не как набор отдельных клеток.",
+    tip: "Перед ответом коротко восстановите поле целиком: верх, середина, низ, затем уже ищите нужную позицию."
+  },
+  memory_grid: {
+    overview:
+      "Сетка памяти развивает способность схватывать и воспроизводить паттерн из нескольких ячеек, не теряя порядок и общую форму.",
+    trains: "Зрительную память на паттерны, удержание последовательности и точность воспроизведения.",
+    mechanic: "Вы видите вспышку ячеек, удерживаете рисунок в голове и затем собираете его обратно без подсказок.",
+    signal: "Когда тренажёр заходит, рисунок воспринимается не по клеткам, а как цельная фигура или маршрут.",
+    tip: "Ищите форму: линию, угол, крест. Целый паттерн запоминается легче, чем набор отдельных клеток."
+  },
+  n_back: {
+    overview:
+      "N-Back уже ближе к рабочей памяти: вы не просто запоминаете стимул, а постоянно обновляете в уме окно из нескольких последних шагов.",
+    trains: "Рабочую память, удержание последовательности, переключение внимания и контроль ошибок.",
+    mechanic: "Поток стимулов идёт без остановки, а вы сравниваете текущий сигнал с тем, что было N шагов назад.",
+    signal: "Правильное ощущение — когда вы начинаете держать ритм потока и сравнивать шаги без паники и потери места.",
+    tip: "Не пытайтесь помнить всё подряд. Держите только нужное окно последних шагов и регулярно его обновляйте."
+  },
+  decision_rush: {
+    overview:
+      "Быстрые решения тренируют гибкость: важно не просто нажать быстро, а мгновенно заметить смену правила и перестроиться без ошибки.",
+    trains: "Когнитивное переключение, скорость решения, точность под давлением и устойчивость к смене условий.",
+    mechanic: "Правило может меняться на ходу, поэтому вы каждый раз заново считываете задачу и принимаете короткое решение.",
+    signal: "Рост виден тогда, когда вы меньше ошибаетесь после смены правила и быстрее входите в новый режим.",
+    tip: "Каждый раунд считывайте правило заново. Главная ошибка здесь — действовать по инерции."
+  },
+  pattern_recognition: {
+    overview:
+      "Распознавание паттернов развивает логическое чтение последовательностей: вы ищете не один ответ, а сам закон, по которому развивается ряд.",
+    trains: "Поиск закономерностей, логическое моделирование, удержание правил и точность гипотез.",
+    mechanic: "Вы сравниваете элементы ряда, ищете повтор, сдвиг или трансформацию и прогнозируете следующий шаг.",
+    signal: "Хороший прогресс появляется, когда вы перестаёте угадывать и начинаете видеть тип закономерности почти сразу.",
+    tip: "Сначала задайте себе вопрос: что меняется — форма, позиция, число или ритм. Это сильно ускоряет поиск правила."
+  }
+};
+
 function getModuleMeta(moduleId: string) {
   return MODULE_META.find((item) => item.id === moduleId);
 }
@@ -348,26 +431,208 @@ function getModule(moduleId: string) {
   return TRAINING_MODULES.find((item) => item.id === moduleId);
 }
 
+function getModuleDetail(moduleId: string): ModuleDetailDefinition {
+  return (
+    MODULE_DETAILS[moduleId] ?? {
+      overview: "Этот тренажёр помогает развивать целевой навык через короткие повторяемые сессии.",
+      trains: "Базовые когнитивные навыки, внимание и устойчивость к ошибкам.",
+      mechanic: "Вы проходите короткие раунды, постепенно повышая точность и темп.",
+      signal: "Хороший знак — когда решения становятся ровнее, а ошибок становится меньше.",
+      tip: "Сначала держите ровный темп и точность, а ускорение добавляйте постепенно."
+    }
+  );
+}
+
+function TrainingModulePreview({ moduleId, color }: { moduleId: string; color: string }) {
+  if (moduleId === "reaction") {
+    return (
+      <div className="module-detail-preview module-detail-preview-reaction" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="preview-reaction-topline">
+          <span>Ждите сигнал</span>
+          <span className="is-live">0.27 c</span>
+        </div>
+        <span className="preview-reaction-ring preview-reaction-ring-outer" />
+        <span className="preview-reaction-ring preview-reaction-ring-inner" />
+        <span className="preview-reaction-core" />
+      </div>
+    );
+  }
+
+  if (moduleId === "sprint_math") {
+    return (
+      <div className="module-detail-preview module-detail-preview-math" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="preview-math-topline">
+          <span className="preview-math-mode">Устный счёт</span>
+          <span className="preview-math-timer">00:18</span>
+        </div>
+        <div className="preview-math-chip">17 + 8</div>
+        <div className="preview-math-answer-row">
+          <span>24</span>
+          <span className="is-active">25</span>
+          <span>26</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (moduleId === "decision_rush") {
+    return (
+      <div className="module-detail-preview module-detail-preview-decision" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="preview-decision-head">
+          <span>Смена правила</span>
+          <span className="is-live">LIVE</span>
+        </div>
+        <div className="preview-decision-rule">
+          Если фигура круглая — жмите влево
+        </div>
+        <div className="preview-decision-choices">
+          <span className="is-primary">Лево</span>
+          <span>Право</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (moduleId === "pattern_recognition") {
+    return (
+      <div className="module-detail-preview module-detail-preview-pattern" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="preview-pattern-topline">
+          <span>Найдите правило</span>
+        </div>
+        <div className="preview-pattern-sequence">
+          <span>△</span>
+          <span>□</span>
+          <span className="is-accent">△</span>
+          <span className="is-next">?</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (moduleId === "n_back") {
+    return (
+      <div className="module-detail-preview module-detail-preview-nback" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="preview-nback-head">
+          <span>2-back</span>
+          <span className="is-live">поток</span>
+        </div>
+        <div className="preview-nback-track">
+          <span>A</span>
+          <span>C</span>
+          <span className="is-focus">A</span>
+        </div>
+        <div className="preview-nback-note">Совпадение на 2 шага назад</div>
+      </div>
+    );
+  }
+
+  if (moduleId === "schulte") {
+    return (
+      <div className="module-detail-preview module-detail-preview-schulte" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="preview-schulte-track">
+          <span>1 → 2 → 3</span>
+        </div>
+        <div className="module-detail-preview-grid">
+          {["12", "7", "2", "16", "9", "5", "1", "14", "8", "4", "6", "3"].map((cell) => (
+          <span key={cell} className={cell === "1" ? "is-highlight" : undefined}>
+            {cell}
+          </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (moduleId === "memory_match") {
+    return (
+      <div className="module-detail-preview module-detail-preview-match" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="preview-match-grid">
+          <span className="is-open">▲</span>
+          <span>?</span>
+          <span className="is-open">▲</span>
+          <span>?</span>
+        </div>
+        <div className="preview-match-note">Найдите пары и не повторяйте ошибки</div>
+      </div>
+    );
+  }
+
+  if (moduleId === "spatial_memory") {
+    return (
+      <div className="module-detail-preview module-detail-preview-spatial" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="preview-spatial-zones">
+          {Array.from({ length: 9 }, (_, index) => (
+            <span
+              key={index}
+              className={index === 0 || index === 4 || index === 8 ? "is-highlight" : undefined}
+            />
+          ))}
+        </div>
+        <div className="preview-match-note">Запомните, где находились зоны на поле</div>
+      </div>
+    );
+  }
+
+  if (moduleId === "memory_grid") {
+    return (
+      <div className="module-detail-preview module-detail-preview-memory-grid" style={{ "--preview-color": color } as CSSProperties}>
+        <div className="module-detail-preview-grid">
+          {Array.from({ length: 9 }, (_, index) => (
+          <span
+            key={index}
+            className={index === 1 || index === 4 || index === 7 ? "is-highlight" : undefined}
+          />
+          ))}
+        </div>
+        <div className="preview-match-note">Вспомните рисунок вспышки без подсказки</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="module-detail-preview module-detail-preview-generic" style={{ "--preview-color": color } as CSSProperties}>
+      <span />
+      <span className="is-highlight" />
+      <span />
+    </div>
+  );
+}
+
 interface TrainingModuleCardProps {
   module: (typeof TRAINING_MODULES)[number];
   meta: ModuleMeta;
   variant?: "featured" | "default";
   skillColor?: string;
+  isSelected?: boolean;
+  onSelect?: (moduleId: string) => void;
 }
 
-function TrainingModuleCard({ module, meta, variant = "default", skillColor }: TrainingModuleCardProps) {
+function TrainingModuleCard({
+  module,
+  meta,
+  variant = "default",
+  skillColor,
+  isSelected = false,
+  onSelect
+}: TrainingModuleCardProps) {
   const primaryRoute = modulePrimaryRouteById[module.id];
   const moduleDescription = module.description ?? meta.benefit;
 
   return (
     <article
-      className={`training-module-card${variant === "featured" ? " is-featured" : ""}`}
+      className={`training-module-card${variant === "featured" ? " is-featured" : ""}${isSelected ? " is-selected" : ""}`}
       style={{
         "--card-bg-light": meta.bgLight,
         "--card-color": skillColor || meta.color
       } as CSSProperties}
     >
-      <Link to={primaryRoute} className="module-card-link" data-testid={`training-open-${module.id}`}>
+      <button
+        type="button"
+        className="module-card-surface"
+        data-testid={`training-open-${module.id}`}
+        aria-pressed={isSelected}
+        onClick={() => onSelect?.(module.id)}
+      >
         <div className="module-card-icon" style={{ background: meta.gradient }}>
           {meta.icon}
         </div>
@@ -378,13 +643,14 @@ function TrainingModuleCard({ module, meta, variant = "default", skillColor }: T
             <span className="module-card-time">{meta.timeLabel}</span>
           </div>
           <p className="module-card-desc">{moduleDescription}</p>
-          <div className="module-card-actions">
-            <span className="module-card-cta">
-              Запустить <span className="arrow">→</span>
-            </span>
-          </div>
         </div>
-      </Link>
+      </button>
+      <div className="module-card-actions">
+        <span className="module-card-hint">Нажмите на карточку, чтобы посмотреть детали</span>
+        <Link to={primaryRoute} className="module-card-cta">
+          Запустить <span className="arrow">→</span>
+        </Link>
+      </div>
     </article>
   );
 }
@@ -392,6 +658,7 @@ function TrainingModuleCard({ module, meta, variant = "default", skillColor }: T
 export function TrainingHubPage() {
   const { activeUserId } = useActiveUser();
   const [activeSkillId, setActiveSkillId] = useState<SkillId>("attention");
+  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [hasManualSkillPick, setHasManualSkillPick] = useState(false);
   const trainersSectionRef = useRef<HTMLDivElement>(null);
@@ -467,6 +734,25 @@ export function TrainingHubPage() {
       ? `Сейчас это одна из ваших сильных сторон. Можно закрепить результат и спокойно поднять планку.`
       : `Сильнее всего уже выглядит навык «${skillGuidance.strongestLabel}». Здесь сейчас лучший следующий шаг для роста.`
     : `Пока профиль ещё собирается. Начните с 2-3 коротких сессий, чтобы увидеть сильные стороны.`;
+  const recommendedModulePair =
+    activeModulePairs.find(({ module }) => module.id === skillGuidance.primaryModuleId) ?? featuredModules[0] ?? null;
+  const selectedModulePair =
+    activeModulePairs.find(({ module }) => module.id === activeModuleId) ?? recommendedModulePair ?? featuredModules[0] ?? null;
+  const selectedModuleDetail = selectedModulePair ? getModuleDetail(selectedModulePair.module.id) : null;
+  const followUpModules = recommendedModulePair
+    ? featuredModules.filter(({ module }) => module.id !== selectedModulePair?.module.id).slice(0, 3)
+    : featuredModules.slice(0, 3);
+  const skillPanelInsightLabel =
+    skillGuidance.focusSkillId === activeSkillId ? "Рекомендуем сейчас" : "Что уже получается лучше всего";
+  const skillPanelInsightMessage =
+    skillGuidance.focusSkillId === activeSkillId ? skillGuidance.summary : strongestSkillMessage;
+
+  useEffect(() => {
+    if (selectedModulePair?.module.id === activeModuleId) {
+      return;
+    }
+    setActiveModuleId(selectedModulePair?.module.id ?? null);
+  }, [activeModuleId, selectedModulePair]);
 
   return (
     <section className="panel training-hub-panel" data-testid="training-hub-page">
@@ -492,31 +778,31 @@ export function TrainingHubPage() {
             {SKILL_TABS.map((item) => {
               const isActive = item.id === activeSkillId;
               const tabModules = MODULE_META.filter((meta) => meta.skillId === item.id);
-              const starterMeta = tabModules[0];
-              const starterModuleName = starterMeta?.primarySkill === "Зрительная память"
-                ? "Memory Match"
-                : getModule(starterMeta?.id ?? "")?.title ?? item.shortTitle;
 
               return (
-                <button
+                <article
                   key={item.id}
-                  type="button"
                   className={`training-skill-card${isActive ? " is-active" : ""}`}
-                  data-testid={`training-skill-tab-${item.id}`}
-                  onClick={() => {
-                    setHasManualSkillPick(true);
-                    setActiveSkillId(item.id);
-                  }}
                   style={{ "--skill-accent": item.accent } as CSSProperties}
-                  aria-pressed={isActive}
                 >
-                  <div className="training-skill-card-icon" style={{ background: `color-mix(in srgb, ${item.accent} 12%, white)` }}>
-                    {item.icon}
-                  </div>
-                  <div className="training-skill-card-content">
-                    <h3 className="training-skill-card-title">{item.shortTitle}</h3>
-                    <p className="training-skill-card-hint">{item.tabHint}</p>
-                  </div>
+                  <button
+                    type="button"
+                    className="training-skill-card-toggle"
+                    data-testid={`training-skill-tab-${item.id}`}
+                    onClick={() => {
+                      setHasManualSkillPick(true);
+                      setActiveSkillId(item.id);
+                    }}
+                    aria-pressed={isActive}
+                  >
+                    <div className="training-skill-card-icon" style={{ background: `color-mix(in srgb, ${item.accent} 12%, white)` }}>
+                      {item.icon}
+                    </div>
+                    <div className="training-skill-card-content">
+                      <h3 className="training-skill-card-title">{item.shortTitle}</h3>
+                      <p className="training-skill-card-hint">{item.tabHint}</p>
+                    </div>
+                  </button>
                   <div className="training-skill-card-meta">
                     <span className="training-skill-card-count">
                       {tabModules.length} {declensionTrainers(tabModules.length)}
@@ -527,20 +813,19 @@ export function TrainingHubPage() {
                         const title = moduleTitleById[meta.id] ?? meta.primarySkill;
                         return (
                           <li key={meta.id}>
-                            <a
-                              href={route}
+                            <Link
+                              to={route}
                               className="training-skill-card-trainer-link"
                               data-testid={`training-skill-trainer-${meta.id}`}
-                              onClick={(e) => e.stopPropagation()}
                             >
                               <span className="trainer-link-title">{title}</span>
-                            </a>
+                            </Link>
                           </li>
                         );
                       })}
                     </ul>
                   </div>
-                </button>
+                </article>
               );
             })}
           </div>
@@ -567,16 +852,95 @@ export function TrainingHubPage() {
                       meta={meta}
                       variant="featured"
                       skillColor={activeSkill.accent}
+                      isSelected={selectedModulePair?.module.id === module.id}
+                      onSelect={setActiveModuleId}
                     />
                   ))}
                 </div>
               </div>
             </div>
             <div className="training-skill-panel-side">
+              {selectedModulePair ? (
+                <div className="training-skill-panel-detail">
+                  <div className="training-skill-panel-detail-head">
+                    <div className="training-skill-panel-detail-copy">
+                      <span className="training-skill-panel-callout-label">Выбранный тренажёр</span>
+                      <strong>{selectedModulePair.module.title}</strong>
+                      <p>{selectedModuleDetail?.overview}</p>
+                    </div>
+                    <span className="training-skill-panel-detail-time">{selectedModulePair.meta.timeLabel}</span>
+                  </div>
+
+                  <TrainingModulePreview moduleId={selectedModulePair.module.id} color={selectedModulePair.meta.color} />
+
+                  <div className="training-skill-detail-facts">
+                    <div className="training-skill-detail-fact">
+                      <span>Тренирует</span>
+                      <strong>{selectedModuleDetail?.trains}</strong>
+                    </div>
+                    <div className="training-skill-detail-fact">
+                      <span>Как проходит</span>
+                      <strong>{selectedModuleDetail?.mechanic}</strong>
+                    </div>
+                    <div className="training-skill-detail-fact">
+                      <span>Как понять, что идёте правильно</span>
+                      <strong>{selectedModuleDetail?.signal}</strong>
+                    </div>
+                  </div>
+
+                  <div className="training-skill-panel-callout training-skill-panel-tip">
+                    <span className="training-skill-panel-callout-label">Совет перед стартом</span>
+                    <p>{selectedModuleDetail?.tip}</p>
+                  </div>
+
+                  <div className="training-skill-panel-detail-tags">
+                    <span className="training-skill-panel-detail-tag is-muted">{selectedModulePair.meta.bestFor}</span>
+                    <span className="training-skill-panel-detail-tag is-muted">{selectedModulePair.meta.formatLabel}</span>
+                    {selectedModulePair.meta.secondarySkills.map((tag) => (
+                      <span key={tag} className="training-skill-panel-detail-tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {selectedModulePair ? (
+                <Link
+                  to={modulePrimaryRouteById[selectedModulePair.module.id]}
+                  className="training-skill-start-card"
+                  style={{ "--scenario-color": activeSkill.accent } as CSSProperties}
+                >
+                  <span className="training-skill-start-kicker">Быстрый запуск</span>
+                  <strong>{selectedModulePair.module.title}</strong>
+                  <p>{selectedModulePair.meta.benefit}</p>
+                  <span className="training-skill-start-meta">
+                    {selectedModulePair.meta.timeLabel} • {selectedModulePair.meta.formatLabel}
+                  </span>
+                  <span className="training-skill-start-cta">Открыть тренажёр</span>
+                </Link>
+              ) : null}
               <div className="training-skill-panel-callout">
-                <span className="training-skill-panel-callout-label">Что уже получается лучше всего</span>
-                <p>{strongestSkillMessage}</p>
+                <span className="training-skill-panel-callout-label">{skillPanelInsightLabel}</span>
+                <p>{skillPanelInsightMessage}</p>
               </div>
+              {followUpModules.length ? (
+                <div className="training-skill-panel-callout training-skill-panel-follow-up">
+                  <span className="training-skill-panel-callout-label">После старта попробуйте</span>
+                  <div className="training-skill-follow-up-list">
+                    {followUpModules.map(({ module, meta }) => (
+                      <Link
+                        key={module.id}
+                        to={modulePrimaryRouteById[module.id]}
+                        className="training-skill-follow-up-link"
+                        style={{ "--follow-accent": activeSkill.accent } as CSSProperties}
+                      >
+                        <span className="training-skill-follow-up-title">{module.title}</span>
+                        <span className="training-skill-follow-up-meta">{meta.timeLabel}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>

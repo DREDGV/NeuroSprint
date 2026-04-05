@@ -1,13 +1,40 @@
 import type { TrainingModeId } from "../../shared/types/domain";
 
+// Базовые константы (оставлены для обратной совместимости)
 export const NBACK_GRID_SIZE = 3;
 export const NBACK_STEP_MS = 1500;
-export const NBACK_STIMULUS_MS = 650;
-export const NBACK_PAUSE_MS = 850;
+export const NBACK_STIMULUS_MS = 700;
+export const NBACK_PAUSE_MS = 800;
+
+// Тайминги по уровням — чем сложнее уровень, тем больше времени на запоминание
+export const LEVEL_TIMINGS = {
+  1: { stepMs: 2000, stimulusMs: 1000, pauseMs: 1000 },  // 1-back: больше времени
+  2: { stepMs: 1800, stimulusMs: 800, pauseMs: 1000 },   // 2-back: средний
+  3: { stepMs: 2000, stimulusMs: 800, pauseMs: 1200 }    // 3-back: больше времени на запоминание
+};
+
+// Адаптивные тайминги: меняются в зависимости от точности игрока
+// (относительно базовых таймингов уровня)
+export const ADAPTIVE_TIMINGS = {
+  // Замедление (точность < 60%) — +25% ко времени
+  slow: { stepMultiplier: 1.25, stimulusMultiplier: 1.25, pauseMultiplier: 1.25 },
+  // Нормальный тайминг (60-85%) — без изменений
+  normal: { stepMultiplier: 1.0, stimulusMultiplier: 1.0, pauseMultiplier: 1.0 },
+  // Быстрый тайминг (> 85%) — -15% ко времени
+  fast: { stepMultiplier: 0.85, stimulusMultiplier: 0.85, pauseMultiplier: 0.85 }
+};
 
 export type NBackLevel = 1 | 2 | 3;
 export type NBackGridSize = 3 | 4;
 export type NBackDurationSec = 60 | 90 | 120;
+
+// Тип задачи для пошагового режима
+export interface NBackStepTask {
+  stimulusCell: number;      // Клетка которую показываем
+  comparisonCell: number;    // Клетка N шагов назад для сравнения
+  isMatch: boolean;          // true = совпадает
+  stepIndex: number;         // Номер задачи
+}
 
 export interface NBackSetup {
   level: NBackLevel;
@@ -50,10 +77,37 @@ function randomCell(random: () => number): number {
 
 export function normalizeNBackSetup(input: Partial<NBackSetup> | null | undefined): NBackSetup {
   const level = input?.level === 3 ? 3 : input?.level === 2 ? 2 : 1;
-  const gridSize = input?.gridSize === 4 ? 4 : 3;
+  // 3-back доступен только на 3x3 — слишком сложно иначе
+  const gridSize = level === 3 ? 3 : (input?.gridSize === 4 ? 4 : 3);
   const durationSec = input?.durationSec === 120 ? 120 : input?.durationSec === 90 ? 90 : 60;
   const tutorialMode = input?.tutorialMode === true;
   return { level, gridSize, durationSec, tutorialMode };
+}
+
+/** Возвращает допустимые размеры сетки для уровня */
+export function getValidGridSizesForLevel(level: NBackLevel): NBackGridSize[] {
+  if (level === 3) return [3]; // 3-back только на 3x3
+  return [3, 4];
+}
+
+/** Выбирает адаптивный тайминг на основе уровня и точности */
+export function getAdaptiveTiming(level: NBackLevel, accuracy: number): { stepMs: number; stimulusMs: number; pauseMs: number } {
+  const base = LEVEL_TIMINGS[level];
+  let adaptive: { stepMultiplier: number; stimulusMultiplier: number; pauseMultiplier: number };
+  
+  if (accuracy >= 0.85) {
+    adaptive = ADAPTIVE_TIMINGS.fast;
+  } else if (accuracy >= 0.60) {
+    adaptive = ADAPTIVE_TIMINGS.normal;
+  } else {
+    adaptive = ADAPTIVE_TIMINGS.slow;
+  }
+
+  return {
+    stepMs: Math.round(base.stepMs * adaptive.stepMultiplier),
+    stimulusMs: Math.round(base.stimulusMs * adaptive.stimulusMultiplier),
+    pauseMs: Math.round(base.pauseMs * adaptive.pauseMultiplier)
+  };
 }
 
 export function modeIdFromNBackLevel(level: NBackLevel, gridSize: NBackGridSize = 3): TrainingModeId {
@@ -73,8 +127,80 @@ export function levelFromModeId(modeId: string | null): { level: NBackLevel; gri
   return null;
 }
 
-export function calculateNBackSteps(durationSec: NBackDurationSec): number {
-  return Math.floor((durationSec * 1000) / NBACK_STEP_MS);
+/** Возвращает базовые тайминги для уровня */
+export function getLevelTimings(level: NBackLevel): { stepMs: number; stimulusMs: number; pauseMs: number } {
+  return LEVEL_TIMINGS[level];
+}
+
+export function calculateNBackSteps(durationSec: NBackDurationSec, level: NBackLevel = 1): number {
+  // 3 задачи на уровень — быстро и динамично
+  // 3 задачи × 3 игры = 9 задач за ~15 секунд на уровень
+  return 3;
+}
+
+/**
+ * Генерирует пошаговые задачи для пошагового режима.
+ * Каждая задача: показать клетку → спросить "совпадает ли с N шагов назад?" → получить ответ.
+ */
+export function generateNBackStepTasks(
+  totalTasks: number,
+  level: NBackLevel,
+  gridSize: NBackGridSize = 3,
+  random: () => number = Math.random
+): NBackStepTask[] {
+  const gridCells = gridSize * gridSize;
+  const tasks: NBackStepTask[] = [];
+  const history: number[] = []; // История показанных клеток
+  
+  // Вероятность совпадения — 25% (меньше чем 30%, чтобы было реалистичнее)
+  const matchProbability = 0.25;
+
+  for (let i = 0; i < totalTasks; i++) {
+    // Генерируем клетку для показа
+    let stimulusCell: number;
+    let comparisonCell: number;
+    let isMatch: boolean;
+
+    if (i < level) {
+      // Первые `level` задач — просто показываем клетки для запоминания, без вопроса
+      stimulusCell = Math.floor(random() * gridCells);
+      history.push(stimulusCell);
+      tasks.push({
+        stimulusCell,
+        comparisonCell: -1, // нет сравнения
+        isMatch: false,
+        stepIndex: i
+      });
+      continue;
+    }
+
+    // Определяем будет ли совпадение
+    comparisonCell = history[i - level];
+    const shouldBeMatch = random() < matchProbability;
+
+    if (shouldBeMatch) {
+      // Совпадение — показываем ту же клетку
+      stimulusCell = comparisonCell;
+      isMatch = true;
+    } else {
+      // Не совпадение — показываем другую клетку
+      stimulusCell = Math.floor(random() * gridCells);
+      while (stimulusCell === comparisonCell) {
+        stimulusCell = Math.floor(random() * gridCells);
+      }
+      isMatch = false;
+    }
+
+    history.push(stimulusCell);
+    tasks.push({
+      stimulusCell,
+      comparisonCell,
+      isMatch,
+      stepIndex: i
+    });
+  }
+
+  return tasks;
 }
 
 export function generateNBackSequence(

@@ -1,7 +1,7 @@
 {
   "name": "neurosprint",
   "private": true,
-  "version": "0.6.0-dev.0",
+  "version": "0.7.0-dev.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,6 +14,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.101.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "dexie": "^4.0.10",

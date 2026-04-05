@@ -69,6 +69,47 @@ export function trackProfileActivated(role: AppRole): void {
   trackAnalyticsEvent("profile_activated", { role });
 }
 
+export function trackAccountRegistered(): void {
+  trackAnalyticsEvent("account_registered");
+  trackAnalyticsEvent("account_created");
+}
+
+export function trackLoginSucceeded(): void {
+  trackAnalyticsEvent("login_succeeded");
+}
+
+export function trackLogoutSucceeded(): void {
+  trackAnalyticsEvent("logout_succeeded");
+}
+
+export function trackPasswordResetRequested(): void {
+  trackAnalyticsEvent("password_reset_requested");
+}
+
+export function trackImportStarted(profilesCount: number): void {
+  trackAnalyticsEvent("import_started", { profiles_count: profilesCount });
+}
+
+export function trackImportCompleted(profilesCount: number): void {
+  trackAnalyticsEvent("import_completed", { profiles_count: profilesCount });
+}
+
+export function trackSyncCompleted(scope: string): void {
+  trackAnalyticsEvent("sync_completed", { scope });
+}
+
+export function trackSyncFailed(scope: string): void {
+  trackAnalyticsEvent("sync_failed", { scope });
+}
+
+export function trackGuestStarted(): void {
+  trackAnalyticsEvent("guest_started");
+}
+
+export function trackFirstTrainingAfterSignup(): void {
+  trackAnalyticsEvent("first_training_after_signup");
+}
+
 export function trackTrainingSessionSaved(
   session: Session,
   result: SessionSaveResult

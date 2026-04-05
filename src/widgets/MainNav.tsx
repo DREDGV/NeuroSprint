@@ -21,7 +21,6 @@ const navItems: NavItem[] = [
     label: "Соревнования",
     visible: (access) => access.classes.manage
   },
-  { id: "help", to: "/help", label: "Справка", visible: () => true },
   { id: "profiles", to: "/profiles", label: "Профили", visible: (access) => access.profiles.view },
   { id: "settings", to: "/settings", label: "Настройки", visible: () => true }
 ];

@@ -2,6 +2,7 @@ import Dexie from "dexie";
 import { db } from "../../db/database";
 import { dailyChallengeRepository } from "../challenge/dailyChallengeRepository";
 import { dailyTrainingRepository } from "../training/dailyTrainingRepository";
+import { accountSyncService } from "../account/accountSyncService";
 import { levelRepository } from "../level/levelRepository";
 import { achievementRepository } from "../achievement/achievementRepository";
 import { skillComparisonRepository } from "../skill/skillComparisonRepository";
@@ -11,7 +12,10 @@ import { DEFAULT_AUDIO_SETTINGS } from "../../shared/lib/audio/audioSettings";
 import { buildProgressGoalSummary, type ProgressGoalSummary } from "../../shared/lib/progress/nextGoal";
 import { moduleIdByModeId } from "../../shared/lib/training/modeMapping";
 import { recommendModeByPerformance } from "../../shared/lib/training/recommendation";
-import { trackTrainingSessionSaved } from "../../shared/lib/analytics/siteAnalytics";
+import {
+  trackFirstTrainingAfterSignup,
+  trackTrainingSessionSaved
+} from "../../shared/lib/analytics/siteAnalytics";
 import type {
   Achievement,
   ClassicDailyPoint,
@@ -910,6 +914,23 @@ export const sessionRepository = {
     }
 
     trackTrainingSessionSaved(normalized, result);
+
+    void userRepository.getById(normalized.userId).then((profile) => {
+      if (!profile?.accountId || profile.ownershipKind !== "linked") {
+        return;
+      }
+
+      if ((profile.totalSessions ?? 0) === 1) {
+        trackFirstTrainingAfterSignup();
+      }
+
+      void accountSyncService
+        .syncLinkedProfile(normalized.userId, profile.accountId)
+        .catch((error) => {
+          console.error("post-session sync failed", error);
+        });
+    });
+
     return result;
   },
 

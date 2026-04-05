@@ -1,6 +1,8 @@
 export function formatLastActivity(isoString: string | undefined): string {
-  if (!isoString) return "Никогда";
-  
+  if (!isoString) {
+    return "Никогда";
+  }
+
   const last = new Date(isoString);
   const now = new Date();
   const diffMs = now.getTime() - last.getTime();
@@ -8,7 +10,7 @@ export function formatLastActivity(isoString: string | undefined): string {
   const diffMin = Math.floor(diffSec / 60);
   const diffHour = Math.floor(diffMin / 60);
   const diffDay = Math.floor(diffHour / 24);
-  
+
   if (diffSec < 60) {
     return "Только что";
   }
@@ -21,21 +23,25 @@ export function formatLastActivity(isoString: string | undefined): string {
   if (diffDay < 7) {
     return `${diffDay} дн назад`;
   }
-  
-  return last.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" });
+
+  return last.toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit"
+  });
 }
 
 export function formatTotalTime(totalSec: number | undefined): string {
-  if (!totalSec || totalSec < 60) return "0 мин";
-  
+  if (!totalSec || totalSec < 60) {
+    return "0 мин";
+  }
+
   const hours = Math.floor(totalSec / 3600);
   const minutes = Math.floor((totalSec % 3600) / 60);
-  
+
   if (hours >= 1) {
-    return hours === 1 
-      ? `1 ч ${minutes} мин` 
-      : `${hours} ч ${minutes} мин`;
+    return `${hours} ч ${minutes} мин`;
   }
-  
+
   return `${minutes} мин`;
 }

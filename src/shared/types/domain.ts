@@ -11,6 +11,8 @@
   | "memory_match"
   | "pattern_recognition";
 export type AppRole = "teacher" | "student" | "home" | "admin";
+export type ProfileOwnershipKind = "guest" | "linked";
+export type ProfileSyncState = "local" | "pending" | "synced" | "error";
 export type TrainingModuleId =
   | "schulte"
   | "sprint_math"
@@ -104,6 +106,12 @@ export interface User {
   id: string;
   name: string;
   role: AppRole;
+  accountId?: string;
+  remoteId?: string;
+  ownershipKind?: ProfileOwnershipKind;
+  syncState?: ProfileSyncState;
+  lastSyncedAt?: string | null;
+  avatarEmoji?: string;
   createdAt: string;
   lastActivity?: string; // ISO timestamp последнего действия
   totalSessions?: number; // Всего проведено сессий

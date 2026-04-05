@@ -31,22 +31,22 @@ const SKILL_GUIDANCE_BY_ID: Record<SkillProfileId, SkillGuidanceDefinition> = {
   },
   memory: {
     primaryModuleId: "memory_match",
-    primaryModuleTitle: "Memory Match",
+    primaryModuleTitle: "Пары памяти",
     supportingModuleIds: ["memory_grid", "n_back"]
   },
   reaction: {
     primaryModuleId: "reaction",
-    primaryModuleTitle: "Reaction",
+    primaryModuleTitle: "Реакция",
     supportingModuleIds: ["decision_rush", "schulte"]
   },
   math: {
     primaryModuleId: "sprint_math",
-    primaryModuleTitle: "Sprint Math",
+    primaryModuleTitle: "Математический спринт",
     supportingModuleIds: ["pattern_recognition"]
   },
   logic: {
     primaryModuleId: "pattern_recognition",
-    primaryModuleTitle: "Pattern Recognition",
+    primaryModuleTitle: "Распознавание паттернов",
     supportingModuleIds: ["decision_rush", "sprint_math"]
   }
 };

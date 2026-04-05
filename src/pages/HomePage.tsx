@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../app/useAuth";
 import { useActiveUserDisplayName } from "../app/useActiveUserDisplayName";
 import {
   dailyChallengeRepository,
@@ -13,6 +14,7 @@ import { hasLevelUpCelebrated, markLevelUpCelebrated } from "../shared/lib/progr
 import { getSettings } from "../shared/lib/settings/settings";
 import { buildSkillGuidance } from "../shared/lib/training/skillGuidance";
 import { buildSkillRoadmap } from "../shared/lib/training/skillRoadmap";
+import { trackGuestStarted } from "../shared/lib/analytics/siteAnalytics";
 import { CelebrationModal } from "../shared/ui/ConfettiCelebration";
 import { DailyTrainingWidget } from "../widgets/DailyTrainingWidget";
 import { LevelProgressWidget } from "../widgets/LevelProgressWidget";
@@ -33,18 +35,22 @@ function getChallengeModeTitle(title: string): string {
 function getModeLabel(modeId: TrainingModeId | string): string {
   const dictionary: Partial<Record<TrainingModeId | string, string>> = {
     classic_plus: "Таблица Шульте",
-    sprint_add_sub: "Sprint Math",
-    reaction_signal: "Reaction",
-    reaction_pair: "Reaction",
-    reaction_number: "Reaction",
-    reaction_stroop: "Reaction",
-    memory_match_classic: "Memory Match",
-    memory_grid: "Memory Grid",
+    sprint_add_sub: "Математический спринт",
+    reaction_signal: "Реакция",
+    reaction_pair: "Реакция",
+    reaction_number: "Реакция",
+    reaction_stroop: "Реакция",
+    memory_match_classic: "Пары памяти",
+    memory_grid: "Сетка памяти",
     n_back: "N-Back",
-    decision_rush_classic: "Decision Rush",
-    spatial_memory_classic: "Spatial Memory",
-    pattern_classic: "Pattern Recognition"
+    decision_rush_classic: "Быстрые решения",
+    spatial_memory_classic: "Пространственная память",
+    pattern_classic: "Распознавание паттернов"
   };
+
+  if (String(modeId).startsWith("reaction_")) {
+    return "Реакция";
+  }
 
   return dictionary[modeId] ?? modeId;
 }
@@ -112,6 +118,7 @@ function getSkillTrendLabel(trend: "up" | "down" | "steady", hasData: boolean): 
 }
 
 export function HomePage() {
+  const auth = useAuth();
   const { activeUserId } = useActiveUserDisplayName();
   const settings = getSettings();
   const dailyGoalSessions = settings.dailyGoalSessions;
@@ -321,9 +328,50 @@ export function HomePage() {
       ? `${progressValue} сессий сегодня, это на ${extraSessions} больше дневной цели`
       : `${progressValue} из ${dailyGoalSessions} сессий выполнено`
     : `${progressValue} из ${dailyGoalSessions} сессий выполнено`;
+  const entryAccountLabel = !auth.isConfigured
+    ? "Аккаунты скоро доступны"
+    : auth.isAuthenticated
+      ? auth.account?.email ?? "Аккаунт подключён"
+      : "Гостевой режим";
+  const entryProfileLabel = activeUserId
+    ? "Активный профиль уже выбран"
+    : auth.isAuthenticated
+      ? "После входа осталось выбрать профиль"
+      : "Профиль можно создать за минуту";
 
   return (
     <section className="panel home-panel" data-testid="home-page">
+      {!activeUserId ? (
+        <section className="home-entry-banner" data-testid="home-entry-banner">
+          <div className="home-entry-copy">
+            <p className="stats-section-kicker">Следующий шаг</p>
+            <h2>{auth.isAuthenticated ? "Аккаунт подключён, осталось выбрать профиль" : "Сначала откройте профили"}</h2>
+            <p>
+              {auth.isAuthenticated
+                ? "Во вкладке «Профили» можно выбрать профиль аккаунта, импортировать локальные профили с устройства или создать новый профиль в аккаунте."
+                : "Вкладка «Профили» теперь главный центр входа: там можно создать локальный профиль, зарегистрироваться, войти и позже синхронизировать прогресс между устройствами."}
+            </p>
+            <div className="home-entry-facts" aria-hidden="true">
+              <span className="home-entry-fact">{entryAccountLabel}</span>
+              <span className="home-entry-fact">{entryProfileLabel}</span>
+            </div>
+          </div>
+          <div className="home-entry-actions">
+            <Link
+              className="btn-primary"
+              to="/profiles"
+              onClick={() => {
+                if (!auth.isAuthenticated) {
+                  trackGuestStarted();
+                }
+              }}
+            >
+              {auth.isAuthenticated ? "Выбрать профиль" : "Открыть профили и аккаунт"}
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       {/* Hero Section */}
       <header className="home-hero">
         <div className="home-hero-content">

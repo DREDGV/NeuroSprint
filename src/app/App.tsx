@@ -1,6 +1,7 @@
 ﻿import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ActiveUserProvider } from "./ActiveUserContext";
+import { AuthProvider } from "./AuthContext";
 import { RequireActiveUser } from "./RequireActiveUser";
 import { RequirePermission } from "./RequirePermission";
 import { AppShell } from "../widgets/AppShell";
@@ -12,6 +13,17 @@ const HomePage = lazy(() =>
 const ProfilesPage = lazy(() =>
   import("../pages/ProfilesPage").then((module) => ({
     default: module.ProfilesPage
+  }))
+);
+const LoginPage = lazy(() =>
+  import("../pages/LoginPage").then((module) => ({ default: module.LoginPage }))
+);
+const RegisterPage = lazy(() =>
+  import("../pages/RegisterPage").then((module) => ({ default: module.RegisterPage }))
+);
+const ForgotPasswordPage = lazy(() =>
+  import("../pages/ForgotPasswordPage").then((module) => ({
+    default: module.ForgotPasswordPage
   }))
 );
 const TrainingHubPage = lazy(() =>
@@ -150,12 +162,16 @@ export function App() {
 
   return (
     <BrowserRouter>
-      <ActiveUserProvider>
-        <AppShell>
-          <Suspense fallback={<p className="status-line">Загрузка...</p>}>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/profiles" element={<ProfilesPage />} />
+      <AuthProvider>
+        <ActiveUserProvider>
+          <AppShell>
+            <Suspense fallback={<p className="status-line">Загрузка...</p>}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/profiles" element={<ProfilesPage />} />
+                <Route path="/auth/login" element={<LoginPage />} />
+                <Route path="/auth/register" element={<RegisterPage />} />
+                <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
               <Route
                 path="/training"
                 element={
@@ -393,11 +409,12 @@ export function App() {
               />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </AppShell>
-      </ActiveUserProvider>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </AppShell>
+        </ActiveUserProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
