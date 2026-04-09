@@ -16,6 +16,7 @@ export interface SkillAxisProfile {
   sessions: number;
   trend: SkillTrend;
   trendDelta: number;
+  isProvisional: boolean;
 }
 
 export interface SkillProfileSummary {
@@ -217,7 +218,8 @@ export function buildSkillProfile(sessions: Session[], now = new Date()): SkillP
       progressPct,
       sessions: sessionsCount,
       trend: resolveTrendLabel(trendDelta),
-      trendDelta
+      trendDelta,
+      isProvisional: sessionsCount === 0
     };
   });
 
