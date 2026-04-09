@@ -34,7 +34,9 @@ export function ForgotPasswordPage() {
       );
     } catch (caught) {
       console.error("password reset request failed", caught);
-      setError(caught instanceof Error ? caught.message : "Не удалось отправить письмо для сброса.");
+      setError(
+        caught instanceof Error ? caught.message : "Не удалось отправить письмо для сброса."
+      );
     } finally {
       setLoading(false);
     }
@@ -61,6 +63,8 @@ export function ForgotPasswordPage() {
     try {
       await auth.updatePassword(password);
       setStatus("Пароль обновлён. Теперь можно войти с новым паролем.");
+      setPassword("");
+      setConfirmPassword("");
     } catch (caught) {
       console.error("password update failed", caught);
       setError(caught instanceof Error ? caught.message : "Не удалось обновить пароль.");

@@ -32,6 +32,14 @@ export function toAuthUiError(error: unknown, fallback: string): string {
   }
 
   if (
+    message.includes("email rate limit exceeded") ||
+    message.includes("over_email_send_rate_limit") ||
+    message.includes("rate limit")
+  ) {
+    return "Слишком много писем за короткое время. Подождите немного и попробуйте снова.";
+  }
+
+  if (
     message.includes("invalid email") ||
     message.includes("email address") ||
     message.includes("unable to validate email")

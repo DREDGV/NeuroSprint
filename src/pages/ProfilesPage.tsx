@@ -55,6 +55,47 @@ function getCreateRoleLabel(role: AppRole): string {
 
 type ProfilesRouteHint = "missing_profile" | "locked_profile" | null;
 
+function ImportActions({
+  importStatus,
+  selectedImportIds,
+  allImportProfilesSelected,
+  onToggleSelectAll,
+  onImport,
+  onDismiss
+}: {
+  importStatus: "idle" | "importing";
+  selectedImportIds: string[];
+  allImportProfilesSelected: boolean;
+  onToggleSelectAll: () => void;
+  onImport: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="account-import-actions">
+      <button
+        type="button"
+        className="btn-ghost"
+        onClick={onToggleSelectAll}
+      >
+        {allImportProfilesSelected ? "Снять выделение" : "Выбрать все"}
+      </button>
+      <button
+        type="button"
+        className="btn-primary"
+        onClick={onImport}
+        disabled={importStatus === "importing" || selectedImportIds.length === 0}
+      >
+        {importStatus === "importing"
+          ? "Сохраняем..."
+          : `Сохранить выбранные (${selectedImportIds.length})`}
+      </button>
+      <button type="button" className="btn-ghost" onClick={onDismiss}>
+        Позже
+      </button>
+    </div>
+  );
+}
+
 export function ProfilesPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,11 +113,20 @@ export function ProfilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<AppRole | "all">("all");
   const [sortOrder, setSortOrder] = useState<"name" | "date" | "activity">("date");
-  const [importing, setImporting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [importPromptDismissed, setImportPromptDismissed] = useState(false);
   const [selectedImportIds, setSelectedImportIds] = useState<string[]>([]);
   const [routeHint, setRouteHint] = useState<ProfilesRouteHint>(null);
+  const [editingDisplayName, setEditingDisplayName] = useState(false);
+  const [displayNameInput, setDisplayNameInput] = useState("");
+  const [updatingName, setUpdatingName] = useState(false);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [pendingEmailChange, setPendingEmailChange] = useState<string | null>(null);
+  const [passwordResetSending, setPasswordResetSending] = useState(false);
+  const [importStatus, setImportStatus] = useState<"idle" | "importing" | "success" | "error">("idle");
+  const [importResult, setImportResult] = useState<{ imported: number; errors: number } | null>(null);
 
   const allowPrivilegedRoles = allowPrivilegedProfileRoles();
   const createRoleOptions = getSelfServiceCreateRoles();
@@ -148,6 +198,16 @@ export function ProfilesPage() {
       setImportPromptDismissed(false);
     }
   }, [auth.account?.id]);
+
+  useEffect(() => {
+    if (!pendingEmailChange || !auth.account?.email) {
+      return;
+    }
+
+    if (auth.account.email.trim().toLowerCase() === pendingEmailChange.trim().toLowerCase()) {
+      setPendingEmailChange(null);
+    }
+  }, [auth.account?.email, pendingEmailChange]);
 
   useEffect(() => {
     setSelectedImportIds((current) => {
@@ -266,17 +326,17 @@ export function ProfilesPage() {
 
   const accountStatusLabel = useMemo(() => {
     if (!auth.isConfigured) {
-      return "Сервис аккаунтов готовится";
+      return "Регистрация скоро будет доступна";
     }
     if (auth.isAuthenticated) {
-      return "Аккаунт подключён";
+      return "Вход выполнен";
     }
-    return "Гостевой режим";
+    return "Без регистрации";
   }, [auth.isAuthenticated, auth.isConfigured]);
 
   const accountNextStepHint = useMemo(() => {
     if (!auth.isConfigured) {
-      return "Пока можно спокойно пользоваться локальными профилями на этом устройстве. Регистрация и синхронизация включатся после финального подключения сервиса аккаунтов.";
+      return "Пока можно спокойно пользоваться локальными профилями на этом устройстве.";
     }
 
     if (!auth.isAuthenticated) {
@@ -284,15 +344,15 @@ export function ProfilesPage() {
         return "Сейчас вы работаете локально. Профили и прогресс доступны на этом устройстве, но не будут видны на другом, пока вы не создадите аккаунт.";
       }
 
-      return "Можно начать без регистрации и создать локальный профиль, либо сразу войти в аккаунт и хранить прогресс в облаке.";
+      return "Можно начать без регистрации и создать локальный профиль, либо сразу войти в аккаунт и хранить прогресс на всех устройствах.";
     }
 
     if (guestProfilesToImport.length > 0) {
-      return `На устройстве найдено ${guestProfilesToImport.length} локальных профилей. Импортируйте их в аккаунт, чтобы сохранить историю и продолжить работу на других устройствах.`;
+      return `На устройстве найдено ${guestProfilesToImport.length} локальных профилей. Перенесите их в аккаунт, чтобы сохранить историю и продолжить работу на других устройствах.`;
     }
 
     if (linkedProfiles.length === 0) {
-      return "Аккаунт готов. Следующий шаг — создать первый профиль в аккаунте или импортировать локальный профиль с этого устройства.";
+      return "Аккаунт готов. Следующий шаг — создать первый профиль или перенести локальный профиль с этого устройства.";
     }
 
     if (!activeUserId) {
@@ -300,18 +360,18 @@ export function ProfilesPage() {
     }
 
     if (activeUser && userRepository.isLocked(activeUser, auth.account?.id)) {
-      return "Текущий активный профиль принадлежит аккаунту. Войдите снова, чтобы открыть его на этом устройстве.";
+      return "Этот профиль сохранён в аккаунте. Войдите снова, чтобы открыть его на этом устройстве.";
     }
 
     if (syncCounts.error > 0) {
-      return "У части профилей есть ошибка синхронизации. После проверки подключения запустите синхронизацию ещё раз.";
+      return "Часть профилей не удалось сохранить. Проверьте подключение и попробуйте ещё раз.";
     }
 
     if (syncCounts.pending > 0) {
-      return "Изменения уже сохранены локально и ждут синхронизации. Можно продолжать тренировки даже без немедленной отправки в облако.";
+      return "Изменения сохранены на этом устройстве и ждут обновления. Можно продолжать тренировки.";
     }
 
-    return "Аккаунт, профили и синхронизация выглядят стабильно. Можно продолжать работу в приложении.";
+    return "Всё сохранено и работает стабильно. Можно продолжать тренировки.";
   }, [
     activeUser,
     activeUserId,
@@ -332,12 +392,12 @@ export function ProfilesPage() {
 
     if (routeHint === "locked_profile") {
       return {
-        title: "Текущий профиль привязан к аккаунту",
+        title: "Профиль сохранён в аккаунте",
         description: auth.isAuthenticated
-          ? "Профиль уже связан с аккаунтом, но на этом устройстве ещё нужно обновить доступ к данным аккаунта. После входа или синхронизации можно вернуться к тренировке."
+          ? "Профиль уже сохранён в вашем аккаунте. Данные обновляются — скоро можно вернуться к тренировке."
           : auth.isConfigured
-            ? "Этот профиль уже связан с аккаунтом. Войдите, чтобы снова открыть его и продолжить работу с того места, где остановились."
-            : "Этот профиль уже связан с аккаунтом. Пока сервис аккаунтов готовится, можно продолжить работу с локальным профилем на этом устройстве."
+            ? "Этот профиль сохранён в аккаунте. Войдите, чтобы снова открыть его и продолжить с того места, где остановились."
+            : "Этот профиль сохранён в аккаунте. Пока регистрация ещё не доступна, можно продолжить с локальным профилем на этом устройстве."
       };
     }
 
@@ -345,20 +405,20 @@ export function ProfilesPage() {
       return {
         title: "Сначала нужен тренировочный профиль",
         description: auth.isAuthenticated
-          ? "Аккаунт уже подключён. Создайте первый профиль или импортируйте локальные профили, чтобы открыть тренировки и статистику."
+          ? "Аккаунт готов. Создайте первый профиль или перенесите локальные профили, чтобы открыть тренировки и статистику."
           : auth.isConfigured
-            ? "Для перехода в тренировки сначала создайте локальный профиль или войдите в аккаунт и подтяните сохранённые профили."
-            : "Для перехода в тренировки сначала создайте локальный профиль на этом устройстве."
+            ? "Для перехода к тренировкам сначала создайте локальный профиль или войдите в аккаунт и подтяните сохранённые профили."
+            : "Для перехода к тренировкам сначала создайте локальный профиль на этом устройстве."
       };
     }
 
     return {
       title: "Выберите активный профиль",
       description: auth.isAuthenticated
-        ? "На устройстве уже есть профили. Выберите один из них ниже, и приложение вернёт вас к тренировочному сценарию."
+        ? "На устройстве уже есть профили. Выберите один из них ниже, и приложение вернёт вас к тренировкам."
         : auth.isConfigured
-          ? "На устройстве уже есть локальные профили. Выберите один из них ниже или войдите в аккаунт, если нужен связанный профиль."
-          : "На устройстве уже есть локальные профили. Выберите один из них ниже и продолжайте работу локально."
+          ? "На устройстве уже есть локальные профили. Выберите один из них ниже или войдите в аккаунт, если нужен сохранённый профиль."
+          : "На устройстве уже есть локальные профили. Выберите один из них ниже и продолжайте работать локально."
     };
   }, [auth.isAuthenticated, auth.isConfigured, routeHint, users.length]);
 
@@ -411,7 +471,7 @@ export function ProfilesPage() {
 
       setStatus(
         auth.account?.id
-          ? `Профиль «${created.name}» создан внутри аккаунта и готов к синхронизации.`
+          ? `Профиль «${created.name}» создан и сохранён в аккаунте.`
           : `Локальный профиль «${created.name}» создан на этом устройстве.`
       );
     } catch (caught) {
@@ -479,7 +539,7 @@ export function ProfilesPage() {
     if (locked) {
       if (!auth.isConfigured) {
         setRouteHint("locked_profile");
-        setStatus("Этот профиль связан с аккаунтом. Пока сервис аккаунтов готовится, выберите локальный профиль или создайте новый.");
+        setStatus("Этот профиль сохранён в аккаунте. Выберите локальный профиль или создайте новый.");
         return;
       }
       setAuthReturnPath("/profiles", { preserveIfPresent: true });
@@ -497,7 +557,7 @@ export function ProfilesPage() {
   function handleUnlockProfile(): void {
     if (!auth.isConfigured) {
       setRouteHint("locked_profile");
-      setStatus("Профиль аккаунта станет доступен после финального подключения сервиса аккаунтов. Пока можно работать с локальным профилем.");
+      setStatus("Профиль сохранён в аккаунте и станет доступен после подключения. Пока можно работать с локальным профилем.");
       return;
     }
     setAuthReturnPath("/profiles", { preserveIfPresent: true });
@@ -526,7 +586,7 @@ export function ProfilesPage() {
           );
         } else {
           setActiveUserId(null);
-          setStatus("Вы вышли из аккаунта. Связанные профили снова откроются после входа.");
+          setStatus("Вы вышли из аккаунта. Сохранённые профили снова откроются после входа.");
         }
       } else {
         setStatus("Вы вышли из аккаунта.");
@@ -576,9 +636,98 @@ export function ProfilesPage() {
     }
   }
 
+  async function handleUpdateDisplayName(event: FormEvent) {
+    event.preventDefault();
+    if (!displayNameInput.trim()) {
+      setError("Имя не может быть пустым.");
+      return;
+    }
+
+    setUpdatingName(true);
+    setError(null);
+
+    try {
+      await auth.updateAccountProfile({ displayName: displayNameInput.trim() });
+      setStatus("Имя обновлено.");
+      setEditingDisplayName(false);
+    } catch (caught) {
+      console.error("display name update failed", caught);
+      setError(caught instanceof Error ? caught.message : "Не удалось обновить имя.");
+    } finally {
+      setUpdatingName(false);
+    }
+  }
+
+  function startEditingDisplayName() {
+    setDisplayNameInput(auth.account?.displayName ?? "");
+    setEditingDisplayName(true);
+  }
+
+  function cancelEditingDisplayName() {
+    setEditingDisplayName(false);
+    setDisplayNameInput("");
+  }
+
+  function startEditingEmail() {
+    setEmailInput(auth.account?.email ?? "");
+    setEditingEmail(true);
+  }
+
+  function cancelEditingEmail() {
+    setEditingEmail(false);
+    setEmailInput("");
+  }
+
+  async function handleUpdateEmail(event: FormEvent) {
+    event.preventDefault();
+    const nextEmail = emailInput.trim().toLowerCase();
+
+    if (!nextEmail) {
+      setError("Email не может быть пустым.");
+      return;
+    }
+
+    setUpdatingEmail(true);
+    setError(null);
+    setStatus(null);
+
+    try {
+      await auth.updateAccountProfile({ email: nextEmail });
+      setPendingEmailChange(nextEmail);
+      setStatus("Письмо для подтверждения нового адреса отправлено.");
+      setEditingEmail(false);
+    } catch (caught) {
+      console.error("email update failed", caught);
+      setError(caught instanceof Error ? caught.message : "Не удалось изменить email.");
+    } finally {
+      setUpdatingEmail(false);
+    }
+  }
+
+  async function handleRequestPasswordReset() {
+    if (!auth.account?.email) {
+      setError("Сначала добавьте email аккаунта.");
+      return;
+    }
+
+    setPasswordResetSending(true);
+    setError(null);
+    setStatus(null);
+
+    try {
+      await auth.requestPasswordReset(auth.account.email);
+      setStatus(`Письмо для смены пароля отправлено на ${auth.account.email}.`);
+    } catch (caught) {
+      console.error("password reset request failed", caught);
+      setError(caught instanceof Error ? caught.message : "Не удалось отправить письмо для смены пароля.");
+    } finally {
+      setPasswordResetSending(false);
+    }
+  }
+
   async function handleSyncNow() {
     if (!auth.isAuthenticated) {
-      setError("Сначала войдите в аккаунт, чтобы запустить синхронизацию.");
+      setError("Сначала войдите в аккаунт, чтобы обновить данные профилей.");
       return;
     }
 
@@ -589,10 +738,10 @@ export function ProfilesPage() {
     try {
       await auth.syncAccountData();
       await loadUsers();
-      setStatus("Синхронизация завершена. Данные профилей обновлены.");
+      setStatus("Данные профилей обновлены.");
     } catch (caught) {
       console.error("manual sync failed", caught);
-      setError(caught instanceof Error ? caught.message : "Не удалось выполнить синхронизацию.");
+      setError(caught instanceof Error ? caught.message : "Не удалось обновить данные.");
     } finally {
       setSyncing(false);
     }
@@ -600,16 +749,17 @@ export function ProfilesPage() {
 
   async function handleImportSelected() {
     if (!auth.account?.id || selectedImportIds.length === 0) {
-      setError("Выберите хотя бы один локальный профиль для импорта.");
+      setError("Выберите хотя бы один локальный профиль для сохранения.");
       return;
     }
 
-    setImporting(true);
+    setImportStatus("importing");
+    setImportResult(null);
     setError(null);
     setStatus(null);
 
     try {
-      const importedProfiles = await accountSyncService.importLocalGuestProfiles(
+      const result = await accountSyncService.importLocalGuestProfiles(
         auth.account.id,
         selectedImportIds
       );
@@ -617,8 +767,8 @@ export function ProfilesPage() {
       await auth.syncAccountData();
       await loadUsers();
 
-      const importedActiveProfile = importedProfiles.find((profile) => profile.id === activeUserId);
-      const firstImportedProfile = importedProfiles[0] ?? null;
+      const importedActiveProfile = result.imported.find((profile) => profile.id === activeUserId);
+      const firstImportedProfile = result.imported[0] ?? null;
 
       if (!importedActiveProfile && firstImportedProfile && !activeUserId) {
         setActiveUserId(firstImportedProfile.id);
@@ -626,21 +776,53 @@ export function ProfilesPage() {
       }
 
       setRouteHint(null);
-      dismissImportPrompt();
-      setStatus(
-        importedProfiles.length > 0
-          ? `Импорт завершён: ${importedProfiles.length} профилей привязано к аккаунту.`
-          : "Локальные профили для импорта не найдены."
-      );
+      setImportResult({ imported: result.imported.length, errors: result.errors.length });
+      setImportStatus(result.imported.length > 0 ? "success" : "error");
+
+      if (result.imported.length > 0 && result.errors.length === 0) {
+        setStatus(`Готово: ${result.imported.length} профилей сохранено в аккаунте.`);
+      } else if (result.imported.length > 0) {
+        setStatus(`Сохранено ${result.imported.length} профилей. ${result.errors.length} не удалось.`);
+      } else {
+        setError("Не удалось сохранить профили. Попробуйте ещё раз.");
+      }
     } catch (caught) {
       console.error("profile import failed", caught);
+      setImportStatus("error");
       setError(
         caught instanceof Error
           ? caught.message
-          : "Не удалось импортировать локальные профили."
+          : "Не удалось сохранить локальные профили."
       );
-    } finally {
-      setImporting(false);
+    }
+  }
+
+  function resetImportWizard() {
+    setImportStatus("idle");
+    setImportResult(null);
+    setSelectedImportIds(guestProfilesToImport.map((p) => p.id));
+  }
+
+  async function handleSyncProfile(user: User) {
+    if (!auth.isAuthenticated) {
+      setError("Сначала войдите в аккаунт.");
+      return;
+    }
+    if (!user.accountId) {
+      setError("Профиль не сохранён в аккаунте.");
+      return;
+    }
+
+    setError(null);
+    setStatus(null);
+
+    try {
+      await accountSyncService.syncLinkedProfile(user.id, user.accountId);
+      await loadUsers();
+      setStatus(`Профиль «${user.name}» сохранён в аккаунте.`);
+    } catch (caught) {
+      console.error("profile sync retry failed", caught);
+      setError(caught instanceof Error ? caught.message : "Не удалось сохранить профиль.");
     }
   }
 
@@ -674,7 +856,7 @@ export function ProfilesPage() {
       <div className="profiles-page-head">
         <div>
           <h2>Профили и аккаунт</h2>
-          <p>Здесь собраны локальные профили, аккаунт NeuroSprint и перенос прогресса между устройствами.</p>
+          <p>Создавайте тренировочные профили, сохраняйте прогресс и переключайтесь между устройствами.</p>
         </div>
       </div>
 
@@ -743,7 +925,7 @@ export function ProfilesPage() {
       <section className="account-status-card" data-testid="account-status-card">
         <div className="account-status-card-head">
           <div>
-            <p className="account-status-kicker">Аккаунт и синхронизация</p>
+            <p className="account-status-kicker">Аккаунт</p>
             <h3>{auth.account?.displayName || auth.account?.email || accountStatusLabel}</h3>
             <p>{accountNextStepHint}</p>
           </div>
@@ -753,20 +935,116 @@ export function ProfilesPage() {
         </div>
 
         <div className="account-status-grid">
+          {auth.isAuthenticated ? (
+            <>
+              {editingDisplayName ? (
+                <div className="account-status-metric account-status-metric-wide">
+                  <form className="inline-edit-form" onSubmit={handleUpdateDisplayName}>
+                    <input
+                      type="text"
+                      value={displayNameInput}
+                      onChange={(e) => setDisplayNameInput(e.target.value)}
+                      placeholder="Ваше имя"
+                      maxLength={64}
+                      autoFocus
+                      data-testid="display-name-input"
+                    />
+                    <div className="inline-edit-actions">
+                      <button
+                        type="submit"
+                        className="btn-tiny-primary"
+                        disabled={updatingName || !displayNameInput.trim()}
+                      >
+                        {updatingName ? "..." : "Сохранить"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-tiny-ghost"
+                        onClick={cancelEditingDisplayName}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className="account-status-metric">
+                  <span className="account-status-metric-label">Имя</span>
+                  <strong>{auth.account?.displayName ?? "Не задано"}</strong>
+                  <button
+                    type="button"
+                    className="btn-inline-edit"
+                    onClick={startEditingDisplayName}
+                    title="Изменить имя"
+                    data-testid="edit-display-name-btn"
+                  >
+                    Изменить
+                  </button>
+                </div>
+              )}
+              {editingEmail ? (
+                <div className="account-status-metric account-status-metric-wide">
+                  <form className="inline-edit-form" onSubmit={handleUpdateEmail}>
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(event) => setEmailInput(event.target.value)}
+                      placeholder="name@example.com"
+                      maxLength={160}
+                      autoFocus
+                      data-testid="email-input"
+                    />
+                    <div className="inline-edit-actions">
+                      <button
+                        type="submit"
+                        className="btn-tiny-primary"
+                        disabled={updatingEmail || !emailInput.trim()}
+                      >
+                        {updatingEmail ? "..." : "Сменить почту"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-tiny-ghost"
+                        onClick={cancelEditingEmail}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </form>
+                  <p className="inline-edit-hint">
+                    Мы отправим подтверждение на новый адрес. Смена почты завершится после перехода по письму.
+                  </p>
+                </div>
+              ) : (
+                <div className="account-status-metric">
+                  <span className="account-status-metric-label">Email</span>
+                  <strong>{auth.account?.email ?? "—"}</strong>
+                  <button
+                    type="button"
+                    className="btn-inline-edit"
+                    onClick={startEditingEmail}
+                    title="Изменить email"
+                    data-testid="edit-email-btn"
+                  >
+                    Изменить
+                  </button>
+                </div>
+              )}
+              <div className="account-status-metric">
+                <span className="account-status-metric-label">Профили в аккаунте</span>
+                <strong>{linkedProfiles.length}</strong>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="account-status-metric">
+                <span className="account-status-metric-label">Локальные профили</span>
+                <strong>{guestProfiles.length}</strong>
+              </div>
+            </>
+          )}
           <div className="account-status-metric">
-            <span className="account-status-metric-label">Аккаунт</span>
-            <strong>{auth.account?.email ?? (auth.isConfigured ? "Не подключён" : "Скоро доступен")}</strong>
-          </div>
-          <div className="account-status-metric">
-            <span className="account-status-metric-label">Профили в аккаунте</span>
-            <strong>{linkedProfiles.length}</strong>
-          </div>
-          <div className="account-status-metric">
-            <span className="account-status-metric-label">Локальные профили</span>
-            <strong>{guestProfiles.length}</strong>
-          </div>
-          <div className="account-status-metric">
-            <span className="account-status-metric-label">Ждут синхронизации</span>
+            <span className="account-status-metric-label">Ждут сохранения</span>
             <strong>{syncCounts.pending}</strong>
           </div>
         </div>
@@ -784,7 +1062,15 @@ export function ProfilesPage() {
                 onClick={() => void handleSyncNow()}
                 disabled={syncing || auth.isLoading}
               >
-                {syncing || auth.syncInProgress ? "Синхронизируем..." : "Синхронизировать сейчас"}
+                {syncing || auth.syncInProgress ? "Обновляем..." : "Обновить данные"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => void handleRequestPasswordReset()}
+                disabled={passwordResetSending || !auth.account?.email}
+              >
+                {passwordResetSending ? "Отправляем письмо..." : "Сменить пароль"}
               </button>
               <button type="button" className="btn-ghost" onClick={() => void handleLogout()}>
                 Выйти
@@ -814,9 +1100,15 @@ export function ProfilesPage() {
           <p className="status-line error">{auth.syncError}</p>
         ) : null}
 
+        {pendingEmailChange ? (
+          <p className="status-line">
+            Новый адрес <strong>{pendingEmailChange}</strong> ждёт подтверждения. Проверьте почту и завершите смену email.
+          </p>
+        ) : null}
+
         {lockedLinkedProfilesCount > 0 && !auth.isAuthenticated ? (
           <p className="status-line">
-            На устройстве найдено {lockedLinkedProfilesCount} профилей, связанных с аккаунтом.
+            На этом устройстве найдено {lockedLinkedProfilesCount} профилей, сохранённых в аккаунте.
             Они снова станут доступны после входа.
           </p>
         ) : null}
@@ -824,82 +1116,117 @@ export function ProfilesPage() {
 
       {auth.isAuthenticated && guestProfilesToImport.length > 0 && !importPromptDismissed ? (
         <section className="account-import-banner account-import-wizard" data-testid="account-import-banner">
-          <div className="account-import-wizard-head">
-            <div>
-              <p className="account-status-kicker">Шаг после входа</p>
-              <h3>Импорт локальных профилей</h3>
-              <p>
-                На этом устройстве найдены локальные профили. Выберите, какие из них
-                нужно привязать к аккаунту и сохранить в облаке.
-              </p>
-            </div>
-            <span className="account-status-chip is-online">
-              Выбрано: {selectedImportProfiles.length}
-            </span>
-          </div>
+          {importStatus === "idle" && (
+            <>
+              <div className="account-import-wizard-head">
+                <div>
+                  <p className="account-status-kicker">Шаг после входа</p>
+                  <h3>Перенести локальные профили в аккаунт</h3>
+                  <p>
+                    На этом устройстве найдены локальные профили. Выберите, какие из них
+                    нужно сохранить в аккаунте.
+                  </p>
+                </div>
+                <span className="account-status-chip is-online">
+                  Выбрано: {selectedImportProfiles.length}
+                </span>
+              </div>
 
-          <div className="account-import-steps">
-            <article className="account-import-step">
-              <strong>1. Что найдём</strong>
-              <p>{guestProfilesToImport.length} локальных профилей на этом устройстве.</p>
-            </article>
-            <article className="account-import-step">
-              <strong>2. Что перенесём</strong>
-              <p>Профили, историю тренировок, уровни, достижения и ежедневный прогресс.</p>
-            </article>
-            <article className="account-import-step">
-              <strong>3. Что останется</strong>
-              <p>Локальные данные не удаляются. После импорта они станут профилями аккаунта.</p>
-            </article>
-          </div>
+              <div className="account-import-steps">
+                <article className="account-import-step">
+                  <strong>1. Что найдём</strong>
+                  <p>{guestProfilesToImport.length} локальных профилей на этом устройстве.</p>
+                </article>
+                <article className="account-import-step">
+                  <strong>2. Что перенесём</strong>
+                  <p>Профили, историю тренировок, уровни, достижения и ежедневный прогресс.</p>
+                </article>
+                <article className="account-import-step">
+                  <strong>3. Что останется</strong>
+                  <p>Локальные данные не удаляются. После переноса они станут профилями аккаунта.</p>
+                </article>
+              </div>
 
-          <div className="account-import-list" data-testid="account-import-list">
-            {guestProfilesToImport.map((profile) => {
-              const isSelected = selectedImportIds.includes(profile.id);
-              return (
+              <div className="account-import-list" data-testid="account-import-list">
+                {guestProfilesToImport.map((profile) => {
+                  const isSelected = selectedImportIds.includes(profile.id);
+                  return (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      className={`account-import-item${isSelected ? " is-selected" : ""}`}
+                      onClick={() => toggleImportSelection(profile.id)}
+                    >
+                      <span className="account-import-item-avatar">{getUserAvatar(profile)}</span>
+                      <span className="account-import-item-copy">
+                        <strong>{profile.name}</strong>
+                        <span>
+                          {appRoleLabel(normalizeUserRole(profile.role))} · {profile.totalSessions ?? 0} сессий
+                        </span>
+                      </span>
+                      <span className="account-import-item-check">
+                        {isSelected ? "Выбрано" : "Выбрать"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <ImportActions
+                importStatus={importStatus as "idle" | "importing"}
+                selectedImportIds={selectedImportIds}
+                allImportProfilesSelected={allImportProfilesSelected}
+                onToggleSelectAll={toggleSelectAllImportProfiles}
+                onImport={() => void handleImportSelected()}
+                onDismiss={dismissImportPrompt}
+              />
+            </>
+          )}
+
+          {importStatus === "success" && importResult && (
+            <div className="account-import-result">
+              <div className="account-import-result-head">
+                <h3>✅ Готово</h3>
+                <p>
+                  {importResult.imported} профилей сохранено в аккаунте.
+                  {importResult.errors > 0 && ` ${importResult.errors} не удалось.`}
+                </p>
+              </div>
+              <div className="account-import-actions">
                 <button
-                  key={profile.id}
                   type="button"
-                  className={`account-import-item${isSelected ? " is-selected" : ""}`}
-                  onClick={() => toggleImportSelection(profile.id)}
+                  className="btn-primary"
+                  onClick={() => {
+                    dismissImportPrompt();
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                 >
-                  <span className="account-import-item-avatar">{getUserAvatar(profile)}</span>
-                  <span className="account-import-item-copy">
-                    <strong>{profile.name}</strong>
-                    <span>
-                      {appRoleLabel(normalizeUserRole(profile.role))} · {profile.totalSessions ?? 0} сессий
-                    </span>
-                  </span>
-                  <span className="account-import-item-check">
-                    {isSelected ? "Выбрано" : "Выбрать"}
-                  </span>
+                  Продолжить
                 </button>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+          )}
 
-          <div className="account-import-actions">
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={toggleSelectAllImportProfiles}
-            >
-              {allImportProfilesSelected ? "Снять выделение" : "Выбрать все"}
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void handleImportSelected()}
-              disabled={importing || selectedImportIds.length === 0}
-            >
-              {importing
-                ? "Импортируем..."
-                : `Импортировать выбранные (${selectedImportIds.length})`}
-            </button>
-            <button type="button" className="btn-ghost" onClick={dismissImportPrompt}>
-              Позже
-            </button>
-          </div>
+          {importStatus === "error" && (
+            <div className="account-import-result account-import-error">
+              <div className="account-import-result-head">
+                <h3>Не удалось сохранить профили</h3>
+                <p>Проверьте подключение к интернету и попробуйте ещё раз.</p>
+              </div>
+              <div className="account-import-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={resetImportWizard}
+                >
+                  Попробовать ещё раз
+                </button>
+                <button type="button" className="btn-ghost" onClick={dismissImportPrompt}>
+                  Пропустить
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -910,6 +1237,15 @@ export function ProfilesPage() {
         </p>
       ) : null}
 
+      {/* Разделитель: конец блока аккаунта, начало тренировочных профилей */}
+      <section className="profiles-section-divider" id="training-profiles-section">
+        <h3>Тренировочные профили</h3>
+        <p>
+          Каждый профиль — это отдельный набор прогресса, настроек и истории тренировок.
+          Можно создать несколько профилей для разных целей или членов семьи.
+        </p>
+      </section>
+
       <section className="profiles-section" id="profile-create-section">
         <div className="profiles-section-head">
           <div>
@@ -917,8 +1253,8 @@ export function ProfilesPage() {
             <h3>Создать тренировочный профиль</h3>
             <p>
               {auth.isAuthenticated
-                ? "Новый профиль сразу появится в аккаунте и будет доступен для синхронизации."
-                : "Пока это будет локальный профиль на этом устройстве. Его можно привязать к аккаунту позже."}
+                ? "Новый профиль сразу появится в аккаунте и будет доступен на всех устройствах."
+                : "Пока это будет локальный профиль на этом устройстве. Его можно сохранить в аккаунте позже."}
             </p>
           </div>
         </div>
@@ -1099,6 +1435,7 @@ export function ProfilesPage() {
               onTrain={handleTrain}
               onUnlock={handleUnlockProfile}
               onUpdateRole={handleSaveRole}
+              onSyncRetry={handleSyncProfile}
               avatar={getUserAvatar(user)}
               ownershipKind={user.ownershipKind}
               syncState={user.syncState}
@@ -1118,9 +1455,9 @@ export function ProfilesPage() {
           <p>
             {users.length === 0
               ? auth.isAuthenticated
-                ? "Создайте первый профиль в аккаунте или импортируйте локальные профили с этого устройства."
+                ? "Создайте первый профиль в аккаунте или перенесите локальные профили с этого устройства."
                 : auth.isConfigured
-                  ? "Создайте локальный профиль выше или войдите в аккаунт, чтобы подтянуть сохранённые профили."
+                  ? "Создайте локальный профиль выше или войдите в аккаунт, чтобы загрузить сохранённые профили."
                   : "Создайте локальный профиль выше и начните работать на этом устройстве."
               : searchQuery.trim()
                 ? "Попробуйте очистить поисковый запрос или выбрать другой фильтр."
@@ -1133,11 +1470,11 @@ export function ProfilesPage() {
       filteredLockedProfilesCount === filteredUsers.length &&
       !auth.isAuthenticated ? (
         <section className="profiles-empty-state profiles-empty-state-warning">
-          <strong>Все найденные профили связаны с аккаунтом.</strong>
+          <strong>Все найденные профили сохранены в аккаунте.</strong>
           <p>
             {auth.isConfigured
-              ? "Войдите в аккаунт, чтобы снова открыть эти профили на устройстве, или создайте отдельный локальный профиль для быстрого старта без входа."
-              : "Пока сервис аккаунтов готовится, создайте отдельный локальный профиль для быстрого старта без входа."}
+              ? "Войдите в аккаунт, чтобы открыть эти профили на устройстве, или создайте отдельный локальный профиль для быстрого старта без входа."
+              : "Пока регистрация ещё не доступна, создайте отдельный локальный профиль для быстрого старта без входа."}
           </p>
           <div className="account-status-actions">
             {auth.isConfigured ? (
@@ -1186,8 +1523,8 @@ export function ProfilesPage() {
         <div className="profiles-auth-hint">
           <p>
             {auth.isConfigured
-              ? "Гостевые профили работают без регистрации, но не синхронизируются между устройствами. Аккаунт нужен для сохранения прогресса и восстановления доступа."
-              : "Сейчас доступен локальный режим. Регистрация и синхронизация включатся после подключения сервиса аккаунтов."}
+              ? "Локальные профили работают без регистрации, но не сохраняются на других устройствах. Аккаунт нужен для сохранения прогресса и восстановления доступа."
+              : "Сейчас доступен локальный режим. Регистрация и сохранение прогресса включатся после подключения сервиса аккаунтов."}
           </p>
           {auth.isConfigured ? (
             <div className="account-status-actions">

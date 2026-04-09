@@ -28,9 +28,9 @@ const OWNERSHIP_LABELS: Record<ProfileOwnershipKind, string> = {
 
 const SYNC_LABELS: Record<ProfileSyncState, string> = {
   local: "Только на этом устройстве",
-  pending: "Ожидает синхронизации",
-  synced: "Синхронизирован",
-  error: "Ошибка синхронизации"
+  pending: "Ждёт сохранения",
+  synced: "Сохранено в аккаунте",
+  error: "Не удалось сохранить"
 };
 
 export const AVATAR_EMOJIS = [
@@ -69,6 +69,7 @@ interface ProfileCardProps {
   onTrain?: (user: User) => void;
   onUnlock?: () => void;
   onUpdateRole: (user: User, role: AppRole) => void;
+  onSyncRetry?: (user: User) => void;
   avatar?: string;
   editableRoles?: AppRole[];
 }
@@ -88,6 +89,7 @@ export function ProfileCard({
   onRename,
   onDelete,
   onTrain,
+  onSyncRetry,
   onUnlock,
   onUpdateRole,
   avatar = user.avatarEmoji ?? "👤",
@@ -138,6 +140,16 @@ export function ProfileCard({
               <span className={`profile-card-badge is-sync-${syncState}`}>
                 {SYNC_LABELS[syncState]}
               </span>
+              {syncState === "error" && onSyncRetry ? (
+                <button
+                  type="button"
+                  className="profile-card-badge is-sync-retry"
+                  onClick={() => onSyncRetry(user)}
+                  title="Повторить сохранение"
+                >
+                  Повторить
+                </button>
+              ) : null}
               {isLocked ? (
                 <span className="profile-card-badge is-locked">Нужен вход в аккаунт</span>
               ) : null}

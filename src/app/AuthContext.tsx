@@ -36,12 +36,70 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (payload: { email: string; password: string; displayName?: string }) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
+  updateAccountProfile: (payload: { displayName?: string; email?: string }) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   syncAccountData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+const RECOVERY_PARAM_KEYS = [
+  "type",
+  "token",
+  "token_hash",
+  "access_token",
+  "refresh_token",
+  "code"
+] as const;
+
+function hasRecoveryParamsInUrl(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  const hashParams = new URLSearchParams(hash);
+  const isRecoveryType =
+    searchParams.get("type") === "recovery" || hashParams.get("type") === "recovery";
+
+  return (
+    isRecoveryType ||
+    RECOVERY_PARAM_KEYS.some((key) => searchParams.has(key) || hashParams.has(key))
+  );
+}
+
+function clearRecoveryParamsFromUrl(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  let changed = false;
+
+  for (const key of RECOVERY_PARAM_KEYS) {
+    if (url.searchParams.has(key)) {
+      url.searchParams.delete(key);
+      changed = true;
+    }
+  }
+
+  if (window.location.hash) {
+    changed = true;
+  }
+
+  if (!changed) {
+    return;
+  }
+
+  const nextSearch = url.searchParams.toString();
+  const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
+  window.history.replaceState({}, document.title, nextUrl);
+}
 
 function mapAccount(authUser: SupabaseAuthUser | null): AccountProfile | null {
   if (!authUser) {
@@ -63,7 +121,7 @@ function mapAccount(authUser: SupabaseAuthUser | null): AccountProfile | null {
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(() => hasRecoveryParamsInUrl());
   const [syncInProgress, setSyncInProgress] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -74,16 +132,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     let active = true;
+
     void supabase.auth
       .getSession()
       .then(({ data, error }) => {
         if (!active) {
           return;
         }
+
         if (error) {
           console.error("auth session bootstrap failed", error);
         }
+
         setSession(data.session ?? null);
+        setIsRecoveryMode(hasRecoveryParamsInUrl());
         setIsLoading(false);
       })
       .catch((error) => {
@@ -95,7 +157,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession ?? null);
-      setIsRecoveryMode(event === "PASSWORD_RECOVERY");
+      setIsRecoveryMode(event === "PASSWORD_RECOVERY" || hasRecoveryParamsInUrl());
       setIsLoading(false);
     });
 
@@ -112,13 +174,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     setSyncInProgress(true);
     setSyncError(null);
+
     try {
       await accountSyncService.ensureAccountRecord(session.user);
       await accountSyncService.pullAccountState(session.user.id);
       await accountSyncService.syncAllLinkedProfiles(session.user.id);
     } catch (error) {
       console.error("account sync failed", error);
-      setSyncError(toAuthUiError(error, "Не удалось синхронизировать аккаунт."));
+      setSyncError(toAuthUiError(error, "Не удалось обновить данные аккаунта."));
     } finally {
       setSyncInProgress(false);
     }
@@ -134,10 +197,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const login = useCallback(async (email: string, password: string) => {
     const client = requireSupabaseClient();
-    const { data, error } = await client.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
 
     if (error) {
       throw new Error(toAuthUiError(error, "Не удалось выполнить вход."));
@@ -173,6 +233,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const logout = useCallback(async () => {
     const client = requireSupabaseClient();
     const { error } = await client.auth.signOut();
+
     if (error) {
       throw new Error(toAuthUiError(error, "Не удалось выйти из аккаунта."));
     }
@@ -182,6 +243,68 @@ export function AuthProvider({ children }: PropsWithChildren) {
     trackLogoutSucceeded();
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    throw new Error(
+      "Удаление аккаунта через сайт пока недоступно. Напишите в поддержку — поможем удалить аккаунт вручную."
+    );
+  }, []);
+
+  const updateAccountProfile = useCallback(
+    async (payload: { displayName?: string; email?: string }) => {
+      const client = requireSupabaseClient();
+      const nextDisplayName = payload.displayName?.trim();
+      const nextEmail = payload.email?.trim().toLowerCase();
+      const currentEmail = session?.user?.email?.trim().toLowerCase();
+
+      if (!nextDisplayName && !nextEmail) {
+        return;
+      }
+
+      const updatePayload: {
+        email?: string;
+        data?: {
+          display_name: string | null;
+        };
+      } = {};
+
+      if (typeof payload.displayName !== "undefined") {
+        updatePayload.data = {
+          display_name: nextDisplayName ?? null
+        };
+      }
+
+      if (nextEmail && nextEmail !== currentEmail) {
+        updatePayload.email = nextEmail;
+      }
+
+      const { data, error } = await client.auth.updateUser(updatePayload);
+
+      if (error) {
+        throw new Error(toAuthUiError(error, "Не удалось обновить данные аккаунта."));
+      }
+
+      if (session?.user) {
+        const authUser = data.user ?? session.user;
+        const { error: dbError } = await client.from("accounts").upsert({
+          id: authUser.id,
+          email: authUser.email ?? null,
+          display_name:
+            typeof authUser.user_metadata?.display_name === "string"
+              ? authUser.user_metadata.display_name
+              : nextDisplayName ?? null
+        });
+
+        if (dbError) {
+          console.warn("Failed to update public.accounts:", dbError);
+        }
+      }
+
+      const { data: refreshedSession } = await client.auth.getSession();
+      setSession(refreshedSession.session ?? session);
+    },
+    [session]
+  );
+
   const requestPasswordReset = useCallback(async (email: string) => {
     const client = requireSupabaseClient();
     const redirectTo =
@@ -190,10 +313,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         : undefined;
 
     const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
+
     if (error) {
-      throw new Error(
-        toAuthUiError(error, "Не удалось отправить письмо для сброса пароля.")
-      );
+      throw new Error(toAuthUiError(error, "Не удалось отправить письмо для сброса пароля."));
     }
 
     trackPasswordResetRequested();
@@ -202,10 +324,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const updatePassword = useCallback(async (password: string) => {
     const client = requireSupabaseClient();
     const { error } = await client.auth.updateUser({ password });
+
     if (error) {
       throw new Error(toAuthUiError(error, "Не удалось обновить пароль."));
     }
 
+    clearRecoveryParamsFromUrl();
     setIsRecoveryMode(false);
   }, []);
 
@@ -222,11 +346,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       register,
       logout,
+      deleteAccount,
+      updateAccountProfile,
       requestPasswordReset,
       updatePassword,
       syncAccountData
     }),
     [
+      deleteAccount,
       isLoading,
       isRecoveryMode,
       login,
@@ -237,6 +364,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       syncAccountData,
       syncError,
       syncInProgress,
+      updateAccountProfile,
       updatePassword
     ]
   );
@@ -245,9 +373,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
 }
 
 export function useAuthContext(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuthContext must be used within AuthProvider");
+  const value = useContext(AuthContext);
+  if (!value) {
+    throw new Error("AuthContext is not available");
   }
-  return context;
+  return value;
 }

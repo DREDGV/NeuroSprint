@@ -1,7 +1,7 @@
 {
   "name": "neurosprint",
   "private": true,
-  "version": "0.7.0-dev.3",
+  "version": "0.7.0-dev.5",
   "type": "module",
   "scripts": {
     "dev": "vite",

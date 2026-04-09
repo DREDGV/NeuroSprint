@@ -14,7 +14,6 @@ import { hasLevelUpCelebrated, markLevelUpCelebrated } from "../shared/lib/progr
 import { getSettings } from "../shared/lib/settings/settings";
 import { buildSkillGuidance } from "../shared/lib/training/skillGuidance";
 import { buildSkillRoadmap } from "../shared/lib/training/skillRoadmap";
-import { trackGuestStarted } from "../shared/lib/analytics/siteAnalytics";
 import { CelebrationModal } from "../shared/ui/ConfettiCelebration";
 import { DailyTrainingWidget } from "../widgets/DailyTrainingWidget";
 import { LevelProgressWidget } from "../widgets/LevelProgressWidget";
@@ -344,27 +343,19 @@ export function HomePage() {
       {!activeUserId ? (
         <section className="home-entry-banner" data-testid="home-entry-banner">
           <div className="home-entry-copy">
-            <p className="stats-section-kicker">Следующий шаг</p>
-            <h2>{auth.isAuthenticated ? "Аккаунт подключён, осталось выбрать профиль" : "Сначала откройте профили"}</h2>
-            <p>
-              {auth.isAuthenticated
-                ? "Во вкладке «Профили» можно выбрать профиль аккаунта, импортировать локальные профили с устройства или создать новый профиль в аккаунте."
-                : "Вкладка «Профили» теперь главный центр входа: там можно создать локальный профиль, зарегистрироваться, войти и позже синхронизировать прогресс между устройствами."}
-            </p>
+            <p className="stats-section-kicker">Добро пожаловать в NeuroSprint</p>
+            <h2>{auth.isAuthenticated ? "Аккаунт подключён, осталось выбрать профиль" : "Сначала откройте профили и аккаунт"}</h2>
+            <p>{auth.isAuthenticated ? "Выберите профиль аккаунта, импортируйте локальные профили или создайте новый. Все действия по аккаунту и профилям собраны в одном месте." : "На следующем экране можно либо продолжить локально на этом устройстве, либо войти в аккаунт и хранить прогресс между устройствами."}</p>
             <div className="home-entry-facts" aria-hidden="true">
               <span className="home-entry-fact">{entryAccountLabel}</span>
               <span className="home-entry-fact">{entryProfileLabel}</span>
             </div>
           </div>
-          <div className="home-entry-actions">
+          <div className="home-entry-actions" data-testid="home-entry-actions">
             <Link
               className="btn-primary"
               to="/profiles"
-              onClick={() => {
-                if (!auth.isAuthenticated) {
-                  trackGuestStarted();
-                }
-              }}
+              data-testid="home-entry-open-profiles"
             >
               {auth.isAuthenticated ? "Выбрать профиль" : "Открыть профили и аккаунт"}
             </Link>
@@ -572,7 +563,7 @@ export function HomePage() {
                   </div>
 
                   <div className="home-skill-mini-score-row">
-                    <strong>{axis.score}</strong>
+                    <strong>{axis.isProvisional ? "—" : axis.score}</strong>
                     <span>{"\u0443\u0440."} {axis.level}</span>
                   </div>
 
@@ -680,6 +671,29 @@ export function HomePage() {
                 </div>
               </Link>
             </div>
+          </div>
+        </section>
+
+        <section className="home-project-note" data-testid="home-project-note">
+          <div className="home-project-note-copy">
+            <p className="stats-section-kicker">Статус проекта</p>
+            <h2 className="section-title">NeuroSprint ещё развивается</h2>
+            <p className="more-options-note">
+              Проект уже открыт для пользователей и подходит для регулярных тренировок.
+            </p>
+            <p className="home-project-note-detail">
+              Мы продолжаем улучшать интерфейс и механику модулей, поэтому иногда могут встречаться
+              баги, шероховатости и небольшие изменения поведения между dev-обновлениями.
+            </p>
+          </div>
+
+          <div className="home-project-note-contacts">
+            <span className="home-project-note-label">Обратная связь</span>
+            <p className="home-project-note-contact-copy">
+              Если заметили ошибку или хотите предложить улучшение, напишите нам:
+            </p>
+            <a href="mailto:dr-edgv@yandex.ru">dr-edgv@yandex.ru</a>
+            <a href="mailto:edgvaud@gmail.com">edgvaud@gmail.com</a>
           </div>
         </section>
       </div>

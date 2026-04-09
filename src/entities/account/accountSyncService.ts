@@ -263,9 +263,12 @@ export const accountSyncService = {
     }
   },
 
-  async importLocalGuestProfiles(accountId: string, profileIds?: string[]): Promise<User[]> {
+  async importLocalGuestProfiles(
+    accountId: string,
+    profileIds?: string[]
+  ): Promise<{ imported: User[]; errors: { profileId: string; message: string }[] }> {
     if (!ensureConfigured()) {
-      return [];
+      return { imported: [], errors: [] };
     }
 
     const profiles = await userRepository.listImportableGuestProfiles();
@@ -274,20 +277,42 @@ export const accountSyncService = {
       : profiles;
 
     if (selectedProfiles.length === 0) {
-      return [];
+      return { imported: [], errors: [] };
     }
 
     trackImportStarted(selectedProfiles.length);
     const importedProfiles: User[] = [];
+    const errors: { profileId: string; message: string }[] = [];
 
     for (const profile of selectedProfiles) {
-      const linked = await userRepository.linkToAccount(profile.id, accountId);
-      if (!linked) {
-        continue;
-      }
+      try {
+        // Защита от race condition: проверяем что профиль всё ещё guest и без accountId
+        const currentProfile = await userRepository.getById(profile.id);
+        if (!currentProfile || currentProfile.accountId) {
+          continue; // уже привязан — пропускаем без ошибки
+        }
 
-      await this.syncLinkedProfile(linked.id, accountId);
-      importedProfiles.push(linked);
+        const linked = await userRepository.linkToAccount(profile.id, accountId);
+        if (!linked) {
+          errors.push({ profileId: profile.id, message: "Профиль не найден" });
+          continue;
+        }
+
+        try {
+          await this.syncLinkedProfile(linked.id, accountId);
+        } catch (syncError) {
+          // Ошибка синхронизации не блокирует импорт — профиль уже привязан локально
+          console.warn(`Profile ${linked.id} linked but sync failed:`, syncError);
+        }
+
+        importedProfiles.push(linked);
+      } catch (error) {
+        console.error(`Failed to import profile ${profile.id}:`, error);
+        errors.push({
+          profileId: profile.id,
+          message: error instanceof Error ? error.message : "Неизвестная ошибка"
+        });
+      }
     }
 
     if (importedProfiles.length > 0) {
@@ -297,7 +322,7 @@ export const accountSyncService = {
       });
     }
 
-    return importedProfiles;
+    return { imported: importedProfiles, errors };
   },
 
   async pullAccountState(accountId: string): Promise<User[]> {
