@@ -11,6 +11,7 @@ import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
 import type { AppRole } from "../shared/types/domain";
 import { MainNav } from "./MainNav";
 import { PwaStatusBar } from "./PwaStatusBar";
+import { FeedbackModal } from "../shared/ui/FeedbackModal";
 
 function roleIcon(role: AppRole): string {
   if (role === "admin") {
@@ -32,6 +33,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const appRole = useAppRole();
   const featureFlags = useFeatureFlags();
   const [wordmarkMissing, setWordmarkMissing] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => {
     if (!activeUserRole) {
@@ -41,7 +43,7 @@ export function AppShell({ children }: PropsWithChildren) {
   }, [activeUserRole]);
 
   const accountLabel = !auth.isConfigured
-    ? "Облачный аккаунт не настроен"
+    ? "Облачный аккаунт пока не настроен"
     : auth.isAuthenticated
       ? auth.account?.email ?? "Аккаунт подключён"
       : "Гостевой режим";
@@ -108,7 +110,7 @@ export function AppShell({ children }: PropsWithChildren) {
               <span className="account-banner-pill is-syncing">Синхронизация…</span>
             ) : null}
             {auth.syncError && auth.isConfigured ? (
-              <span className="account-banner-pill is-warning">Проверьте sync</span>
+              <span className="account-banner-pill is-warning">Проверьте обновление данных</span>
             ) : null}
           </div>
         </div>
@@ -117,11 +119,17 @@ export function AppShell({ children }: PropsWithChildren) {
           <NavLink to="/profiles" className="header-action-link">
             Профили и аккаунт
           </NavLink>
-          {!auth.isAuthenticated && auth.isConfigured ? (
-            <NavLink to="/auth/login" className="header-action-link is-primary">
-              Войти
-            </NavLink>
-          ) : null}
+          <button
+            type="button"
+            className="header-action-link feedback-trigger-btn"
+            onClick={() => setFeedbackOpen(true)}
+            title="Отправить отзыв"
+          >
+            Отзыв
+          </button>
+          <NavLink to="/ideas" className="header-action-link" title="Доска идей">
+            Идеи
+          </NavLink>
           <NavLink
             to="/help"
             className="help-button"
@@ -136,6 +144,13 @@ export function AppShell({ children }: PropsWithChildren) {
       <PwaStatusBar />
       <MainNav />
       <main className="app-content">{children}</main>
+
+      {feedbackOpen && (
+        <FeedbackModal
+          onClose={() => setFeedbackOpen(false)}
+          surface="global_form"
+        />
+      )}
     </div>
   );
 }

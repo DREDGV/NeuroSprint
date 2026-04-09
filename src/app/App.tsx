@@ -26,6 +26,11 @@ const ForgotPasswordPage = lazy(() =>
     default: module.ForgotPasswordPage
   }))
 );
+const IdeasPage = lazy(() =>
+  import("../pages/IdeasPage").then((module) => ({
+    default: module.IdeasPage
+  }))
+);
 const TrainingHubPage = lazy(() =>
   import("../pages/TrainingHubPage").then((module) => ({
     default: module.TrainingHubPage
@@ -172,6 +177,7 @@ export function App() {
                 <Route path="/auth/login" element={<LoginPage />} />
                 <Route path="/auth/register" element={<RegisterPage />} />
                 <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/ideas" element={<IdeasPage />} />
               <Route
                 path="/training"
                 element={

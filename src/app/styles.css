@@ -7751,6 +7751,97 @@ textarea:focus-visible {
   padding: 20px 22px 18px;
 }
 
+.home-project-note {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 20px;
+  padding: 20px 22px;
+  border-radius: 20px;
+  border: 1px solid rgba(27, 92, 80, 0.12);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(242, 250, 247, 0.92)),
+    radial-gradient(circle at top right, rgba(42, 157, 143, 0.12), transparent 48%);
+}
+
+.home-project-note-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.home-project-note-copy .section-title,
+.home-project-note-copy .more-options-note {
+  margin: 0;
+}
+
+.home-project-note-copy .section-title {
+  margin-bottom: 2px;
+}
+
+.home-project-note-copy .more-options-note {
+  max-width: 640px;
+  color: #40655f;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.home-project-note-detail {
+  max-width: 640px;
+  margin: 0;
+  color: #5e7772;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.home-project-note-contacts {
+  display: grid;
+  gap: 10px;
+  min-width: 240px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: rgba(34, 124, 108, 0.08);
+  border: 1px solid rgba(34, 124, 108, 0.12);
+  align-content: start;
+}
+
+.home-project-note-label {
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5f7c75;
+}
+
+.home-project-note-contact-copy {
+  margin: -2px 0 4px;
+  color: #55716b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.home-project-note-contacts a {
+  color: #1d6b5c;
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.35;
+}
+
+.home-project-note-contacts a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 860px) {
+  .home-project-note {
+    grid-template-columns: 1fr;
+  }
+
+  .home-project-note-copy .more-options-note,
+  .home-project-note-detail {
+    max-width: none;
+  }
+}
+
 /* Hero Section */
 .home-hero {
   display: grid;
@@ -12199,6 +12290,21 @@ textarea:focus-visible {
 
 .memory-match-page .memory-match-inline-result-actions {
   margin-top: 2px;
+}
+
+.memory-match-page .post-session-feedback-prompt {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.memory-match-page .post-session-feedback-btn {
+  font-size: 13px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.memory-match-page .post-session-feedback-btn:hover {
+  opacity: 1;
 }
 
 .trainer-feedback-card {
@@ -19376,12 +19482,98 @@ textarea:focus-visible {
   border: 1px solid rgba(148, 163, 184, 0.15);
 }
 
+.account-status-metric-wide {
+  grid-column: 1 / -1;
+}
+
 .account-status-metric-label {
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #64748b;
+}
+
+.btn-inline-edit {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-inline-edit:hover,
+.btn-inline-edit:focus-visible {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.inline-edit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.inline-edit-form input {
+  width: 100%;
+}
+
+.inline-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-tiny-primary,
+.btn-tiny-ghost {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.btn-tiny-primary {
+  border: 0;
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.22);
+}
+
+.btn-tiny-primary:hover,
+.btn-tiny-primary:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(15, 118, 110, 0.28);
+}
+
+.btn-tiny-primary:disabled {
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.7;
+  box-shadow: none;
+}
+
+.btn-tiny-ghost {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  color: #334155;
+}
+
+.btn-tiny-ghost:hover,
+.btn-tiny-ghost:focus-visible {
+  border-color: rgba(37, 99, 235, 0.28);
+  color: #0f172a;
+}
+
+.inline-edit-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.94rem;
 }
 
 .account-import-banner {

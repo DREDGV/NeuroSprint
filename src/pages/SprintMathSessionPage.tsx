@@ -16,7 +16,9 @@ import { DEFAULT_AUDIO_SETTINGS } from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
 import { buildSessionProgressNotes } from "../shared/lib/progress/sessionProgressFeedback";
+import { getOrCreateGuestToken } from "../shared/lib/feedback/guestToken";
 import { SessionResultSummary } from "../shared/ui/SessionResultSummary";
+import { FeedbackModal } from "../shared/ui/FeedbackModal";
 import { StatCard } from "../shared/ui/StatCard";
 import type {
   SprintMathMetrics,
@@ -185,6 +187,8 @@ export function SprintMathSessionPage() {
   const [previousSession, setPreviousSession] = useState<Session | null>(null);
   const [bestSession, setBestSession] = useState<Session | null>(null);
   const [sessionProgress, setSessionProgress] = useState<SessionSaveResult | null>(null);
+  const [postSessionFeedbackOpen, setPostSessionFeedbackOpen] = useState(false);
+  const [postSessionFeedbackSent, setPostSessionFeedbackSent] = useState(false);
 
   useEffect(() => {
     if (!isRunning || finished || startedAtMs == null) {
@@ -546,6 +550,31 @@ export function SprintMathSessionPage() {
         userId={activeUserId}
         localDate={toLocalDateKey(new Date())}
       />
+
+      {result && !postSessionFeedbackSent && activeUserId && (
+        <div className="post-session-feedback-prompt-sprint" style={{ marginTop: 12, textAlign: "center" }}>
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ fontSize: 13, opacity: 0.7 }}
+            onClick={() => setPostSessionFeedbackOpen(true)}
+          >
+            Оставить отзыв о тренировке
+          </button>
+        </div>
+      )}
+
+      {result && postSessionFeedbackOpen && (
+        <FeedbackModal
+          onClose={() => {
+            setPostSessionFeedbackOpen(false);
+            setPostSessionFeedbackSent(true);
+          }}
+          surface="post_session"
+          moduleId="sprint_math"
+        />
+      )}
+
       {saveError ? <p className="error-text">{saveError}</p> : null}
     </section>
   );

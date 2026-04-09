@@ -86,6 +86,10 @@ export function trackPasswordResetRequested(): void {
   trackAnalyticsEvent("password_reset_requested");
 }
 
+export function trackAccountDeleted(): void {
+  trackAnalyticsEvent("account_deleted");
+}
+
 export function trackImportStarted(profilesCount: number): void {
   trackAnalyticsEvent("import_started", { profiles_count: profilesCount });
 }
@@ -124,4 +128,55 @@ export function trackTrainingSessionSaved(
     leveled_up: result.leveledUp ?? false,
     daily_training_completed: result.dailyTrainingCompleted ?? false
   });
+}
+
+// Feedback & Ideas events
+export function trackFeedbackOpened(surface?: string): void {
+  trackAnalyticsEvent("feedback_opened", { surface });
+}
+
+export function trackFeedbackSubmitted(
+  surface: string,
+  category: string,
+  moduleId?: string,
+  submitterKind?: "guest" | "account",
+  starRating?: number
+): void {
+  trackAnalyticsEvent("feedback_submitted", {
+    surface,
+    category,
+    module_id: moduleId,
+    submitter_kind: submitterKind,
+    star_rating: starRating
+  });
+}
+
+export function trackFeedbackDismissed(surface?: string): void {
+  trackAnalyticsEvent("feedback_dismissed", { surface });
+}
+
+export function trackPostSessionFeedbackSubmitted(
+  moduleId?: string,
+  starRating?: number
+): void {
+  trackAnalyticsEvent("post_session_feedback_submitted", {
+    module_id: moduleId,
+    star_rating: starRating
+  });
+}
+
+export function trackIdeasViewed(): void {
+  trackAnalyticsEvent("ideas_viewed");
+}
+
+export function trackIdeaSubmitted(category?: string): void {
+  trackAnalyticsEvent("idea_submitted", { category });
+}
+
+export function trackIdeaVoteAdded(): void {
+  trackAnalyticsEvent("idea_vote_added");
+}
+
+export function trackIdeaVoteRemoved(): void {
+  trackAnalyticsEvent("idea_vote_removed");
 }

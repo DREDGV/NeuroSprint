@@ -14,8 +14,11 @@ import { DEFAULT_AUDIO_SETTINGS } from "../shared/lib/audio/audioSettings";
 import { toLocalDateKey } from "../shared/lib/date/date";
 import { createId } from "../shared/lib/id";
 import { buildSessionProgressNotes } from "../shared/lib/progress/sessionProgressFeedback";
+import { getOrCreateGuestToken } from "../shared/lib/feedback/guestToken";
+import { submitFeedback } from "../shared/lib/feedback/feedbackService";
 import { MemoryCardVisual } from "../shared/ui/MemoryMatchCards";
 import { TrainerFeedbackCard } from "../shared/ui/TrainerFeedbackCard";
+import { FeedbackModal } from "../shared/ui/FeedbackModal";
 import type { Session } from "../shared/types/domain";
 import { SessionRewardQueue } from "../widgets/SessionRewardQueue";
 
@@ -453,6 +456,8 @@ export function MemoryMatchPage() {
   const [sessionProgress, setSessionProgress] = useState<SessionSaveResult | null>(null);
   const [feedbackHandled, setFeedbackHandled] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [postSessionFeedbackOpen, setPostSessionFeedbackOpen] = useState(false);
+  const [postSessionFeedbackSent, setPostSessionFeedbackSent] = useState(false);
 
   const previewTimerRef = useRef<number | null>(null);
   const mismatchTimerRef = useRef<number | null>(null);
@@ -887,6 +892,8 @@ export function MemoryMatchPage() {
     setFeedbackTone("neutral");
     setFeedbackText(`Запоминайте расположение карт. Время предпросмотра: ${config.previewSec} сек.`);
     setFeedbackSubmitted(false);
+    setPostSessionFeedbackOpen(false);
+    setPostSessionFeedbackSent(false);
     setPhase("preview");
   }
 
@@ -1352,6 +1359,18 @@ export function MemoryMatchPage() {
                     />
                   ) : null}
 
+                  {hasActiveUser && !postSessionFeedbackSent && !feedbackHandled ? (
+                    <div className="post-session-feedback-prompt">
+                      <button
+                        type="button"
+                        className="btn-ghost post-session-feedback-btn"
+                        onClick={() => setPostSessionFeedbackOpen(true)}
+                      >
+                        Оставить отзыв о тренировке
+                      </button>
+                    </div>
+                  ) : null}
+
                   <div className="action-row memory-match-inline-result-actions">
                     <button type="button" className="btn-secondary" onClick={startSession} data-testid="memory-match-result-retry-btn">
                       Сыграть ещё
@@ -1402,6 +1421,17 @@ export function MemoryMatchPage() {
         userId={activeUserId}
         localDate={toLocalDateKey(new Date())}
       />
+
+      {phase === "result" && postSessionFeedbackOpen && (
+        <FeedbackModal
+          onClose={() => {
+            setPostSessionFeedbackOpen(false);
+            setPostSessionFeedbackSent(true);
+          }}
+          surface="post_session"
+          moduleId="memory_match"
+        />
+      )}
     </section>
   );
 }
