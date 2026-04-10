@@ -73,6 +73,15 @@ function hasRecoveryParamsInUrl(): boolean {
   );
 }
 
+function getAuthCodeFromUrl(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  return searchParams.get("code");
+}
+
 function clearRecoveryParamsFromUrl(): void {
   if (typeof window === "undefined") {
     return;
@@ -131,31 +140,46 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    const client = supabase;
     let active = true;
 
-    void supabase.auth
-      .getSession()
-      .then(({ data, error }) => {
-        if (!active) {
-          return;
-        }
+    async function bootstrapSession() {
+      const recoveryInUrl = hasRecoveryParamsInUrl();
+      if (recoveryInUrl) {
+        setIsRecoveryMode(true);
+      }
 
+      const authCode = getAuthCodeFromUrl();
+      if (authCode) {
+        const { error } = await client.auth.exchangeCodeForSession(authCode);
         if (error) {
-          console.error("auth session bootstrap failed", error);
+          console.error("auth code exchange failed", error);
         }
+      }
 
-        setSession(data.session ?? null);
-        setIsRecoveryMode(hasRecoveryParamsInUrl());
+      const { data, error } = await client.auth.getSession();
+
+      if (!active) {
+        return;
+      }
+
+      if (error) {
+        console.error("auth session bootstrap failed", error);
+      }
+
+      setSession(data.session ?? null);
+      setIsRecoveryMode(recoveryInUrl || hasRecoveryParamsInUrl());
+      setIsLoading(false);
+    }
+
+    void bootstrapSession().catch((error) => {
+      console.error("auth session bootstrap crashed", error);
+      if (active) {
         setIsLoading(false);
-      })
-      .catch((error) => {
-        console.error("auth session bootstrap crashed", error);
-        if (active) {
-          setIsLoading(false);
-        }
-      });
+      }
+    });
 
-    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+    const { data } = client.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession ?? null);
       setIsRecoveryMode(event === "PASSWORD_RECOVERY" || hasRecoveryParamsInUrl());
       setIsLoading(false);

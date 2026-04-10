@@ -124,6 +124,7 @@ export function AppShell({ children }: PropsWithChildren) {
             className="header-action-link feedback-trigger-btn"
             onClick={() => setFeedbackOpen(true)}
             title="Отправить отзыв"
+            style={{ cursor: "pointer" }}
           >
             Отзыв
           </button>

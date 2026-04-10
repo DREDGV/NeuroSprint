@@ -35,7 +35,9 @@ export function ForgotPasswordPage() {
     } catch (caught) {
       console.error("password reset request failed", caught);
       setError(
-        caught instanceof Error ? caught.message : "Не удалось отправить письмо для сброса."
+        caught instanceof Error
+          ? caught.message
+          : "Не удалось отправить письмо для сброса."
       );
     } finally {
       setLoading(false);

@@ -30,6 +30,12 @@ export function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (auth.isRecoveryMode) {
+      navigate("/auth/forgot-password", { replace: true });
+    }
+  }, [auth.isRecoveryMode, navigate]);
+
   const linkedProfilesCount = useMemo(
     () => localProfiles.filter((profile) => profile.ownershipKind === "linked").length,
     [localProfiles]
@@ -68,8 +74,8 @@ export function LoginPage() {
           <p className="auth-kicker">Аккаунт NeuroSprint</p>
           <h2>Вход в аккаунт</h2>
           <p>
-            Войдите, чтобы открыть связанные профили, подтянуть прогресс с другого
-            устройства и вернуть доступ к истории тренировок.
+            Войдите, чтобы открыть связанные профили, подтянуть прогресс с другого устройства
+            и вернуть доступ к истории тренировок.
           </p>
         </div>
         <div className="auth-sidecard">

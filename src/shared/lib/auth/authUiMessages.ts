@@ -24,10 +24,7 @@ export function toAuthUiError(error: unknown, fallback: string): string {
     return "Аккаунт с таким email уже существует. Попробуйте войти или восстановить пароль.";
   }
 
-  if (
-    message.includes("password should be at least") ||
-    message.includes("weak password")
-  ) {
+  if (message.includes("password should be at least") || message.includes("weak password")) {
     return "Пароль слишком короткий. Используйте не меньше 8 символов.";
   }
 

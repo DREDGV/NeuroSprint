@@ -1,8 +1,8 @@
 -- Feedback & Ideas Schema
--- Таблицы для приватных отзывов и публичной доски идей
+-- Tables for private feedback and the public ideas board.
 
 -- ============================================================================
--- 1. feedback_entries — приватные отзывы о продукте и тренажёрах
+-- 1. feedback_entries - private product and trainer feedback
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS feedback_entries (
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS feedback_entries (
   updated_at timestamptz DEFAULT now()
 );
 
--- Индексы для feedback_entries
+-- Indexes for feedback_entries
 CREATE INDEX IF NOT EXISTS idx_feedback_submitter_kind ON feedback_entries(submitter_kind);
 CREATE INDEX IF NOT EXISTS idx_feedback_account_id ON feedback_entries(account_id);
 CREATE INDEX IF NOT EXISTS idx_feedback_guest_token_hash ON feedback_entries(guest_token_hash);
@@ -37,13 +37,15 @@ CREATE INDEX IF NOT EXISTS idx_feedback_module_id ON feedback_entries(module_id)
 CREATE INDEX IF NOT EXISTS idx_feedback_review_status ON feedback_entries(review_status);
 CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback_entries(created_at DESC);
 
--- Уникальный индекс для предотвращения дублей post-session feedback (account + module + day)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_feedback_post_session_unique
-  ON feedback_entries (COALESCE(account_id::text, guest_token_hash), module_id, DATE(created_at))
+-- Index for duplicate post-session feedback checks.
+-- Same-day uniqueness is enforced in the application layer because
+-- DATE(timestamptz) is not suitable for an immutable index expression.
+CREATE INDEX IF NOT EXISTS idx_feedback_post_session_lookup
+  ON feedback_entries (COALESCE(account_id::text, guest_token_hash), module_id, created_at DESC)
   WHERE source_surface = 'post_session';
 
 -- ============================================================================
--- 2. idea_posts — публичная доска идей
+-- 2. idea_posts - public ideas board
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS idea_posts (
@@ -61,7 +63,7 @@ CREATE TABLE IF NOT EXISTS idea_posts (
   updated_at timestamptz DEFAULT now()
 );
 
--- Индексы для idea_posts
+-- Indexes for idea_posts
 CREATE INDEX IF NOT EXISTS idx_ideas_author_account_id ON idea_posts(author_account_id);
 CREATE INDEX IF NOT EXISTS idx_ideas_moderation_status ON idea_posts(moderation_status);
 CREATE INDEX IF NOT EXISTS idx_ideas_roadmap_status ON idea_posts(roadmap_status);
@@ -69,13 +71,13 @@ CREATE INDEX IF NOT EXISTS idx_ideas_category ON idea_posts(category);
 CREATE INDEX IF NOT EXISTS idx_ideas_vote_count ON idea_posts(vote_count DESC);
 CREATE INDEX IF NOT EXISTS idx_ideas_created_at ON idea_posts(created_at DESC);
 
--- Уникальный индекс для предотвращения дублей идей от одного аккаунта
+-- Unique index to prevent duplicate ideas from the same account
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ideas_unique_title_per_author
   ON idea_posts (author_account_id, LOWER(TRIM(title)))
   WHERE moderation_status IN ('pending', 'approved');
 
 -- ============================================================================
--- 3. idea_votes — голоса за идеи
+-- 3. idea_votes - votes for ideas
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS idea_votes (
@@ -86,7 +88,7 @@ CREATE TABLE IF NOT EXISTS idea_votes (
   UNIQUE(idea_id, account_id)
 );
 
--- Индексы для idea_votes
+-- Indexes for idea_votes
 CREATE INDEX IF NOT EXISTS idx_votes_idea_id ON idea_votes(idea_id);
 CREATE INDEX IF NOT EXISTS idx_votes_account_id ON idea_votes(account_id);
 
@@ -94,33 +96,32 @@ CREATE INDEX IF NOT EXISTS idx_votes_account_id ON idea_votes(account_id);
 -- 4. RLS Policies
 -- ============================================================================
 
--- feedback_entries: полный доступ только через service_role (server-side API)
--- Никаких анонимных политик — всё через API
+-- feedback_entries: write access only through service_role/server-side API
 ALTER TABLE feedback_entries ENABLE ROW LEVEL SECURITY;
 
--- idea_posts: чтение approved для всех, запись/изменение только через API
+-- idea_posts: public reads for approved ideas, writes through API
 ALTER TABLE idea_posts ENABLE ROW LEVEL SECURITY;
 
--- Публичное чтение одобренных идей
+-- Public read access for approved ideas
 CREATE POLICY "Anyone can read approved ideas"
   ON idea_posts FOR SELECT
   USING (moderation_status = 'approved');
 
--- Автор видит свои идеи в любом статусе
+-- Authors can see their own ideas in any status
 CREATE POLICY "Authors can read their own ideas"
   ON idea_posts FOR SELECT
   USING (auth.uid() = author_account_id);
 
--- idea_votes: чтение для всех, запись через API
+-- idea_votes: reads are public, writes go through API
 ALTER TABLE idea_votes ENABLE ROW LEVEL SECURITY;
 
--- Публичное чтение голосов
+-- Public read access for votes
 CREATE POLICY "Anyone can read idea votes"
   ON idea_votes FOR SELECT
   USING (true);
 
 -- ============================================================================
--- 5. Trigger для обновления vote_count
+-- 5. Trigger for maintaining vote_count
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION update_idea_vote_count()
