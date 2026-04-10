@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabaseAdmin, verifyAuthToken } from "../_lib/supabase";
+import { getSupabaseAdmin, verifyAuthToken } from "../_lib/supabase";
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_BODY_LENGTH = 5000;
@@ -12,6 +12,18 @@ function trimAndValidateString(value: unknown, maxLength: number): string {
 
 function jsonResponse(res: VercelResponse, status: number, body: unknown) {
   res.status(status).json(body);
+}
+
+function parseRequestBody(body: unknown) {
+  if (typeof body === "string") {
+    return JSON.parse(body) as Record<string, unknown>;
+  }
+
+  if (body && typeof body === "object") {
+    return body as Record<string, unknown>;
+  }
+
+  return {};
 }
 
 // GET /api/ideas — public list of approved ideas
@@ -29,6 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const accountId = await verifyAuthToken(req.headers.authorization);
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(50, Math.max(10, Number(req.query.limit) || 20));
@@ -124,12 +137,13 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
 
 async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const accountId = await verifyAuthToken(req.headers.authorization);
     if (!accountId) {
       return jsonResponse(res, 401, { error: "Authentication required to create ideas" });
     }
 
-    const body = req.body;
+    const body = parseRequestBody(req.body);
 
     const title = trimAndValidateString(body.title, MAX_TITLE_LENGTH);
     if (!title) {

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "crypto";
-import { supabaseAdmin, verifyAuthToken } from "./_lib/supabase";
+import { getSupabaseAdmin, verifyAuthToken } from "./_lib/supabase";
 
 const GUEST_HASH_SECRET = process.env.FEEDBACK_GUEST_HASH_SECRET || "dev-secret-change-in-production";
 const MAX_COMMENT_LENGTH = 2000;
@@ -24,13 +24,26 @@ function jsonResponse(res: VercelResponse, status: number, body: unknown) {
   res.status(status).json(body);
 }
 
+function parseRequestBody(body: unknown) {
+  if (typeof body === "string") {
+    return JSON.parse(body) as Record<string, unknown>;
+  }
+
+  if (body && typeof body === "object") {
+    return body as Record<string, unknown>;
+  }
+
+  return {};
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return jsonResponse(res, 405, { error: "Method not allowed" });
   }
 
   try {
-    const body = req.body;
+    const supabaseAdmin = getSupabaseAdmin();
+    const body = parseRequestBody(req.body);
 
     // Honeypot check
     if (body._website || body._honeypot) {

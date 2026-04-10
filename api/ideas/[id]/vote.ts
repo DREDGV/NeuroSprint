@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabaseAdmin, verifyAuthToken } from "../../_lib/supabase";
+import { getSupabaseAdmin, verifyAuthToken } from "../../_lib/supabase";
 
 function jsonResponse(res: VercelResponse, status: number, body: unknown) {
   res.status(status).json(body);
@@ -26,6 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: string) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const accountId = await verifyAuthToken(req.headers.authorization);
     if (!accountId) {
       return jsonResponse(res, 401, { error: "Authentication required to vote" });
@@ -80,6 +81,7 @@ async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: strin
 
 async function handleUnvote(req: VercelRequest, res: VercelResponse, ideaId: string) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const accountId = await verifyAuthToken(req.headers.authorization);
     if (!accountId) {
       return jsonResponse(res, 401, { error: "Authentication required" });
