@@ -25,6 +25,7 @@ const CATEGORIES: { value: FeedbackCategory; label: string; emoji: string }[] = 
 ];
 
 const MAX_COMMENT_LENGTH = 2000;
+const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1"]);
 
 export function FeedbackModal({ onClose, surface = "global_form", moduleId, modeId }: FeedbackModalProps) {
   const auth = useAuth();
@@ -35,6 +36,10 @@ export function FeedbackModal({ onClose, surface = "global_form", moduleId, mode
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isLocalWriteUnavailable =
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    LOCALHOST_NAMES.has(window.location.hostname);
 
   useEffect(() => {
     if (auth.isAuthenticated && auth.account?.email) {
@@ -44,8 +49,8 @@ export function FeedbackModal({ onClose, surface = "global_form", moduleId, mode
   }, [auth.isAuthenticated, auth.account?.email, surface]);
 
   const canSubmit = useMemo(() => {
-    return category != null && comment.trim().length > 0 && !submitting;
-  }, [category, comment, submitting]);
+    return category != null && comment.trim().length > 0 && !submitting && !isLocalWriteUnavailable;
+  }, [category, comment, submitting, isLocalWriteUnavailable]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent) => {
@@ -163,9 +168,10 @@ export function FeedbackModal({ onClose, surface = "global_form", moduleId, mode
               {CATEGORIES.map((cat) => (
                 <button key={cat.value} type="button"
                   style={{
-                    padding: "6px 12px", borderRadius: 20, border: category === cat.value ? "2px solid #0f4f46" : "1px solid #d1d5db",
+                    padding: "6px 12px", borderRadius: 20, border: `2px solid ${category === cat.value ? "#0f4f46" : "#d1d5db"}`,
                     background: category === cat.value ? "#ecfdf5" : "#fff",
-                    cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4
+                    cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 4,
+                    boxSizing: "border-box", minHeight: 38
                   }}
                   onClick={() => setCategory(cat.value)}
                 >
@@ -196,6 +202,12 @@ export function FeedbackModal({ onClose, surface = "global_form", moduleId, mode
             <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)}
               placeholder="you@example.com" style={inputStyle} />
           </div>
+
+          {isLocalWriteUnavailable ? (
+            <p className="status-line" style={{ margin: 0 }}>
+              На localhost отправка отзывов недоступна. Проверьте форму на сайте или в Vercel Preview.
+            </p>
+          ) : null}
 
           {error && <p className="status-line error" style={{ margin: 0 }}>{error}</p>}
 

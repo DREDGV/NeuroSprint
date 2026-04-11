@@ -27,6 +27,8 @@ const STATUS_LABELS: Record<IdeaModerationStatus, string> = {
   rejected: "Отклонено"
 };
 
+const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1"]);
+
 export function IdeasPage() {
   const auth = useAuth();
   const [ideas, setIdeas] = useState<IdeaSummary[]>([]);
@@ -41,6 +43,10 @@ export function IdeasPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
   const [newCategory, setNewCategory] = useState<IdeaCategory>("other");
+  const isLocalWriteUnavailable =
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    LOCALHOST_NAMES.has(window.location.hostname);
 
   useEffect(() => {
     trackIdeasViewed();
@@ -200,10 +206,37 @@ export function IdeasPage() {
 
       {/* Create form */}
       {showCreateForm && auth.isAuthenticated && (
-        <form className="ideas-create-form" onSubmit={handleCreateIdea}>
-          <h3>Новая идея</h3>
-          <label>
-            Заголовок *
+        <form
+          className="ideas-create-form"
+          onSubmit={handleCreateIdea}
+          style={{
+            background: "linear-gradient(180deg, #f8faf9 0%, #fff 100%)",
+            border: "1px solid #d4e8e0",
+            borderRadius: 16,
+            padding: "24px 28px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+            marginBottom: 24
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ margin: 0, fontSize: 18 }}>Новая идея</h3>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => setShowCreateForm(false)}
+              style={{ padding: "6px 14px", fontSize: 13 }}
+            >
+              Отмена
+            </button>
+          </div>
+
+          {/* Title */}
+          <div>
+            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
+              Заголовок *
+            </label>
             <input
               type="text"
               value={newTitle}
@@ -211,44 +244,78 @@ export function IdeasPage() {
               placeholder="Коротко опишите идею"
               maxLength={200}
               required
+              style={{
+                width: "100%", padding: "10px 14px", borderRadius: 10,
+                border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box",
+                fontFamily: "inherit", outline: "none", transition: "border-color 0.2s"
+              }}
             />
-          </label>
+          </div>
 
-          <label>
-            Описание *
+          {/* Description */}
+          <div>
+            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
+              Описание *
+            </label>
             <textarea
-              rows={4}
+              rows={5}
               value={newBody}
               onChange={(e) => setNewBody(e.target.value)}
               placeholder="Подробно расскажите, что вы предлагаете и зачем"
               maxLength={5000}
               required
+              style={{
+                width: "100%", padding: "10px 14px", borderRadius: 10,
+                border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box",
+                fontFamily: "inherit", resize: "vertical", outline: "none"
+              }}
             />
-          </label>
+          </div>
 
-          <label>
-            Категория
-            <select
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value as IdeaCategory)}
-            >
+          {/* Category chips */}
+          <div>
+            <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 14 }}>
+              Категория
+            </label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>
+                <button
+                  key={key}
+                  type="button"
+                  style={{
+                    padding: "6px 16px", borderRadius: 20,
+                    border: `2px solid ${newCategory === key ? "#0f4f46" : "#d1d5db"}`,
+                    background: newCategory === key ? "#ecfdf5" : "#fff",
+                    color: newCategory === key ? "#0f4f46" : "#374151",
+                    cursor: "pointer", fontSize: 13, fontWeight: 500,
+                    transition: "background-color 0.15s, border-color 0.15s, color 0.15s",
+                    boxSizing: "border-box",
+                    minHeight: 38
+                  }}
+                  onClick={() => setNewCategory(key as IdeaCategory)}
+                >
                   {label}
-                </option>
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
 
-          <p className="status-line">
+          <p style={{ margin: 0, fontSize: 13, color: "#6b7280" }}>
             После отправки идея появится в разделе «Мои идеи» со статусом «На проверке».
             Публично она станет видна после проверки.
           </p>
 
+          {isLocalWriteUnavailable ? (
+            <p className="status-line" style={{ margin: 0 }}>
+              На localhost отправка идей недоступна. Проверьте создание идеи на сайте или в Vercel Preview.
+            </p>
+          ) : null}
+
           <button
             type="submit"
             className="btn-primary"
-            disabled={creating || !newTitle.trim() || !newBody.trim()}
+            disabled={creating || !newTitle.trim() || !newBody.trim() || isLocalWriteUnavailable}
+            style={{ alignSelf: "flex-start", padding: "10px 24px" }}
           >
             {creating ? "Отправляем..." : "Отправить идею"}
           </button>
@@ -296,15 +363,7 @@ export function IdeasPage() {
           <div className="ideas-empty-state">
             <h3>Пока нет идей</h3>
             <p>Станьте первым — предложите идею для улучшения NeuroSprint.</p>
-            {auth.isAuthenticated ? (
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setShowCreateForm(true)}
-              >
-                Предложить идею
-              </button>
-            ) : (
+            {!auth.isAuthenticated ? (
               <Link
                 className="btn-primary"
                 to="/auth/login"
@@ -312,7 +371,7 @@ export function IdeasPage() {
               >
                 Войти, чтобы предложить
               </Link>
-            )}
+            ) : null}
           </div>
         ) : (
           <>

@@ -1,6 +1,19 @@
 import type { IdeaCreatePayload, IdeaSummary, IdeasListResponse, IdeaVoteState } from "./types";
 
 const API_BASE = ""; // Relative URL for Vercel Functions
+const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1"]);
+
+function assertIdeasApiWriteAvailable() {
+  if (
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    LOCALHOST_NAMES.has(window.location.hostname)
+  ) {
+    throw new Error(
+      "На localhost отправка идей недоступна. Проверьте создание идей на сайте или в Vercel Preview."
+    );
+  }
+}
 
 export async function fetchIdeas(
   authToken?: string,
@@ -29,6 +42,8 @@ export async function createIdea(
   payload: IdeaCreatePayload,
   authToken: string
 ): Promise<IdeaSummary> {
+  assertIdeasApiWriteAvailable();
+
   const response = await fetch(`${API_BASE}/api/ideas`, {
     method: "POST",
     headers: {
@@ -50,6 +65,8 @@ export async function voteForIdea(
   ideaId: string,
   authToken: string
 ): Promise<{ success: boolean; alreadyVoted?: boolean }> {
+  assertIdeasApiWriteAvailable();
+
   const response = await fetch(`${API_BASE}/api/ideas/${ideaId}/vote`, {
     method: "POST",
     headers: {
@@ -70,6 +87,8 @@ export async function unvoteIdea(
   ideaId: string,
   authToken: string
 ): Promise<{ success: boolean }> {
+  assertIdeasApiWriteAvailable();
+
   const response = await fetch(`${API_BASE}/api/ideas/${ideaId}/vote`, {
     method: "DELETE",
     headers: {
