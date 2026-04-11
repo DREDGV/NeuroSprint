@@ -166,13 +166,15 @@ export function IdeasPage() {
       <div className="ideas-actions-bar">
         {auth.isAuthenticated ? (
           <>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setShowCreateForm(!showCreateForm)}
-            >
-              {showCreateForm ? "Отмена" : "Предложить идею"}
-            </button>
+            {!showCreateForm ? (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setShowCreateForm(true)}
+              >
+                Предложить идею
+              </button>
+            ) : null}
             {myIdeas.length > 0 && (
               <button
                 type="button"
