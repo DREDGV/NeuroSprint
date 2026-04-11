@@ -1,9 +1,10 @@
 ﻿import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { ActiveUserProvider } from "./ActiveUserContext";
 import { AuthProvider } from "./AuthContext";
 import { RequireActiveUser } from "./RequireActiveUser";
 import { RequirePermission } from "./RequirePermission";
+import { useAuth } from "./useAuth";
 import { AppShell } from "../widgets/AppShell";
 import { useFeatureFlag } from "../shared/lib/online/featureFlags";
 
@@ -160,6 +161,51 @@ const BlockPatternRecallPage = lazy(() =>
   }))
 );
 
+const RECOVERY_PARAM_KEYS = [
+  "type",
+  "token",
+  "token_hash",
+  "access_token",
+  "refresh_token",
+  "code"
+] as const;
+
+function hasRecoveryParams(search: string, hash: string): boolean {
+  const searchParams = new URLSearchParams(search);
+  const hashValue = hash.startsWith("#") ? hash.slice(1) : hash;
+  const hashParams = new URLSearchParams(hashValue);
+  const isRecoveryType =
+    searchParams.get("type") === "recovery" || hashParams.get("type") === "recovery";
+
+  return (
+    isRecoveryType ||
+    RECOVERY_PARAM_KEYS.some((key) => searchParams.has(key) || hashParams.has(key))
+  );
+}
+
+function RecoveryRouteRedirect() {
+  const auth = useAuth();
+  const location = useLocation();
+
+  if (
+    location.pathname !== "/auth/forgot-password" &&
+    (auth.isRecoveryMode || hasRecoveryParams(location.search, location.hash))
+  ) {
+    return (
+      <Navigate
+        to={{
+          pathname: "/auth/forgot-password",
+          search: location.search,
+          hash: location.hash
+        }}
+        replace
+      />
+    );
+  }
+
+  return null;
+}
+
 export function App() {
   const classesEnabled = useFeatureFlag("classes_ui");
   const competitionsEnabled = useFeatureFlag("competitions_ui");
@@ -169,6 +215,7 @@ export function App() {
     <BrowserRouter>
       <AuthProvider>
         <ActiveUserProvider>
+          <RecoveryRouteRedirect />
           <AppShell>
             <Suspense fallback={<p className="status-line">Загрузка...</p>}>
               <Routes>
