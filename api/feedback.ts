@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "crypto";
-import { getSupabaseAdmin, verifyAuthToken } from "./_lib/supabase";
+import { getSupabaseAdmin, verifyAuthToken } from "./_lib/supabase.js";
 
 const GUEST_HASH_SECRET = process.env.FEEDBACK_GUEST_HASH_SECRET || "dev-secret-change-in-production";
 const MAX_COMMENT_LENGTH = 2000;

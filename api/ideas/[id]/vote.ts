@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getSupabaseAdmin, verifyAuthToken } from "../../_lib/supabase";
+import { getSupabaseAdmin, verifyAuthToken } from "../../_lib/supabase.js";
 
 function jsonResponse(res: VercelResponse, status: number, body: unknown) {
   res.status(status).json(body);

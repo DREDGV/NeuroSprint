@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getSupabaseAdmin, verifyAuthToken } from "../_lib/supabase";
+import { getSupabaseAdmin, verifyAuthToken } from "../_lib/supabase.js";
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_BODY_LENGTH = 5000;
