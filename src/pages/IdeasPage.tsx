@@ -1,15 +1,20 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../app/useAuth";
 import { setAuthReturnPath } from "../shared/lib/auth/authReturnPath";
 import {
-  fetchIdeas,
   createIdea,
-  voteForIdea,
-  unvoteIdea
+  fetchIdeas,
+  unvoteIdea,
+  voteForIdea
 } from "../shared/lib/ideas/ideasService";
 import type { IdeaCategory, IdeaModerationStatus, IdeaSummary } from "../shared/lib/ideas/types";
-import { trackIdeasViewed, trackIdeaSubmitted, trackIdeaVoteAdded, trackIdeaVoteRemoved } from "../shared/lib/analytics/siteAnalytics";
+import {
+  trackIdeasViewed,
+  trackIdeaSubmitted,
+  trackIdeaVoteAdded,
+  trackIdeaVoteRemoved
+} from "../shared/lib/analytics/siteAnalytics";
 
 const CATEGORY_LABELS: Record<IdeaCategory, string> = {
   training: "Тренировки",
@@ -29,71 +34,80 @@ const STATUS_LABELS: Record<IdeaModerationStatus, string> = {
 
 const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1"]);
 
+function formatIdeaDate(value: string) {
+  return new Date(value).toLocaleDateString("ru-RU");
+}
+
 export function IdeasPage() {
   const auth = useAuth();
   const [ideas, setIdeas] = useState<IdeaSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<string | null>(null);
+  const [voteError, setVoteError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [myIdeas, setMyIdeas] = useState<IdeaSummary[]>([]);
   const [showMyIdeas, setShowMyIdeas] = useState(false);
-
-  // Создание идеи
+  const [creating, setCreating] = useState(false);
+  const [votePendingId, setVotePendingId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
   const [newCategory, setNewCategory] = useState<IdeaCategory>("other");
+
   const isLocalWriteUnavailable =
-    import.meta.env.DEV &&
-    typeof window !== "undefined" &&
-    LOCALHOST_NAMES.has(window.location.hostname);
+    typeof window !== "undefined" && LOCALHOST_NAMES.has(window.location.hostname);
+
+  const myIdeas = useMemo(
+    () => (auth.isAuthenticated ? ideas.filter((idea) => idea.is_author) : []),
+    [auth.isAuthenticated, ideas]
+  );
+  const publicIdeas = useMemo(
+    () => ideas.filter((idea) => idea.moderation_status === "approved"),
+    [ideas]
+  );
 
   useEffect(() => {
     trackIdeasViewed();
-    void loadIdeas();
-  }, [auth.isAuthenticated]);
+  }, []);
 
-  useEffect(() => {
-    if (auth.isAuthenticated && auth.session?.access_token) {
-      void loadMyIdeas();
-    }
-  }, [auth.isAuthenticated, auth.session?.access_token]);
-
-  async function loadIdeas() {
+  const loadIdeas = useCallback(async () => {
     setLoading(true);
     try {
       const token = auth.isAuthenticated ? auth.session?.access_token : undefined;
       const response = await fetchIdeas(token, 1, 50);
       setIdeas(response.ideas);
-      setError(null);
-    } catch (err) {
-      // В локальной разработке API не работает — показываем пустое состояние без ошибки
-      console.warn("Ideas API unavailable (dev mode):", err);
+      setListError(null);
+    } catch (error) {
+      console.warn("Ideas loading failed", error);
       setIdeas([]);
-      setError(null);
+      setListError(
+        isLocalWriteUnavailable
+          ? "На localhost доска идей работает как интерфейсный preview. Проверяйте создание и голосование на сайте или в Vercel Preview."
+          : error instanceof Error
+            ? error.message
+            : "Не удалось загрузить идеи."
+      );
     } finally {
       setLoading(false);
     }
-  }
+  }, [auth.isAuthenticated, auth.session?.access_token, isLocalWriteUnavailable]);
 
-  async function loadMyIdeas() {
-    if (!auth.isAuthenticated || !auth.session?.access_token) return;
-    try {
-      const response = await fetchIdeas(auth.session.access_token, 1, 50);
-      const mine = response.ideas.filter((idea) => idea.is_author);
-      setMyIdeas(mine);
-    } catch {
-      // Ignore errors for my ideas
-    }
-  }
+  useEffect(() => {
+    void loadIdeas();
+  }, [loadIdeas]);
 
   async function handleCreateIdea(event: FormEvent) {
     event.preventDefault();
-    if (!auth.isAuthenticated || !auth.session?.access_token) return;
-    if (!newTitle.trim() || !newBody.trim()) return;
+    if (!auth.isAuthenticated || !auth.session?.access_token) {
+      return;
+    }
+    if (!newTitle.trim() || !newBody.trim()) {
+      return;
+    }
 
     setCreating(true);
-    setError(null);
+    setSubmitError(null);
+    setSubmitStatus(null);
 
     try {
       await createIdea(
@@ -110,40 +124,67 @@ export function IdeasPage() {
       setNewBody("");
       setNewCategory("other");
       setShowCreateForm(false);
+      setShowMyIdeas(true);
+      setSubmitStatus("Идея отправлена. Сейчас она видна в разделе «Мои идеи» со статусом «На проверке».");
       await loadIdeas();
-      await loadMyIdeas();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать идею");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Не удалось отправить идею. Попробуйте ещё раз."
+      );
     } finally {
       setCreating(false);
     }
   }
 
-  async function handleVote(ideaId: string, currentlyVoted: boolean) {
-    if (!auth.isAuthenticated || !auth.session?.access_token) return;
+  async function handleVote(target: IdeaSummary) {
+    if (!auth.isAuthenticated || !auth.session?.access_token) {
+      return;
+    }
+    if (target.is_author || target.moderation_status !== "approved") {
+      return;
+    }
+
+    setVotePendingId(target.id);
+    setVoteError(null);
+
+    const wasVoted = target.has_voted;
+    setIdeas((current) =>
+      current.map((idea) =>
+        idea.id === target.id
+          ? {
+              ...idea,
+              has_voted: !wasVoted,
+              vote_count: Math.max(0, idea.vote_count + (wasVoted ? -1 : 1))
+            }
+          : idea
+      )
+    );
 
     try {
-      if (currentlyVoted) {
-        await unvoteIdea(ideaId, auth.session.access_token);
+      if (wasVoted) {
+        await unvoteIdea(target.id, auth.session.access_token);
         trackIdeaVoteRemoved();
       } else {
-        await voteForIdea(ideaId, auth.session.access_token);
+        await voteForIdea(target.id, auth.session.access_token);
         trackIdeaVoteAdded();
       }
-
+    } catch (error) {
       setIdeas((current) =>
         current.map((idea) =>
-          idea.id === ideaId
+          idea.id === target.id
             ? {
                 ...idea,
-                vote_count: currentlyVoted ? idea.vote_count - 1 : idea.vote_count + 1,
-                has_voted: !currentlyVoted
+                has_voted: wasVoted,
+                vote_count: Math.max(0, idea.vote_count + (wasVoted ? 1 : -1))
               }
             : idea
         )
       );
-    } catch (err) {
-      console.error("Vote failed:", err);
+      setVoteError(
+        error instanceof Error ? error.message : "Не удалось обновить поддержку идеи."
+      );
+    } finally {
+      setVotePendingId(null);
     }
   }
 
@@ -154,15 +195,18 @@ export function IdeasPage() {
           <p className="stats-section-kicker">Доска идей</p>
           <h2>Что улучшить в NeuroSprint</h2>
           <p>
-            Здесь собираются идеи от сообщества. Голосуйте за те, что вам близки,
-            и предлагайте свои.
+            Здесь собираются предложения по развитию проекта. Публично видны только
+            одобренные идеи. Ваши новые идеи сначала попадают в раздел «Мои идеи» со
+            статусом «На проверке».
           </p>
         </div>
       </div>
 
-      {error ? <p className="status-line error">{error}</p> : null}
+      {submitStatus ? <p className="status-line success">{submitStatus}</p> : null}
+      {submitError ? <p className="status-line error">{submitError}</p> : null}
+      {voteError ? <p className="status-line error">{voteError}</p> : null}
+      {listError ? <p className="status-line">{listError}</p> : null}
 
-      {/* Actions bar */}
       <div className="ideas-actions-bar">
         {auth.isAuthenticated ? (
           <>
@@ -170,24 +214,26 @@ export function IdeasPage() {
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => setShowCreateForm(true)}
+                onClick={() => {
+                  setShowCreateForm(true);
+                  setSubmitError(null);
+                  setSubmitStatus(null);
+                }}
               >
                 Предложить идею
               </button>
             ) : null}
-            {myIdeas.length > 0 && (
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => setShowMyIdeas(!showMyIdeas)}
-              >
-                {showMyIdeas ? "Все идеи" : "Мои идеи"}
-              </button>
-            )}
+            <button
+              type="button"
+              className={showMyIdeas ? "btn-primary" : "btn-ghost"}
+              onClick={() => setShowMyIdeas((current) => !current)}
+            >
+              {showMyIdeas ? "Скрыть мои идеи" : "Мои идеи"}
+            </button>
           </>
         ) : (
           <div className="ideas-guest-cta">
-            <p>Хотите предложить идею или проголосовать?</p>
+            <p>Чтобы предложить идею или поддержать уже существующую, нужен аккаунт.</p>
             <Link
               className="btn-primary"
               to="/auth/login"
@@ -206,94 +252,56 @@ export function IdeasPage() {
         )}
       </div>
 
-      {/* Create form */}
-      {showCreateForm && auth.isAuthenticated && (
-        <form
-          className="ideas-create-form"
-          onSubmit={handleCreateIdea}
-          style={{
-            background: "linear-gradient(180deg, #f8faf9 0%, #fff 100%)",
-            border: "1px solid #d4e8e0",
-            borderRadius: 16,
-            padding: "24px 28px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 18,
-            marginBottom: 24
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ margin: 0, fontSize: 18 }}>Новая идея</h3>
+      {showCreateForm && auth.isAuthenticated ? (
+        <form className="ideas-create-form" onSubmit={handleCreateIdea}>
+          <div className="ideas-create-form-head">
+            <div>
+              <h3>Новая идея</h3>
+              <p className="status-line">
+                После отправки идея останется у вас в разделе «Мои идеи» до проверки.
+              </p>
+            </div>
             <button
               type="button"
               className="btn-ghost"
               onClick={() => setShowCreateForm(false)}
-              style={{ padding: "6px 14px", fontSize: 13 }}
             >
               Отмена
             </button>
           </div>
 
-          {/* Title */}
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
-              Заголовок *
-            </label>
+          <label className="ideas-form-field">
+            <span>Заголовок *</span>
             <input
               type="text"
               value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
+              onChange={(event) => setNewTitle(event.target.value)}
               placeholder="Коротко опишите идею"
               maxLength={200}
               required
-              style={{
-                width: "100%", padding: "10px 14px", borderRadius: 10,
-                border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box",
-                fontFamily: "inherit", outline: "none", transition: "border-color 0.2s"
-              }}
             />
-          </div>
+          </label>
 
-          {/* Description */}
-          <div>
-            <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
-              Описание *
-            </label>
+          <label className="ideas-form-field">
+            <span>Описание *</span>
             <textarea
               rows={5}
               value={newBody}
-              onChange={(e) => setNewBody(e.target.value)}
+              onChange={(event) => setNewBody(event.target.value)}
               placeholder="Подробно расскажите, что вы предлагаете и зачем"
               maxLength={5000}
               required
-              style={{
-                width: "100%", padding: "10px 14px", borderRadius: 10,
-                border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box",
-                fontFamily: "inherit", resize: "vertical", outline: "none"
-              }}
             />
-          </div>
+          </label>
 
-          {/* Category chips */}
-          <div>
-            <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 14 }}>
-              Категория
-            </label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div className="ideas-form-field">
+            <span>Категория</span>
+            <div className="ideas-category-list">
               {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                 <button
                   key={key}
                   type="button"
-                  style={{
-                    padding: "6px 16px", borderRadius: 20,
-                    border: `2px solid ${newCategory === key ? "#0f4f46" : "#d1d5db"}`,
-                    background: newCategory === key ? "#ecfdf5" : "#fff",
-                    color: newCategory === key ? "#0f4f46" : "#374151",
-                    cursor: "pointer", fontSize: 13, fontWeight: 500,
-                    transition: "background-color 0.15s, border-color 0.15s, color 0.15s",
-                    boxSizing: "border-box",
-                    minHeight: 38
-                  }}
+                  className={`ideas-category-chip${newCategory === key ? " is-selected" : ""}`}
                   onClick={() => setNewCategory(key as IdeaCategory)}
                 >
                   {label}
@@ -302,14 +310,10 @@ export function IdeasPage() {
             </div>
           </div>
 
-          <p style={{ margin: 0, fontSize: 13, color: "#6b7280" }}>
-            После отправки идея появится в разделе «Мои идеи» со статусом «На проверке».
-            Публично она станет видна после проверки.
-          </p>
-
           {isLocalWriteUnavailable ? (
-            <p className="status-line" style={{ margin: 0 }}>
-              На localhost отправка идей недоступна. Проверьте создание идеи на сайте или в Vercel Preview.
+            <p className="status-line">
+              На localhost отправка идей недоступна. Проверяйте этот сценарий на сайте или в
+              Vercel Preview.
             </p>
           ) : null}
 
@@ -317,21 +321,22 @@ export function IdeasPage() {
             type="submit"
             className="btn-primary"
             disabled={creating || !newTitle.trim() || !newBody.trim() || isLocalWriteUnavailable}
-            style={{ alignSelf: "flex-start", padding: "10px 24px" }}
           >
             {creating ? "Отправляем..." : "Отправить идею"}
           </button>
         </form>
-      )}
+      ) : null}
 
-      {/* My ideas */}
-      {showMyIdeas && auth.isAuthenticated && (
+      {showMyIdeas && auth.isAuthenticated ? (
         <section className="my-ideas-section">
           <h3>Мои идеи</h3>
           {myIdeas.length === 0 ? (
-            <p>У вас пока нет идей. Предложите первую!</p>
+            <div className="ideas-empty-state">
+              <strong>У вас пока нет идей</strong>
+              <p>Начните с первого предложения. После отправки идея появится здесь со статусом проверки.</p>
+            </div>
           ) : (
-            <div className="ideas-list">
+            <div className="ideas-grid">
               {myIdeas.map((idea) => (
                 <article key={idea.id} className="idea-card">
                   <div className="idea-card-head">
@@ -341,91 +346,79 @@ export function IdeasPage() {
                         {STATUS_LABELS[idea.moderation_status]}
                       </span>
                     </div>
-                    <span className="idea-category-badge">
-                      {CATEGORY_LABELS[idea.category]}
-                    </span>
+                    <span className="idea-category-badge">{CATEGORY_LABELS[idea.category]}</span>
                   </div>
-                  <p>{idea.body}</p>
+                  <p className="idea-card-body">{idea.body}</p>
                   <div className="idea-card-meta">
-                    <span>👍 {idea.vote_count}</span>
-                    <span>{new Date(idea.created_at).toLocaleDateString("ru-RU")}</span>
+                    <span>Поддержка: {idea.vote_count}</span>
+                    <span>{formatIdeaDate(idea.created_at)}</span>
                   </div>
                 </article>
               ))}
             </div>
           )}
         </section>
-      )}
+      ) : null}
 
-      {/* Public ideas list */}
       <section className="ideas-list">
         {loading ? (
           <p className="status-line">Загружаем идеи...</p>
-        ) : ideas.length === 0 ? (
+        ) : publicIdeas.length === 0 ? (
           <div className="ideas-empty-state">
-            <h3>Пока нет идей</h3>
-            <p>Станьте первым — предложите идею для улучшения NeuroSprint.</p>
-            {!auth.isAuthenticated ? (
-              <Link
-                className="btn-primary"
-                to="/auth/login"
-                onClick={() => setAuthReturnPath("/ideas", { preserveIfPresent: true })}
-              >
-                Войти, чтобы предложить
-              </Link>
-            ) : null}
+            <strong>Пока нет одобренных идей</strong>
+            <p>Сообщество ещё не сформировало публичную очередь. Вы можете предложить первую идею.</p>
           </div>
         ) : (
           <>
-            <h3>
-              {showMyIdeas ? "Все идеи" : "Предложения сообщества"}
-            </h3>
+            <h3>Предложения сообщества</h3>
             <div className="ideas-grid">
-              {ideas.map((idea) => (
-                <article key={idea.id} className="idea-card">
-                  <div className="idea-card-vote">
-                    {auth.isAuthenticated ? (
-                      <button
-                        type="button"
-                        className={`idea-vote-btn${idea.has_voted ? " is-voted" : ""}`}
-                        onClick={() => handleVote(idea.id, idea.has_voted)}
-                        title={idea.has_voted ? "Снять голос" : "Проголосовать"}
-                      >
-                        👍 {idea.vote_count}
-                      </button>
-                    ) : (
-                      <span className="idea-vote-count">
-                        👍 {idea.vote_count}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="idea-card-content">
+              {publicIdeas.map((idea) => {
+                const canVote = auth.isAuthenticated && !idea.is_author;
+                const votePending = votePendingId === idea.id;
+                return (
+                  <article key={idea.id} className="idea-card">
                     <div className="idea-card-head">
                       <div className="idea-card-title">
                         <h4>{idea.title}</h4>
-                        {idea.is_author && idea.moderation_status !== "approved" && (
-                          <span className={`idea-status-badge is-${idea.moderation_status}`}>
-                            {STATUS_LABELS[idea.moderation_status]}
-                          </span>
-                        )}
+                        {idea.is_author ? (
+                          <span className="idea-status-badge is-approved">Ваша идея</span>
+                        ) : null}
                       </div>
-                      <span className="idea-category-badge">
-                        {CATEGORY_LABELS[idea.category]}
-                      </span>
+                      <span className="idea-category-badge">{CATEGORY_LABELS[idea.category]}</span>
                     </div>
 
                     <p className="idea-card-body">{idea.body}</p>
 
-                    <div className="idea-card-meta">
-                      <span className="idea-author">{idea.author_name}</span>
-                      <span className="idea-date">
-                        {new Date(idea.created_at).toLocaleDateString("ru-RU")}
-                      </span>
+                    <div className="idea-card-footer">
+                      <div className="idea-card-meta">
+                        <span className="idea-author">{idea.author_name}</span>
+                        <span className="idea-date">{formatIdeaDate(idea.created_at)}</span>
+                      </div>
+                      <div className="idea-support-block">
+                        {canVote ? (
+                          <button
+                            type="button"
+                            className={`idea-support-btn${idea.has_voted ? " is-voted" : ""}`}
+                            onClick={() => handleVote(idea)}
+                            disabled={votePending}
+                          >
+                            {votePending
+                              ? "Сохраняем..."
+                              : idea.has_voted
+                                ? "Вы поддержали"
+                                : "Поддержать"}
+                          </button>
+                        ) : (
+                          <span className="idea-support-note">
+                            {idea.is_author ? "Голосовать за свою идею не нужно" : "Только для аккаунтов"}
+                          </span>
+                        )}
+                        <span className="idea-support-count">Поддержали: {idea.vote_count}</span>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           </>
         )}
