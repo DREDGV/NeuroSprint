@@ -43,13 +43,16 @@ export async function updateIdeaModeration(
   },
   authToken: string
 ): Promise<ModerationIdeaSummary> {
-  const response = await fetch(`${API_BASE}/api/admin/ideas/${ideaId}`, {
+  const response = await fetch(`${API_BASE}/api/admin/ideas`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${authToken}`
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      idea_id: ideaId,
+      ...payload
+    })
   });
 
   if (!response.ok) {

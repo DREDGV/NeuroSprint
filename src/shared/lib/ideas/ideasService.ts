@@ -70,12 +70,13 @@ export async function voteForIdea(
 ): Promise<{ success: boolean; alreadyVoted?: boolean }> {
   assertIdeasApiWriteAvailable();
 
-  const response = await fetch(`${API_BASE}/api/ideas/${ideaId}/vote`, {
+  const response = await fetch(`${API_BASE}/api/ideas/vote`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${authToken}`
-    }
+    },
+    body: JSON.stringify({ idea_id: ideaId })
   });
 
   if (!response.ok) {
@@ -91,12 +92,13 @@ export async function unvoteIdea(
 ): Promise<{ success: boolean }> {
   assertIdeasApiWriteAvailable();
 
-  const response = await fetch(`${API_BASE}/api/ideas/${ideaId}/vote`, {
+  const response = await fetch(`${API_BASE}/api/ideas/vote`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${authToken}`
-    }
+    },
+    body: JSON.stringify({ idea_id: ideaId })
   });
 
   if (!response.ok) {
