@@ -1,4 +1,4 @@
-export type FeedbackCategory = "bug" | "ux" | "idea" | "question" | "praise";
+export type FeedbackCategory = "bug" | "ux" | "idea" | "question" | "praise" | "other";
 export type FeedbackSurface = "post_session" | "global_form";
 export type FeedbackReviewStatus = "new" | "reviewed" | "archived";
 

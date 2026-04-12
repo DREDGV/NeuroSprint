@@ -233,7 +233,7 @@ function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): 
     return {
       modeIds: ["nback_1", "nback_2"],
       metric: "score",
-      title: "Сравнение по score (N-Back Lite)",
+      title: "Сравнение по score (N-Назад Lite)",
       metricSuffix: "",
       digits: 2
     };
@@ -256,7 +256,7 @@ function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): 
         "memory_grid_rush_pro_4x4"
       ],
       metric: "score",
-      title: "Сравнение по score (Memory Grid)",
+      title: "Сравнение по score (Сетка памяти)",
       metricSuffix: "",
       digits: 2
     };
@@ -266,7 +266,7 @@ function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): 
     return {
       modeIds: ["decision_kids", "decision_standard", "decision_pro"],
       metric: "score",
-      title: "Сравнение по score (Decision Rush)",
+      title: "Сравнение по score (Быстрые решения)",
       metricSuffix: "",
       digits: 2
     };
@@ -295,7 +295,7 @@ function resolveCompareConfig(mode: StatsMode, sprintFilter: SprintModeFilter): 
   return {
     modeIds: ["sprint_add_sub", "sprint_mixed"],
     metric: "score",
-    title: "Сравнение по score (Sprint Math: все)",
+    title: "Сравнение по score (Математический спринт: все)",
     metricSuffix: "",
     digits: 2
   };
@@ -1077,7 +1077,7 @@ export function StatsPage() {
           : null;
 
       return {
-        headline: buildProgressHeadline(changePct, "score в N-Back Lite", nBackChartData.length),
+        headline: buildProgressHeadline(changePct, "score в N-Назад Lite", nBackChartData.length),
         previousAvg: trend.previous,
         currentAvg: trend.current,
         changePct,
@@ -1105,7 +1105,7 @@ export function StatsPage() {
       return {
         headline: buildProgressHeadline(
           changePct,
-          "score в Memory Grid",
+          "score в Сетке памяти",
           memoryGridChartData.length
         ),
         previousAvg: trend.previous,
@@ -1135,7 +1135,7 @@ export function StatsPage() {
       return {
         headline: buildProgressHeadline(
           changePct,
-          "score в Decision Rush",
+          "score в Быстрых решениях",
           decisionChartData.length
         ),
         previousAvg: trend.previous,
@@ -1196,7 +1196,7 @@ export function StatsPage() {
       return "Скорость реакции";
     }
     if (mode === "n_back") {
-      return "Память: N-Back";
+      return "Память: N-Назад";
     }
     if (mode === "memory_grid") {
       return "Память: сетка";
@@ -1517,7 +1517,7 @@ export function StatsPage() {
                 </div>
                 <p className="stats-skill-card-desc">{axis.description}</p>
                 <div className="stats-skill-card-score">
-                  <strong>{axis.score}/100</strong>
+                  <strong>{axis.isProvisional ? "—" : `${axis.score}/100`}</strong>
                   <span className={`stats-skill-card-trend is-${skillTrendTone(axis.trendDelta)}`}>
                     {skillTrendLabel(axis.trendDelta, skillProfile.hasData)}
                   </span>
@@ -1716,7 +1716,7 @@ export function StatsPage() {
               onClick={() => setMode("n_back")}
               data-testid="stats-mode-nback"
             >
-              Память: N-Back
+              Память: N-Назад
             </button>
             <button
               type="button"
@@ -1954,7 +1954,7 @@ export function StatsPage() {
 
       {mode === "n_back" ? (
         <section className="setup-block stats-flow-details" data-testid="stats-nback-summary">
-          <h3>N-Back Lite: итоги</h3>
+          <h3>N-Назад Lite: итоги</h3>
           <div className="stats-grid compact">
             <StatCard
               title="Сессий"
@@ -1996,7 +1996,7 @@ export function StatsPage() {
 
       {mode === "memory_grid" ? (
         <section className="setup-block stats-flow-details" data-testid="stats-memory-grid-summary">
-          <h3>Memory Grid: итоги</h3>
+          <h3>Сетка памяти: итоги</h3>
           <div className="stats-grid compact">
             <StatCard
               title="Сессий"
@@ -2042,7 +2042,7 @@ export function StatsPage() {
 
       {mode === "decision_rush" ? (
         <section className="setup-block stats-flow-details" data-testid="stats-decision-rush-summary">
-          <h3>Decision Rush: итоги</h3>
+          <h3>Быстрые решения: итоги</h3>
           <div className="stats-grid compact">
             <StatCard
               title="Сессий"
@@ -2086,7 +2086,7 @@ export function StatsPage() {
 
       {mode === "sprint_math" ? (
         <section className="setup-block stats-flow-details" data-testid="stats-sprint-summary">
-          <h3>Sprint Math: {sprintFilterLabel(sprintFilter)}</h3>
+          <h3>Математический спринт: {sprintFilterLabel(sprintFilter)}</h3>
           <div className="stats-grid compact">
             <StatCard title="Сессий" value={String(sprintSummary.sessions)} />
             <StatCard title="Задач/мин" value={formatMetric(sprintSummary.avgThroughput)} />
@@ -2104,7 +2104,7 @@ export function StatsPage() {
           <h3>Сравнение подрежимов</h3>
           <div className="comparison-grid sprint-compare-grid">
             <article className="stat-card sprint-mode-card" data-testid="stats-sprint-card-add-sub">
-              <p className="stat-card-title">Add/Sub</p>
+              <p className="stat-card-title">Сложение/Вычитание</p>
               <p className="sprint-mode-line">Сессий: {sprintComparison.addSub.sessions}</p>
               <p className="sprint-mode-line">
                 Задач/мин: {formatMetric(sprintComparison.addSub.avgThroughput)}
@@ -2116,7 +2116,7 @@ export function StatsPage() {
             </article>
 
             <article className="stat-card sprint-mode-card" data-testid="stats-sprint-card-mixed">
-              <p className="stat-card-title">Mixed</p>
+              <p className="stat-card-title">Смешанный</p>
               <p className="sprint-mode-line">Сессий: {sprintComparison.mixed.sessions}</p>
               <p className="sprint-mode-line">
                 Задач/мин: {formatMetric(sprintComparison.mixed.avgThroughput)}
@@ -2131,20 +2131,20 @@ export function StatsPage() {
           <p className="comparison-note" data-testid="stats-sprint-best-mode">
             {sprintComparison.bestMode
               ? `Сильнее сейчас: ${sprintSubmodeLabel(sprintComparison.bestMode)}`
-              : "Недостаточно данных: выполните хотя бы одну сессию в Add/Sub или Mixed."}
+              : "Недостаточно данных: выполните хотя бы одну сессию в Сложение/Вычитание или Смешанный."}
           </p>
 
           <div className="stats-grid compact" data-testid="stats-sprint-delta-grid">
             <StatCard
-              title="Delta темп (Add/Sub - Mixed)"
+              title="Delta темп (Сложение/Вычитание - Смешанный)"
               value={formatSignedMetric(sprintComparison.throughputDelta)}
             />
             <StatCard
-              title="Delta точность (Add/Sub - Mixed)"
+              title="Delta точность (Сложение/Вычитание - Смешанный)"
               value={formatSignedMetric(sprintComparison.accuracyDeltaPct, 1, "%")}
             />
             <StatCard
-              title="Delta score (Add/Sub - Mixed)"
+              title="Delta score (Сложение/Вычитание - Смешанный)"
               value={formatSignedMetric(sprintComparison.scoreDelta)}
             />
             <StatCard

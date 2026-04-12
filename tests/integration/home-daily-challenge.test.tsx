@@ -180,8 +180,8 @@ describe("HomePage daily challenge", () => {
         modeId: "sprint_add_sub",
         status: "pending",
         requiredAttempts: 1,
-        title: "Challenge дня: Sprint Add/Sub",
-        description: "Пройдите 1 сессию в режиме «Sprint Add/Sub».",
+        title: "Challenge дня: Математический спринт",
+        description: "Пройдите 1 сессию в режиме «Математический спринт».",
         createdAt: "2026-03-01T08:00:00.000Z",
         completedAt: null
       },
@@ -212,12 +212,12 @@ describe("HomePage daily challenge", () => {
     const challengeWidget = await screen.findByTestId("home-daily-challenge");
     expect(challengeWidget).toBeInTheDocument();
     expect(challengeWidget).toHaveTextContent("Челлендж дня");
-    expect(challengeWidget).toHaveTextContent("Sprint Add/Sub");
+    expect(challengeWidget).toHaveTextContent("Математический спринт");
     expect(challengeWidget).toHaveTextContent("Короткий ориентир на день");
     expect(challengeWidget.querySelector(".challenge-progress-text")?.textContent).toBe("0 / 1");
     expect(screen.getByText("В фокусе")).toBeInTheDocument();
     expect(screen.getByTestId("home-skill-growth")).toHaveTextContent("Стартовый профиль");
-    expect(screen.getByTestId("home-weekly-focus")).toHaveTextContent("Memory Match");
+    expect(screen.getByTestId("home-weekly-focus")).toHaveTextContent("Пары памяти");
 
     await user.click(screen.getByTestId("home-daily-challenge-start"));
     expect(await screen.findByTestId("sprint-setup-marker")).toHaveTextContent(
@@ -253,7 +253,7 @@ describe("HomePage daily challenge", () => {
     expect(growth).toHaveTextContent("Память");
     expect(growth).toHaveTextContent("Опора: Реакция");
     expect(screen.getByTestId("home-weekly-focus")).toHaveTextContent("Лучший старт сегодня");
-    expect(screen.getByTestId("home-weekly-focus")).toHaveTextContent("Memory Match");
+    expect(screen.getByTestId("home-weekly-focus")).toHaveTextContent("Пары памяти");
     expect(screen.getByTestId("home-skill-growth-start")).toHaveAttribute(
       "href",
       "/training/memory-match"
@@ -288,8 +288,8 @@ describe("HomePage daily challenge", () => {
         modeId: "memory_match_classic",
         status: "pending",
         requiredAttempts: 1,
-        title: "Challenge дня: Memory Match Classic",
-        description: "Пройдите 1 сессию в режиме «Memory Match Classic».",
+        title: "Challenge дня: Пары памяти Классика",
+        description: "Пройдите 1 сессию в режиме «Пары памяти Классика».",
         createdAt: "2026-03-01T08:00:00.000Z",
         completedAt: null
       },
@@ -312,7 +312,7 @@ describe("HomePage daily challenge", () => {
     expect(await screen.findByTestId("home-daily-challenge-growth")).toHaveTextContent(
       "Совпадает с системой роста"
     );
-    expect(screen.getByTestId("home-daily-challenge-growth")).toHaveTextContent("Memory Match");
+    expect(screen.getByTestId("home-daily-challenge-growth")).toHaveTextContent("Пары памяти");
     expect(screen.getByTestId("home-daily-challenge-start")).toHaveAttribute(
       "href",
       "/training/memory-match"

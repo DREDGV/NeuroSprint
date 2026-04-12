@@ -101,13 +101,13 @@ export function NBackSetupPage() {
 
   return (
     <section className="panel" data-testid="nback-setup-page">
-      <h2>🧠 N-Back</h2>
+      <h2>🧠 N-Назад</h2>
       <p className="session-intro-text">
         Научно обоснованный тренажёр рабочей памяти. На каждом шаге появляется подсветка клетки — 
         вам нужно нажать «Совпало», если эта же клетка светилась <strong>N шагов назад</strong>.
       </p>
 
-      <InfoHint title="Как играть в N-Back" testId="nback-setup-hint">
+      <InfoHint title="Как играть в N-Назад" testId="nback-setup-hint">
         <p><strong>Суть:</strong> Запомните, какие клетки подсвечивались, и сравните текущую с той, что была N шагов назад.</p>
         <p><strong>1.</strong> Выберите уровень: 1-back (сравнивать с предыдущей), 2-back (через одну), 3-back (через две).</p>
         <p><strong>2.</strong> Смотрите на сетку — клетки подсвечиваются по очереди.</p>

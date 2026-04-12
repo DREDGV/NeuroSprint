@@ -16,7 +16,7 @@ interface SkillStatsTabProps {
 const STARTER_MODULES = [
   {
     id: "memory_match",
-    title: "Memory Match",
+    title: "Пары памяти",
     description: "Спокойный вход в зрительную память и удержание пар.",
     path: "/training/memory-match"
   },
@@ -28,7 +28,7 @@ const STARTER_MODULES = [
   },
   {
     id: "reaction",
-    title: "Reaction",
+    title: "Реакция",
     description: "Быстрый старт для реакции и темпа на короткой сессии.",
     path: "/training/reaction"
   }

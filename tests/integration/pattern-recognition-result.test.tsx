@@ -60,7 +60,7 @@ describe("PatternRecognitionResultPage", () => {
 
     expect(screen.getByTestId("pattern-result-page")).toBeInTheDocument();
     expect(screen.getByText("Сначала завершите раунд")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "К Pattern Recognition" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "К Распознаванию паттернов" })).toHaveAttribute(
       "href",
       "/training/pattern-recognition"
     );

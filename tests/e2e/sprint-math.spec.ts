@@ -27,7 +27,7 @@ test.describe("NeuroSprint Sprint Math", () => {
 
     await page.goto("/stats/individual");
     await expect(page.getByTestId("stats-individual-page")).toBeVisible();
-    await page.getByRole("button", { name: "Sprint Add/Sub" }).click();
+    await page.getByRole("button", { name: "Сложение/вычитание" }).click();
     await expect(page.getByTestId("sprint-individual-insights")).toBeVisible();
   });
 });

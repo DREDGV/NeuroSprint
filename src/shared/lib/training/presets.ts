@@ -34,7 +34,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
   },
   {
     id: "n_back",
-    title: "N-Back",
+    title: "N-Назад",
     description: "Научно обоснованный тренажёр рабочей памяти. Запоминание позиций с задержкой в N шагов развивает способность удерживать и обновлять информацию в уме.",
     status: "active"
   },
@@ -74,19 +74,19 @@ export const SCHULTE_MODES: TrainingMode[] = [
   {
     id: "classic_plus",
     moduleId: "schulte",
-    title: "Classic+",
+    title: "Классика+",
     description: "Поиск чисел по порядку от 1 до N."
   },
   {
     id: "timed_plus",
     moduleId: "schulte",
-    title: "Timed+",
+    title: "На время+",
     description: "Максимум правильных чисел за ограниченное время."
   },
   {
     id: "reverse",
     moduleId: "schulte",
-    title: "Reverse",
+    title: "Обратный",
     description: "Поиск чисел в обратном порядке от N до 1."
   }
 ];
@@ -95,13 +95,13 @@ export const SPRINT_MATH_MODES: TrainingMode[] = [
   {
     id: "sprint_add_sub",
     moduleId: "sprint_math",
-    title: "Sprint Add/Sub",
+    title: "Сложение/вычитание",
     description: "Быстрый режим на сложение и вычитание."
   },
   {
     id: "sprint_mixed",
     moduleId: "sprint_math",
-    title: "Sprint Mixed",
+    title: "Смешанный",
     description: "Смешанные операции: +, -, * и /."
   }
 ];
@@ -110,25 +110,25 @@ export const REACTION_MODES: TrainingMode[] = [
   {
     id: "reaction_signal",
     moduleId: "reaction",
-    title: "Reaction: Сигнал",
+    title: "Реакция: Сигнал",
     description: "Быстрый отклик на визуальный сигнал."
   },
   {
     id: "reaction_stroop",
     moduleId: "reaction",
-    title: "Reaction: Цвет и слово",
+    title: "Реакция: Цвет и слово",
     description: "Найдите карточку, где цвет текста совпадает с надписью."
   },
   {
     id: "reaction_pair",
     moduleId: "reaction",
-    title: "Reaction: Пара",
+    title: "Реакция: Пара",
     description: "Найдите правильную пару по подсказке: символ и число."
   },
   {
     id: "reaction_number",
     moduleId: "reaction",
-    title: "Reaction: Число-цель",
+    title: "Реакция: Число-цель",
     description: "Найдите и нажмите карточку с нужным числом в сетке 2x2."
   }
 ];
@@ -137,31 +137,31 @@ export const NBACK_MODES: TrainingMode[] = [
   {
     id: "nback_1",
     moduleId: "n_back",
-    title: "N-Back Lite 1-back",
+    title: "N-Назад 1",
     description: "Жмите «Совпало», если клетка совпала с предыдущим шагом."
   },
   {
     id: "nback_1_4x4",
     moduleId: "n_back",
-    title: "N-Back Lite 1-back 4x4",
+    title: "N-Назад 1 4x4",
     description: "Увеличенная сетка 4x4 для режима 1-back."
   },
   {
     id: "nback_2",
     moduleId: "n_back",
-    title: "N-Back Lite 2-back",
+    title: "N-Назад 2",
     description: "Жмите «Совпало», если клетка совпала с позицией два шага назад."
   },
   {
     id: "nback_2_4x4",
     moduleId: "n_back",
-    title: "N-Back Lite 2-back 4x4",
+    title: "N-Назад 2 4x4",
     description: "Увеличенная сетка 4x4 для режима 2-back."
   },
   {
     id: "nback_3",
     moduleId: "n_back",
-    title: "N-Back Lite 3-back",
+    title: "N-Назад 3",
     description: "Сравнивайте текущую клетку с позицией три шага назад."
   }
 ];
@@ -170,50 +170,50 @@ export const MEMORY_GRID_MODES: TrainingMode[] = [
   {
     id: "memory_grid_classic",
     moduleId: "memory_grid",
-    title: "Memory Grid Classic",
+    title: "Сетка памяти: Классика",
     description: "Запомните последовательность и воспроизведите её. Ошибка завершает попытку."
   },
   {
     id: "memory_grid_classic_kids",
     moduleId: "memory_grid",
-    title: "Memory Grid Kids",
+    title: "Сетка памяти: Дети",
     description: "Мягкий режим для детей 6-10 лет: медленнее темп и проще уровни."
   },
   {
     id: "memory_grid_classic_pro",
     moduleId: "memory_grid",
-    title: "Memory Grid Pro",
+    title: "Сетка памяти: Про",
     description: "Сложный режим для взрослых: быстрее темп и сетка 4x4."
   },
   {
     id: "memory_grid_classic_4x4",
     moduleId: "memory_grid",
-    title: "Memory Grid Classic 4x4",
+    title: "Сетка памяти: Классика 4x4",
     description: "Увеличенная сетка 4x4 для классического режима."
   },
   {
     id: "memory_grid_rush",
     moduleId: "memory_grid",
-    title: "Memory Grid Rush",
+    title: "Сетка памяти: На скорость",
     description: "60 секунд на прохождение максимального количества уровней."
   },
   {
     id: "memory_grid_rush_kids",
     moduleId: "memory_grid",
-    title: "Memory Grid Rush Kids",
+    title: "Сетка памяти: На скорость Дети",
     description: "Мягкий режим на время для детей."
   },
   {
     id: "memory_grid_rush_pro",
     moduleId: "memory_grid",
-    title: "Memory Grid Rush Pro",
+    title: "Сетка памяти: На скорость Про",
     description: "Быстрый режим на время для опытных пользователей."
   },
   {
     id: "memory_grid_rush_4x4",
     moduleId: "memory_grid",
-    title: "Memory Grid Rush 4x4",
-    description: "Увеличенная сетка 4x4 для режима Rush."
+    title: "Сетка памяти: На скорость 4x4",
+    description: "Увеличенная сетка 4x4 для режима на скорость."
   }
 ];
 
@@ -221,19 +221,19 @@ export const DECISION_RUSH_MODES: TrainingMode[] = [
   {
     id: "decision_kids",
     moduleId: "decision_rush",
-    title: "Decision Rush Kids",
+    title: "Быстрые решения: Дети",
     description: "Мягкий темп: правила по цвету и форме без отрицаний."
   },
   {
     id: "decision_standard",
     moduleId: "decision_rush",
-    title: "Decision Rush Standard",
+    title: "Быстрые решения: Стандарт",
     description: "Базовый поток: цвет, форма, число и короткий boss-раунд."
   },
   {
     id: "decision_pro",
     moduleId: "decision_rush",
-    title: "Decision Rush Pro",
+    title: "Быстрые решения: Про",
     description: "Ускоренный поток с отрицаниями и более плотным темпом."
   }
 ];
@@ -242,7 +242,7 @@ export const MEMORY_MATCH_MODES: TrainingMode[] = [
   {
     id: "memory_match_classic",
     moduleId: "memory_match",
-    title: "Memory Match Classic",
+    title: "Пары памяти: Классика",
     description: "Запомните поле, находите пары и старайтесь не повторять одни и те же ошибки."
   }
 ];
@@ -260,25 +260,25 @@ export const PATTERN_MODES: TrainingMode[] = [
   {
     id: "pattern_classic",
     moduleId: "pattern_recognition",
-    title: "Pattern Recognition Classic",
+    title: "Распознавание паттернов: Классика",
     description: "Фиксированная серия заданий на поиск закономерностей."
   },
   {
     id: "pattern_timed",
     moduleId: "pattern_recognition",
-    title: "Pattern Recognition Timed",
+    title: "Распознавание паттернов: На время",
     description: "Как можно больше правильных ответов за ограниченное время."
   },
   {
     id: "pattern_progressive",
     moduleId: "pattern_recognition",
-    title: "Pattern Recognition Progressive",
+    title: "Распознавание паттернов: Прогрессивный",
     description: "Адаптивная сложность: уровень меняется по ходу сессии."
   },
   {
     id: "pattern_learning",
     moduleId: "pattern_recognition",
-    title: "Pattern Recognition Learning",
+    title: "Распознавание паттернов: Обучение",
     description: "Режим обучения с подсказками и разбором ответа."
   }
 ];

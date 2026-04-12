@@ -149,7 +149,7 @@ describe("StatsPage sprint filters", () => {
     expect(screen.getByTestId("stats-growth-plan")).toBeInTheDocument();
     expect(screen.getByTestId("stats-skill-profile")).toHaveTextContent("Статус: стартовый профиль");
     expect(screen.getByTestId("stats-growth-plan")).toHaveTextContent("7-дневный старт профиля");
-    expect(screen.getByTestId("stats-growth-plan-step-1")).toHaveTextContent("Memory Match");
+    expect(screen.getByTestId("stats-growth-plan-step-1")).toHaveTextContent("Пары памяти");
     expect(screen.getByTestId("stats-growth-plan-cta")).toHaveAttribute(
       "href",
       "/training/pre-session?module=memory_match"
@@ -258,11 +258,11 @@ describe("StatsPage sprint filters", () => {
     );
 
     const sprintSummary = screen.getByTestId("stats-sprint-summary");
-    expect(within(sprintSummary).getByText("Sprint Math: Все режимы")).toBeInTheDocument();
+    expect(within(sprintSummary).getByText("Математический спринт: Все режимы")).toBeInTheDocument();
     expect(within(sprintSummary).getByText("16.00")).toBeInTheDocument();
 
     await user.click(screen.getByTestId("stats-sprint-filter-mixed"));
-    expect(within(sprintSummary).getByText("Sprint Math: Смешанный")).toBeInTheDocument();
+    expect(within(sprintSummary).getByText("Математический спринт: Смешанный")).toBeInTheDocument();
     expect(within(sprintSummary).getByText("10.00")).toBeInTheDocument();
     expect(within(primarySummary).getByTestId("stats-summary-sessions")).toHaveTextContent("1");
     expect(within(primarySummary).getByTestId("stats-summary-best")).toHaveTextContent(

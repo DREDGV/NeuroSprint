@@ -17,14 +17,14 @@ const SKILL_LABELS: Record<SkillProfileId, string> = {
 
 const MODULE_LABELS: Record<TrainingModuleId, string> = {
   schulte: "Таблица Шульте",
-  sprint_math: "Sprint Math",
-  reaction: "Reaction",
-  n_back: "N-Back Lite",
-  memory_grid: "Memory Grid",
-  spatial_memory: "Spatial Memory",
-  decision_rush: "Decision Rush",
-  memory_match: "Memory Match",
-  pattern_recognition: "Pattern Recognition"
+  sprint_math: "Математический спринт",
+  reaction: "Реакция",
+  n_back: "N-Назад",
+  memory_grid: "Сетка памяти",
+  spatial_memory: "Пространственная память",
+  decision_rush: "Быстрые решения",
+  memory_match: "Пары памяти",
+  pattern_recognition: "Распознавание паттернов"
 };
 
 function moduleLaunchPath(moduleId: TrainingModuleId): string {

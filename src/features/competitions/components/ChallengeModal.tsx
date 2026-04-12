@@ -11,11 +11,11 @@ interface ChallengeModalProps {
 }
 
 const TRAINING_MODES: Array<{ id: TrainingModeId; title: string; icon: string }> = [
-  { id: "pattern_classic", title: "Pattern Recognition", icon: "🧩" },
+  { id: "pattern_classic", title: "Распознавание паттернов", icon: "🧩" },
   { id: "classic_plus", title: "Таблица Шульте", icon: "🔢" },
-  { id: "memory_grid_classic", title: "Memory Grid", icon: "🧠" },
-  { id: "reaction_signal", title: "Reaction", icon: "⚡" },
-  { id: "sprint_add_sub", title: "Sprint Math", icon: "➗" },
+  { id: "memory_grid_classic", title: "Сетка памяти", icon: "🧠" },
+  { id: "reaction_signal", title: "Реакция", icon: "⚡" },
+  { id: "sprint_add_sub", title: "Математический спринт", icon: "➗" },
 ];
 
 const DURATIONS = [

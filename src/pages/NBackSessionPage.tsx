@@ -500,7 +500,7 @@ export function NBackSessionPage() {
   }
 
   function handleResetProgress(): void {
-    if (confirm('Сбросить весь прогресс N-Back? Вы начнёте с 1-back.')) {
+    if (confirm('Сбросить весь прогресс N-Назад? Вы начнёте с 1-back.')) {
       const newProgress = resetProgress();
       setProgress(newProgress);
     }
@@ -550,7 +550,7 @@ export function NBackSessionPage() {
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="nback-header">
         <div className="nback-header-top">
-          <h2>🧠 N-Back</h2>
+          <h2>🧠 N-Назад</h2>
           <p className="nback-subtitle">
             Уровень: <strong>{progress.currentLevel}-back</strong> • {setup.gridSize}×{setup.gridSize} • {setup.durationSec} сек
             {setup.tutorialMode && " • 🎓 обучение"}
@@ -688,7 +688,7 @@ export function NBackSessionPage() {
       {result ? (
         <SessionResultSummary
           testId="nback-result"
-          title="Результаты N-Back"
+          title="Результаты N-Назад"
           metrics={[
             { label: "✅ Верно совпало", value: String(result.hit) },
             { label: "❌ Пропустил совпадение", value: String(result.miss) },

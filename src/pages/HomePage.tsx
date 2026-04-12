@@ -41,7 +41,7 @@ function getModeLabel(modeId: TrainingModeId | string): string {
     reaction_stroop: "Реакция",
     memory_match_classic: "Пары памяти",
     memory_grid: "Сетка памяти",
-    n_back: "N-Back",
+    n_back: "N-Назад",
     decision_rush_classic: "Быстрые решения",
     spatial_memory_classic: "Пространственная память",
     pattern_classic: "Распознавание паттернов"

@@ -42,11 +42,11 @@ import type {
 
 const GROUP_MODULES: Array<{ id: TrainingModuleId; title: string }> = [
   { id: "schulte", title: "Таблица Шульте" },
-  { id: "sprint_math", title: "Sprint Math" },
-  { id: "reaction", title: "Reaction" },
-  { id: "n_back", title: "N-Back Lite" },
-  { id: "memory_grid", title: "Memory Grid" },
-  { id: "decision_rush", title: "Decision Rush" }
+  { id: "sprint_math", title: "Математический спринт" },
+  { id: "reaction", title: "Реакция" },
+  { id: "n_back", title: "N-Назад" },
+  { id: "memory_grid", title: "Сетка памяти" },
+  { id: "decision_rush", title: "Быстрые решения" }
 ];
 
 function metricTitle(metric: GroupMetric): string {

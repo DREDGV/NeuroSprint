@@ -31,14 +31,14 @@ export interface SkillRoadmapSummary {
 
 const MODULE_TITLE_BY_ID: Record<TrainingModuleId, string> = {
   schulte: "Таблица Шульте",
-  sprint_math: "Sprint Math",
-  reaction: "Reaction",
-  n_back: "N-Back Lite",
-  memory_grid: "Memory Grid",
-  spatial_memory: "Spatial Memory",
-  decision_rush: "Decision Rush",
-  memory_match: "Memory Match",
-  pattern_recognition: "Pattern Recognition"
+  sprint_math: "Математический спринт",
+  reaction: "Реакция",
+  n_back: "N-Back",
+  memory_grid: "Сетка памяти",
+  spatial_memory: "Пространственная память",
+  decision_rush: "Быстрые решения",
+  memory_match: "Пары памяти",
+  pattern_recognition: "Распознавание паттернов"
 };
 
 function moduleTitle(moduleId: TrainingModuleId): string {
@@ -74,7 +74,7 @@ function buildStarterRoadmap(guidance: SkillGuidanceSummary): SkillRoadmapSummar
     weekGoal: "Собрать честную базу по памяти, вниманию, реакции, счёту и логике.",
     cadence: "7 коротких сессий без перегруза. Главное здесь не рекорды, а ровная выборка.",
     checkpoint:
-      "В конце недели вернитесь к Memory Match и посмотрите, как изменится карта навыков после первых спокойных касаний.",
+      "В конце недели вернитесь к Пары памяти и посмотрите, как изменится карта навыков после первых спокойных касаний.",
     guidance,
     days: [
       buildDay(

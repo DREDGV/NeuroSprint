@@ -56,21 +56,21 @@ const SKILL_DEFINITIONS: SkillDefinition[] = [
     label: "Реакция",
     shortLabel: "Реакция",
     description: "Скорость отклика и качество быстрых решений.",
-    suggestedTraining: "Reaction, Decision Rush"
+    suggestedTraining: "Реакция, Быстрые решения"
   },
   {
     id: "math",
     label: "Счёт",
     shortLabel: "Счёт",
     description: "Темп вычислений и уверенность в коротких расчётах.",
-    suggestedTraining: "Sprint Math"
+    suggestedTraining: "Математический спринт"
   },
   {
     id: "logic",
     label: "Логика",
     shortLabel: "Логика",
     description: "Правила, закономерности и переключение между ними.",
-    suggestedTraining: "Decision Rush, Pattern Recognition"
+    suggestedTraining: "Быстрые решения, Распознавание паттернов"
   }
 ];
 

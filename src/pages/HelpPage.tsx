@@ -1,4 +1,5 @@
-﻿import { APP_VERSION } from "../shared/constants/appMeta";
+import { Link } from "react-router-dom";
+import { APP_VERSION } from "../shared/constants/appMeta";
 import { RELEASE_HISTORY } from "../shared/constants/changelog";
 
 function statusLabel(status: "stable" | "alpha" | "dev"): string {
@@ -11,8 +12,11 @@ function statusLabel(status: "stable" | "alpha" | "dev"): string {
   return "alpha";
 }
 
+const CONTACT_EMAILS = ["dr-edgv@yandex.ru", "edgvaud@gmail.com"] as const;
+
 export function HelpPage() {
   const latest = RELEASE_HISTORY[0];
+  const visibleReleases = RELEASE_HISTORY.slice(0, 5);
 
   return (
     <section className="panel" data-testid="help-page">
@@ -20,6 +24,29 @@ export function HelpPage() {
       <p>
         Текущая версия приложения: <strong>v{APP_VERSION}</strong>.
       </p>
+
+      <section className="setup-block">
+        <h3>Статус проекта</h3>
+        <p>
+          NeuroSprint находится в активной разработке. Основные сценарии уже доступны,
+          но в проекте всё ещё возможны баги, недоделанные участки интерфейса и
+          изменения поведения между dev-релизами.
+        </p>
+        <p className="status-line">
+          Если заметили проблему, непонятный экран или хотите предложить улучшение, напишите на{" "}
+          {CONTACT_EMAILS.map((email, index) => (
+            <span key={email}>
+              <a href={`mailto:${email}`}>{email}</a>
+              {index < CONTACT_EMAILS.length - 1 ? ", " : ""}
+            </span>
+          ))}
+          .
+        </p>
+        <p className="status-line">
+          Отдельно собрать обратную связь можно через кнопку <strong>«Отзыв»</strong> и через{" "}
+          <Link to="/ideas">доску идей</Link>.
+        </p>
+      </section>
 
       {latest ? (
         <section className="setup-block">
@@ -36,131 +63,86 @@ export function HelpPage() {
       <section className="setup-block">
         <h3>Как быстро начать</h3>
         <ol>
-          <li>Откройте раздел «Профили» и выберите активного пользователя.</li>
-          <li>Перейдите в «Тренировки», выберите модуль и настройте режим.</li>
-          <li>Проведите сессию и проверьте прогресс в «Статистике».</li>
+          <li>Откройте «Профили и аккаунт» и выберите активный профиль.</li>
+          <li>Если хотите переносить прогресс между устройствами, создайте аккаунт или войдите.</li>
+          <li>Перейдите в «Тренажёры», выберите направление и запустите первую сессию.</li>
+          <li>Смотрите динамику в разделе «Статистика».</li>
         </ol>
       </section>
 
       <section className="setup-block">
+        <h3>Что есть в проекте сейчас</h3>
+        <div className="release-list">
+          <article className="release-card">
+            <h4>Профили и аккаунт</h4>
+            <p>
+              Локальные профили, вход по email, импорт локальных профилей в аккаунт,
+              синхронизация между устройствами и восстановление доступа.
+            </p>
+          </article>
+
+          <article className="release-card">
+            <h4>Тренажёры</h4>
+            <p>
+              Внимание, память, реакция, счёт и логика. Каталог упрощён для новых
+              пользователей и помогает выбрать понятную точку старта.
+            </p>
+          </article>
+
+          <article className="release-card">
+            <h4>Статистика и прогресс</h4>
+            <p>
+              История сессий, streak, уровни, XP, достижения, карта навыков,
+              daily challenge и рекомендации следующего шага.
+            </p>
+          </article>
+
+          <article className="release-card">
+            <h4>Отзывы и идеи</h4>
+            <p>
+              Встроенная форма отзыва, post-session feedback, публичная доска идей
+              и базовый moderation workflow для будущего product-loop.
+            </p>
+          </article>
+
+          <article className="release-card">
+            <h4>Teacher-flow и alpha-разделы</h4>
+            <p>
+              Классы, групповая аналитика, элементы соревнований и foundation для ролей.
+              Эти разделы ещё развиваются и могут меняться быстрее остального продукта.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className="setup-block">
         <h3>Тренажёры</h3>
-        <div className="release-list">
-          <article className="release-card">
-            <h4>🧩 Pattern Recognition</h4>
-            <p>Тренировка на чтение закономерностей: найдите правило ряда и продолжите его.</p>
-            <ul>
-              <li><strong>Режимы:</strong> Классический, На время, Прогрессивный, Обучающий, Мульти-ответ, Выживание</li>
-              <li><strong>Контент:</strong> Визуальные фигуры, Числовые ряды, Микс</li>
-              <li><strong>Новые паттерны:</strong> Fibonacci, Geometric, Prime, Squares</li>
-              <li><strong>Подсказки:</strong> 💡 правило + пример, 🏆 ответ (3 на сессию)</li>
-            </ul>
-          </article>
-
-          <article className="release-card">
-            <h4>🔢 Таблица Шульте</h4>
-            <p>Поиск чисел в таблице по порядку на скорость.</p>
-            <ul>
-              <li><strong>Режимы:</strong> Classic+, Timed+, Reverse</li>
-              <li><strong>Сетки:</strong> 3×3, 4×4, 5×5, 6×6</li>
-              <li><strong>Адаптивная сложность:</strong> Kids, Standard, Pro</li>
-            </ul>
-          </article>
-
-          <article className="release-card">
-            <h4>🧠 Memory Grid</h4>
-            <p>Запоминание позиций на сетке и воспроизведение.</p>
-            <ul>
-              <li><strong>Режимы:</strong> Classic, Rush, Kids, Pro</li>
-              <li><strong>Сетки:</strong> 3×3, 4×4, 5×5</li>
-            </ul>
-          </article>
-
-          <article className="release-card">
-            <h4>🎯 Spatial Memory</h4>
-            <p>Запоминание пространственных паттернов и позиций.</p>
-            <ul>
-              <li><strong>Режимы:</strong> Classic, Timed</li>
-              <li><strong>Сетки:</strong> 4×4, 5×5, 6×6</li>
-            </ul>
-          </article>
-
-          <article className="release-card">
-            <h4>⚡ Reaction</h4>
-            <p>Тренировка скорости реакции и переключения внимания.</p>
-            <ul>
-              <li><strong>Режимы:</strong> Сигнал, Цвет и слово, Пара</li>
-            </ul>
-          </article>
-
-          <article className="release-card">
-            <h4>➗ Sprint Math</h4>
-            <p>Устный счёт на скорость и точность.</p>
-            <ul>
-              <li><strong>Режимы:</strong> Add/Sub, Mixed, All</li>
-            </ul>
-          </article>
-
-          <article className="release-card">
-            <h4>🔢 N-Back Lite</h4>
-            <p>Рабочая память: запоминание последовательности стимулов.</p>
-            <ul>
-              <li><strong>Режимы:</strong> 1-back, 2-back, 3-back</li>
-              <li><strong>Время:</strong> 60 сек, 90 сек</li>
-            </ul>
-          </article>
-        </div>
-      </section>
-
-      <section className="setup-block">
-        <h3>Классы и соревнования</h3>
-        <div className="release-list">
-          <article className="release-card">
-            <h4>👥 Управление классами</h4>
-            <p>Создавайте классы, добавляйте учеников и отслеживайте прогресс группы.</p>
-            <ul>
-              <li><strong>Создание класса:</strong> Раздел «Классы» → «Создать класс»</li>
-              <li><strong>Добавление учеников:</strong> Выберите класс → «Добавить ученика»</li>
-              <li><strong>Статистика класса:</strong> Сравнение результатов, распределение уровней</li>
-            </ul>
-          </article>
-
-          <article className="release-card">
-            <h4>🏆 Соревнования (в разработке)</h4>
-            <p>Онлайн-соревнования между учениками в реальном времени.</p>
-            <ul>
-              <li><strong>PvP дуэли:</strong> 1 на 1 в выбранном тренажёре</li>
-              <li><strong>Командные челленджи:</strong> Класс против класса</li>
-              <li><strong>Турниры:</strong> Еженедельные лидерборды</li>
-              <li><strong>Сезонные ивенты:</strong> Весенний кубок, Зимний марафон</li>
-            </ul>
-            <p className="status-line">Ожидайте в будущих версиях!</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="setup-block">
-        <h3>Система прогресса</h3>
         <ul>
-          <li><strong>XP:</strong> 4–10 XP за сессию в зависимости от точности и сложности</li>
-          <li><strong>Уровни:</strong> Повышение каждые 100+ XP, множитель до 2x за серии</li>
-          <li><strong>Достижения:</strong> 24 бейджа за серии дней, количество сессий, навыки</li>
-          <li><strong>Навыки:</strong> 5 осей (Attention, Memory, Reaction, Math, Logic) с процентами</li>
+          <li><strong>Внимание:</strong> Таблица Шульте.</li>
+          <li><strong>Память:</strong> Пары памяти, Пространственная память, Сетка памяти, N-Назад.</li>
+          <li><strong>Реакция:</strong> Реакция.</li>
+          <li><strong>Счёт:</strong> Математический спринт.</li>
+          <li><strong>Логика:</strong> Быстрые решения, Распознавание паттернов.</li>
         </ul>
       </section>
 
       <section className="setup-block">
-        <h3>Активный пользователь</h3>
-        <p>
-          Имя активного пользователя отображается в верхней панели приложения,
-          на главной странице и на экранах тренировки. Если имя неверное,
-          переключите профиль в разделе «Профили».
-        </p>
+        <h3>Если что-то работает не так</h3>
+        <ul>
+          <li>Попробуйте обновить страницу и снова открыть нужный раздел.</li>
+          <li>Проверьте, выбран ли активный профиль.</li>
+          <li>Если проблема связана с аккаунтом, попробуйте повторный вход или восстановление пароля.</li>
+          <li>Если ошибка повторяется, пришлите описание проблемы и скрин на один из e-mail выше.</li>
+        </ul>
       </section>
 
       <section className="setup-block">
         <h3>История изменений</h3>
+        <p className="status-line">
+          В интерфейсе показываем только свежие релизы. Полная история изменений хранится в changelog проекта.
+        </p>
         <div className="release-list">
-          {RELEASE_HISTORY.map((release) => (
+          {visibleReleases.map((release) => (
             <article key={release.version} className="release-card">
               <div className="release-header">
                 <p className="release-version">v{release.version}</p>

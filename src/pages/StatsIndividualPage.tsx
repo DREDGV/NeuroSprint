@@ -61,14 +61,14 @@ const STATS_MODULE_ORDER: TrainingModuleId[] = [
 
 const STATS_MODULE_LABELS: Record<TrainingModuleId, string> = {
   schulte: "Шульте",
-  sprint_math: "Sprint Math",
-  reaction: "Reaction",
-  n_back: "N-Back",
-  memory_grid: "Memory Grid",
-  spatial_memory: "Spatial Memory",
-  decision_rush: "Decision Rush",
-  memory_match: "Memory Match",
-  pattern_recognition: "Pattern"
+  sprint_math: "Математический спринт",
+  reaction: "Реакция",
+  n_back: "N-Назад",
+  memory_grid: "Сетка памяти",
+  spatial_memory: "Пространственная память",
+  decision_rush: "Быстрые решения",
+  memory_match: "Пары памяти",
+  pattern_recognition: "Распознавание паттернов"
 };
 
 function calculateStability(values: number[]): number | null {
