@@ -1,5 +1,6 @@
 import { db } from "../../db/database";
 import { createId } from "../../shared/lib/id";
+import { isLocalDevProfileAccessBypassEnabled } from "../../shared/lib/auth/localDevAccess";
 import type {
   AppRole,
   ProfileOwnershipKind,
@@ -261,6 +262,10 @@ export const userRepository = {
   },
 
   isLocked(user: User, currentAccountId: string | null | undefined): boolean {
+    if (isLocalDevProfileAccessBypassEnabled()) {
+      return false;
+    }
+
     return user.ownershipKind === "linked" && user.accountId !== currentAccountId;
   },
 
