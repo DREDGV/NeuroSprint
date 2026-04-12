@@ -151,6 +151,7 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
 async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
+    const ideaPostsTable = supabaseAdmin.from("idea_posts") as any;
     const accountId = await verifyAuthToken(req.headers.authorization);
     if (!accountId) {
       return jsonResponse(res, 401, { error: "Sign in to submit an idea." });
@@ -195,8 +196,7 @@ async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
       vote_count: 0
     };
 
-    const { data: newIdeaData, error: insertError } = await supabaseAdmin
-      .from("idea_posts")
+    const { data: newIdeaData, error: insertError } = await ideaPostsTable
       .insert(insertPayload)
       .select()
       .single();

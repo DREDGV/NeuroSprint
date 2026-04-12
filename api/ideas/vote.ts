@@ -43,6 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: string) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
+    const ideaVotesTable = supabaseAdmin.from("idea_votes") as any;
     const accountId = await verifyAuthToken(req.headers.authorization);
     if (!accountId) {
       return jsonResponse(res, 401, { error: "Sign in to vote." });
@@ -87,7 +88,7 @@ async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: strin
       account_id: accountId
     };
 
-    const { error: insertError } = await supabaseAdmin.from("idea_votes").insert(insertPayload);
+    const { error: insertError } = await ideaVotesTable.insert(insertPayload);
     if (insertError) {
       if (insertError.code === "23505") {
         return jsonResponse(res, 200, { success: true, alreadyVoted: true });

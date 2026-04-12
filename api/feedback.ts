@@ -70,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const supabaseAdmin = getSupabaseAdmin();
+    const feedbackEntriesTable = supabaseAdmin.from("feedback_entries") as any;
     const body = parseRequestBody(req.body);
 
     if (body._website || body._honeypot) {
@@ -183,7 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       review_status: "new"
     };
 
-    const { error: insertError } = await supabaseAdmin.from("feedback_entries").insert(insertPayload);
+    const { error: insertError } = await feedbackEntriesTable.insert(insertPayload);
     if (insertError) {
       console.error("Feedback insert error:", insertError);
       if (insertError.code === "23505") {

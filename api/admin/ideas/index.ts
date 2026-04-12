@@ -96,6 +96,7 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse, accountId
 async function handlePatchIdea(req: VercelRequest, res: VercelResponse, accountId: string) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
+    const ideaPostsTable = supabaseAdmin.from("idea_posts") as any;
     const body = parseBody(req.body);
     const ideaId = typeof body.idea_id === "string" ? body.idea_id.trim() : "";
     const moderationStatus = String(body.moderation_status ?? "");
@@ -128,8 +129,7 @@ async function handlePatchIdea(req: VercelRequest, res: VercelResponse, accountI
       patch.rejection_note = null;
     }
 
-    const { data: updatedIdeaData, error } = await supabaseAdmin
-      .from("idea_posts")
+    const { data: updatedIdeaData, error } = await ideaPostsTable
       .update(patch)
       .eq("id", ideaId)
       .select(

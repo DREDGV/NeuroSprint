@@ -25,6 +25,7 @@ export type ServerDatabase = {
           id?: string;
           display_name?: string | null;
         };
+        Relationships: [];
       };
       account_access: {
         Row: {
@@ -45,6 +46,7 @@ export type ServerDatabase = {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       feature_flags: {
         Row: {
@@ -65,6 +67,7 @@ export type ServerDatabase = {
           description?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       feedback_entries: {
         Row: {
@@ -130,6 +133,7 @@ export type ServerDatabase = {
           created_at?: string | null;
           updated_at?: string | null;
         };
+        Relationships: [];
       };
       idea_posts: {
         Row: {
@@ -174,6 +178,7 @@ export type ServerDatabase = {
           created_at?: string | null;
           updated_at?: string | null;
         };
+        Relationships: [];
       };
       idea_votes: {
         Row: {
@@ -194,6 +199,7 @@ export type ServerDatabase = {
           account_id?: string;
           created_at?: string | null;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -298,7 +304,11 @@ export async function getAccountSiteRole(accountId: string): Promise<SiteRole> {
       return "user";
     }
 
-    return normalizeSiteRole(data?.site_role);
+    if (!data) {
+      return "user";
+    }
+
+    return normalizeSiteRole(data.site_role);
   } catch (error) {
     console.error("site role lookup crashed", error);
     return "user";
