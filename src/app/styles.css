@@ -19975,7 +19975,8 @@ textarea:focus-visible {
 }
 
 .ideas-form-field input,
-.ideas-form-field textarea {
+.ideas-form-field textarea,
+.ideas-form-field select {
   width: 100%;
   box-sizing: border-box;
   padding: 10px 14px;
@@ -19988,6 +19989,11 @@ textarea:focus-visible {
 
 .ideas-form-field textarea {
   resize: vertical;
+}
+
+.ideas-form-hint {
+  color: #64748b;
+  font-size: 0.84rem;
 }
 
 .ideas-category-list {
@@ -20176,15 +20182,65 @@ textarea:focus-visible {
   font-size: 0.84rem;
 }
 
+.admin-ideas-page {
+  display: grid;
+  gap: 20px;
+}
+
+.admin-ideas-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.admin-ideas-head p:last-child {
+  margin: 8px 0 0;
+  color: #475569;
+  max-width: 70ch;
+}
+
+.admin-ideas-head-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-ideas-toolbar,
+.admin-ideas-filters,
+.admin-idea-badges,
+.admin-idea-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-idea-form {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.admin-idea-note-field {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 900px) {
   .ideas-create-form-head,
   .idea-card-head,
-  .idea-card-footer {
+  .idea-card-footer,
+  .admin-ideas-head {
     display: grid;
     gap: 12px;
   }
 
   .idea-support-block {
     justify-items: start;
+  }
+
+  .admin-idea-form {
+    grid-template-columns: 1fr;
   }
 }

@@ -23,11 +23,20 @@ export interface IdeaSummary {
   has_voted: boolean;
 }
 
+export interface ModerationIdeaSummary extends IdeaSummary {
+  rejection_note: string | null;
+  author_account_id: string | null;
+}
+
 export interface IdeasListResponse {
   ideas: IdeaSummary[];
   page: number;
   limit: number;
   hasMore: boolean;
+}
+
+export interface AdminIdeasListResponse {
+  ideas: ModerationIdeaSummary[];
 }
 
 export interface IdeaVoteState {

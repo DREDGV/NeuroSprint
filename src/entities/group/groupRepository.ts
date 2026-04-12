@@ -17,6 +17,23 @@ import type {
   UserPercentileResult
 } from "../../shared/types/domain";
 
+export interface ClassGroupOwnerContext {
+  profileId: string;
+  accountId?: string | null;
+}
+
+function matchesGroupOwner(group: ClassGroup, owner: ClassGroupOwnerContext): boolean {
+  if (group.ownerProfileId && group.ownerProfileId === owner.profileId) {
+    return true;
+  }
+
+  if (group.ownerAccountId && owner.accountId && group.ownerAccountId === owner.accountId) {
+    return true;
+  }
+
+  return false;
+}
+
 function metricValue(
   metric: GroupMetric,
   session: { score: number; accuracy: number; speed: number }
@@ -153,10 +170,12 @@ export function computeMembershipMutation(
 }
 
 export const groupRepository = {
-  async createGroup(name: string): Promise<ClassGroup> {
+  async createGroup(name: string, owner?: ClassGroupOwnerContext): Promise<ClassGroup> {
     const group: ClassGroup = {
       id: createId(),
       name: name.trim(),
+      ownerProfileId: owner?.profileId,
+      ownerAccountId: owner?.accountId ?? undefined,
       createdAt: new Date().toISOString()
     };
     await db.classGroups.add(group);
@@ -165,6 +184,11 @@ export const groupRepository = {
 
   async listGroups(): Promise<ClassGroup[]> {
     return db.classGroups.orderBy("createdAt").toArray();
+  },
+
+  async listOwnedGroups(owner: ClassGroupOwnerContext): Promise<ClassGroup[]> {
+    const groups = await this.listGroups();
+    return groups.filter((group) => matchesGroupOwner(group, owner));
   },
 
   async listGroupsForUser(userId: string): Promise<ClassGroup[]> {
@@ -178,14 +202,28 @@ export const groupRepository = {
     return groups.filter((entry): entry is ClassGroup => Boolean(entry));
   },
 
-  async removeGroup(groupId: string): Promise<void> {
+  async removeGroup(groupId: string, owner?: ClassGroupOwnerContext): Promise<void> {
+    if (owner) {
+      const group = await db.classGroups.get(groupId);
+      if (!group || !matchesGroupOwner(group, owner)) {
+        return;
+      }
+    }
+
     await db.transaction("rw", db.classGroups, db.groupMembers, async () => {
       await db.classGroups.delete(groupId);
       await db.groupMembers.where("groupId").equals(groupId).delete();
     });
   },
 
-  async renameGroup(groupId: string, name: string): Promise<void> {
+  async renameGroup(groupId: string, name: string, owner?: ClassGroupOwnerContext): Promise<void> {
+    if (owner) {
+      const group = await db.classGroups.get(groupId);
+      if (!group || !matchesGroupOwner(group, owner)) {
+        return;
+      }
+    }
+
     await db.classGroups.update(groupId, { name: name.trim() });
   },
 

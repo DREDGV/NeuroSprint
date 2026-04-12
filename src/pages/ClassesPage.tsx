@@ -1,9 +1,13 @@
 ﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useActiveUser } from "../app/ActiveUserContext";
+import { useAuth } from "../app/useAuth";
+import { useAppRole } from "../app/useAppRole";
 import { useRoleAccess } from "../app/useRoleAccess";
-import { groupRepository } from "../entities/group/groupRepository";
+import { groupRepository, type ClassGroupOwnerContext } from "../entities/group/groupRepository";
 import { normalizeUserRole } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
+import { canUseTeacherArea } from "../shared/lib/auth/siteAccess";
 import { appRoleLabel } from "../shared/lib/settings/appRole";
 import { ClassDashboardWidget } from "../widgets/ClassDashboardWidget";
 import { LeaderboardWidget } from "../widgets/LeaderboardWidget";
@@ -20,8 +24,11 @@ function getAvatarForUser(user: User): string {
 }
 
 export function ClassesPage() {
+  const { activeUserId } = useActiveUser();
+  const auth = useAuth();
+  const appRole = useAppRole();
   const access = useRoleAccess();
-  const canManageClassesAccess = access.classes.manage;
+  const canManageClassesAccess = access.classes.manage || canUseTeacherArea(appRole, auth.siteRole);
   const navigate = useNavigate();
   const { classId } = useParams<{ classId?: string }>();
 
@@ -44,27 +51,32 @@ export function ClassesPage() {
 
   // Вызовы и соревнования
   const [showChallengeModal, setShowChallengeModal] = useState(false);
-  const [activeUserId, setActiveUserId] = useState<string | null>(null);
-
-  // Получаем активного пользователя из localStorage
-  useEffect(() => {
-    const activeProfile = localStorage.getItem("activeProfile");
-    if (activeProfile) {
-      try {
-        const profile = JSON.parse(activeProfile);
-        setActiveUserId(profile.id || null);
-      } catch {
-        setActiveUserId(null);
-      }
-    }
-  }, []);
+  const ownerContext = useMemo<ClassGroupOwnerContext | null>(
+    () =>
+      activeUserId
+        ? {
+            profileId: activeUserId,
+            accountId: auth.account?.id ?? undefined
+          }
+        : null,
+    [activeUserId, auth.account?.id]
+  );
 
   // Хук для вызовов
   const { challenges, incoming, sendChallenge, respondToChallenge } = useChallenges(activeUserId);
 
   async function refreshBase(targetClassId?: string): Promise<void> {
+    if (!ownerContext) {
+      setGroups([]);
+      setStudents([]);
+      setAllUsers([]);
+      setGroupStudentCounts({});
+      setSelectedClassId("");
+      return;
+    }
+
     const [loadedGroups, loadedUsers] = await Promise.all([
-      groupRepository.listGroups(),
+      groupRepository.listOwnedGroups(ownerContext),
       userRepository.list()
     ]);
     setGroups(loadedGroups);
@@ -98,7 +110,7 @@ export function ClassesPage() {
   }
 
   useEffect(() => {
-    if (!canManageClassesAccess) {
+    if (!canManageClassesAccess || !ownerContext) {
       setGroups([]);
       setStudents([]);
       setAllUsers([]);
@@ -108,7 +120,7 @@ export function ClassesPage() {
     }
     void refreshBase(classId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManageClassesAccess, classId]);
+  }, [canManageClassesAccess, classId, ownerContext]);
 
   const selectedClass = useMemo(
     () => groups.find((group) => group.id === selectedClassId) ?? null,
@@ -124,12 +136,16 @@ export function ClassesPage() {
 
   async function handleCreateClass(event: FormEvent): Promise<void> {
     event.preventDefault();
+    if (!ownerContext) {
+      setError("Сначала выберите активный профиль.");
+      return;
+    }
     if (newClassName.trim().length < 2) {
       setError("Название класса должно быть не короче 2 символов.");
       return;
     }
 
-    const created = await groupRepository.createGroup(newClassName.trim());
+    const created = await groupRepository.createGroup(newClassName.trim(), ownerContext);
     setNewClassName("");
     setStatus(`Класс "${created.name}" создан.`);
     setError(null);
@@ -145,7 +161,7 @@ export function ClassesPage() {
     if (!nextName || nextName.trim().length < 2) {
       return;
     }
-    await groupRepository.renameGroup(selectedClass.id, nextName.trim());
+    await groupRepository.renameGroup(selectedClass.id, nextName.trim(), ownerContext ?? undefined);
     setStatus("Название класса обновлено.");
     await refreshBase(selectedClass.id);
   }
@@ -160,7 +176,7 @@ export function ClassesPage() {
     if (!approved) {
       return;
     }
-    await groupRepository.removeGroup(selectedClass.id);
+    await groupRepository.removeGroup(selectedClass.id, ownerContext ?? undefined);
     setStatus(`Класс "${selectedClass.name}" удален.`);
     setError(null);
     await refreshBase();

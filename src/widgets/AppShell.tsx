@@ -7,6 +7,7 @@ import { useAppRole } from "../app/useAppRole";
 import { useAuth } from "../app/useAuth";
 import { APP_NAME, APP_VERSION } from "../shared/constants/appMeta";
 import { useFeatureFlags } from "../shared/lib/online/featureFlags";
+import { canAccessFeature } from "../shared/lib/auth/siteAccess";
 import { appRoleLabel, saveAppRole } from "../shared/lib/settings/appRole";
 import type { AppRole } from "../shared/types/domain";
 import { MainNav } from "./MainNav";
@@ -34,6 +35,18 @@ export function AppShell({ children }: PropsWithChildren) {
   const featureFlags = useFeatureFlags();
   const [wordmarkMissing, setWordmarkMissing] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const canAccessClasses = canAccessFeature(
+    "classes_ui",
+    featureFlags.classes_ui,
+    appRole,
+    auth.siteRole
+  );
+  const canAccessCompetitions = canAccessFeature(
+    "competitions_ui",
+    featureFlags.competitions_ui,
+    appRole,
+    auth.siteRole
+  );
 
   useEffect(() => {
     if (!activeUserRole) {
@@ -75,7 +88,7 @@ export function AppShell({ children }: PropsWithChildren) {
           </div>
         </div>
 
-        {featureFlags.classes_ui || featureFlags.competitions_ui ? (
+        {canAccessClasses || canAccessCompetitions ? (
           <div className="header-notification-bell">
             <NotificationBell userId={activeUserId} />
           </div>

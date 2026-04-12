@@ -5,8 +5,15 @@ import { AuthProvider } from "./AuthContext";
 import { RequireActiveUser } from "./RequireActiveUser";
 import { RequirePermission } from "./RequirePermission";
 import { useAuth } from "./useAuth";
+import { useAppRole } from "./useAppRole";
 import { AppShell } from "../widgets/AppShell";
 import { useFeatureFlag } from "../shared/lib/online/featureFlags";
+import {
+  canAccessFeature,
+  canModerateIdeas,
+  canUseTeacherArea
+} from "../shared/lib/auth/siteAccess";
+import { useRoleAccess } from "./useRoleAccess";
 
 const HomePage = lazy(() =>
   import("../pages/HomePage").then((module) => ({ default: module.HomePage }))
@@ -30,6 +37,11 @@ const ForgotPasswordPage = lazy(() =>
 const IdeasPage = lazy(() =>
   import("../pages/IdeasPage").then((module) => ({
     default: module.IdeasPage
+  }))
+);
+const AdminIdeasPage = lazy(() =>
+  import("../pages/AdminIdeasPage").then((module) => ({
+    default: module.AdminIdeasPage
   }))
 );
 const TrainingHubPage = lazy(() =>
@@ -206,266 +218,320 @@ function RecoveryRouteRedirect() {
   return null;
 }
 
-export function App() {
+function AppRoutes() {
+  const auth = useAuth();
+  const appRole = useAppRole();
+  const access = useRoleAccess();
   const classesEnabled = useFeatureFlag("classes_ui");
   const competitionsEnabled = useFeatureFlag("competitions_ui");
   const groupStatsEnabled = useFeatureFlag("group_stats_ui");
+  const canAccessTeacherArea = canUseTeacherArea(appRole, auth.siteRole);
+  const classesVisible = canAccessFeature(
+    "classes_ui",
+    classesEnabled,
+    appRole,
+    auth.siteRole
+  );
+  const competitionsVisible = canAccessFeature(
+    "competitions_ui",
+    competitionsEnabled,
+    appRole,
+    auth.siteRole
+  );
+  const groupStatsVisible = canAccessFeature(
+    "group_stats_ui",
+    groupStatsEnabled,
+    appRole,
+    auth.siteRole
+  );
 
+  return (
+    <AppShell>
+      <Suspense fallback={<p className="status-line">Загрузка...</p>}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/profiles" element={<ProfilesPage />} />
+          <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/auth/register" element={<RegisterPage />} />
+          <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/ideas" element={<IdeasPage />} />
+          <Route
+            path="/admin/ideas"
+            element={
+              auth.isAuthenticated && canModerateIdeas(auth.siteRole) ? (
+                <AdminIdeasPage />
+              ) : (
+                <Navigate to="/ideas" replace />
+              )
+            }
+          />
+          <Route
+            path="/training"
+            element={
+              <RequireActiveUser>
+                <TrainingHubPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/pre-session"
+            element={
+              <RequireActiveUser>
+                <PreSessionPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/classes"
+            element={
+              classesVisible ? (
+                <RequireActiveUser>
+                  {access.classes.view || canAccessTeacherArea ? (
+                    <ClassesPage />
+                  ) : (
+                    <RequirePermission permission="classes:view" sectionTitle="Классы">
+                      <ClassesPage />
+                    </RequirePermission>
+                  )}
+                </RequireActiveUser>
+              ) : (
+                <Navigate to="/training" replace />
+              )
+            }
+          />
+          <Route
+            path="/classes/:classId"
+            element={
+              classesVisible ? (
+                <RequireActiveUser>
+                  {access.classes.view || canAccessTeacherArea ? (
+                    <ClassesPage />
+                  ) : (
+                    <RequirePermission permission="classes:view" sectionTitle="Классы">
+                      <ClassesPage />
+                    </RequirePermission>
+                  )}
+                </RequireActiveUser>
+              ) : (
+                <Navigate to="/training" replace />
+              )
+            }
+          />
+          <Route
+            path="/competitions"
+            element={
+              competitionsVisible ? (
+                <RequireActiveUser>
+                  {access.classes.manage || canAccessTeacherArea ? (
+                    <CompetitionsPage />
+                  ) : (
+                    <RequirePermission permission="classes:manage" sectionTitle="Соревнования">
+                      <CompetitionsPage />
+                    </RequirePermission>
+                  )}
+                </RequireActiveUser>
+              ) : (
+                <Navigate to="/training" replace />
+              )
+            }
+          />
+          <Route
+            path="/training/schulte"
+            element={
+              <RequireActiveUser>
+                <SchulteSetupPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/schulte/:mode"
+            element={
+              <RequireActiveUser>
+                <SchulteSessionPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/sprint-math"
+            element={
+              <RequireActiveUser>
+                <SprintMathSetupPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/sprint-math/session"
+            element={
+              <RequireActiveUser>
+                <SprintMathSessionPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/reaction"
+            element={
+              <RequireActiveUser>
+                <ReactionPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/nback"
+            element={
+              <RequireActiveUser>
+                <NBackSetupPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/nback/session"
+            element={
+              <RequireActiveUser>
+                <NBackSessionPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/memory-grid"
+            element={
+              <RequireActiveUser>
+                <MemoryGridSetupPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/memory-grid/session"
+            element={
+              <RequireActiveUser>
+                <MemoryGridSessionPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/decision-rush"
+            element={
+              <RequireActiveUser>
+                <DecisionRushSetupPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/decision-rush/session"
+            element={
+              <RequireActiveUser>
+                <DecisionRushSessionPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/pattern-recognition"
+            element={
+              <RequireActiveUser>
+                <PatternRecognitionSetupPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/pattern-recognition/session"
+            element={
+              <RequireActiveUser>
+                <PatternRecognitionSessionPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/pattern-recognition/result"
+            element={
+              <RequireActiveUser>
+                <PatternRecognitionResultPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/memory-match"
+            element={
+              <RequireActiveUser>
+                <MemoryMatchPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/spatial-memory"
+            element={
+              <RequireActiveUser>
+                <SpatialMemoryPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/training/block-pattern"
+            element={
+              <RequireActiveUser>
+                <BlockPatternRecallPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/play/schulte/classic"
+            element={<Navigate to="/training/schulte/classic_plus" replace />}
+          />
+          <Route
+            path="/play/schulte/timed"
+            element={<Navigate to="/training/schulte/timed_plus" replace />}
+          />
+          <Route
+            path="/stats"
+            element={
+              <RequireActiveUser>
+                <StatsPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/stats/individual"
+            element={
+              <RequireActiveUser>
+                <StatsIndividualPage />
+              </RequireActiveUser>
+            }
+          />
+          <Route
+            path="/stats/group"
+            element={
+              groupStatsVisible ? (
+                <RequireActiveUser>
+                  {access.stats.viewGroup || canAccessTeacherArea ? (
+                    <StatsGroupPage />
+                  ) : (
+                    <RequirePermission
+                      permission="stats:group:view"
+                      sectionTitle="Групповая статистика"
+                    >
+                      <StatsGroupPage />
+                    </RequirePermission>
+                  )}
+                </RequireActiveUser>
+              ) : (
+                <Navigate to="/stats" replace />
+              )
+            }
+          />
+          <Route path="/help" element={<HelpPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </AppShell>
+  );
+}
+
+export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <ActiveUserProvider>
           <RecoveryRouteRedirect />
-          <AppShell>
-            <Suspense fallback={<p className="status-line">Загрузка...</p>}>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/profiles" element={<ProfilesPage />} />
-                <Route path="/auth/login" element={<LoginPage />} />
-                <Route path="/auth/register" element={<RegisterPage />} />
-                <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/ideas" element={<IdeasPage />} />
-              <Route
-                path="/training"
-                element={
-                  <RequireActiveUser>
-                    <TrainingHubPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/pre-session"
-                element={
-                  <RequireActiveUser>
-                    <PreSessionPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/classes"
-                element={
-                  classesEnabled ? (
-                    <RequireActiveUser>
-                      <RequirePermission permission="classes:view" sectionTitle="Классы">
-                        <ClassesPage />
-                      </RequirePermission>
-                    </RequireActiveUser>
-                  ) : (
-                    <Navigate to="/training" replace />
-                  )
-                }
-              />
-              <Route
-                path="/classes/:classId"
-                element={
-                  classesEnabled ? (
-                    <RequireActiveUser>
-                      <RequirePermission permission="classes:view" sectionTitle="Классы">
-                        <ClassesPage />
-                      </RequirePermission>
-                    </RequireActiveUser>
-                  ) : (
-                    <Navigate to="/training" replace />
-                  )
-                }
-              />
-              <Route
-                path="/competitions"
-                element={
-                  competitionsEnabled ? (
-                    <RequireActiveUser>
-                      <RequirePermission permission="classes:manage" sectionTitle="Соревнования">
-                        <CompetitionsPage />
-                      </RequirePermission>
-                    </RequireActiveUser>
-                  ) : (
-                    <Navigate to="/training" replace />
-                  )
-                }
-              />
-              <Route
-                path="/training/schulte"
-                element={
-                  <RequireActiveUser>
-                    <SchulteSetupPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/schulte/:mode"
-                element={
-                  <RequireActiveUser>
-                    <SchulteSessionPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/sprint-math"
-                element={
-                  <RequireActiveUser>
-                    <SprintMathSetupPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/sprint-math/session"
-                element={
-                  <RequireActiveUser>
-                    <SprintMathSessionPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/reaction"
-                element={
-                  <RequireActiveUser>
-                    <ReactionPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/nback"
-                element={
-                  <RequireActiveUser>
-                    <NBackSetupPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/nback/session"
-                element={
-                  <RequireActiveUser>
-                    <NBackSessionPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/memory-grid"
-                element={
-                  <RequireActiveUser>
-                    <MemoryGridSetupPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/memory-grid/session"
-                element={
-                  <RequireActiveUser>
-                    <MemoryGridSessionPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/decision-rush"
-                element={
-                  <RequireActiveUser>
-                    <DecisionRushSetupPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/decision-rush/session"
-                element={
-                  <RequireActiveUser>
-                    <DecisionRushSessionPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/pattern-recognition"
-                element={
-                  <RequireActiveUser>
-                    <PatternRecognitionSetupPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/pattern-recognition/session"
-                element={
-                  <RequireActiveUser>
-                    <PatternRecognitionSessionPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/pattern-recognition/result"
-                element={
-                  <RequireActiveUser>
-                    <PatternRecognitionResultPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/memory-match"
-                element={
-                  <RequireActiveUser>
-                    <MemoryMatchPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/spatial-memory"
-                element={
-                  <RequireActiveUser>
-                    <SpatialMemoryPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/training/block-pattern"
-                element={
-                  <RequireActiveUser>
-                    <BlockPatternRecallPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/play/schulte/classic"
-                element={<Navigate to="/training/schulte/classic_plus" replace />}
-              />
-              <Route
-                path="/play/schulte/timed"
-                element={<Navigate to="/training/schulte/timed_plus" replace />}
-              />
-              <Route
-                path="/stats"
-                element={
-                  <RequireActiveUser>
-                    <StatsPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/stats/individual"
-                element={
-                  <RequireActiveUser>
-                    <StatsIndividualPage />
-                  </RequireActiveUser>
-                }
-              />
-              <Route
-                path="/stats/group"
-                element={
-                  groupStatsEnabled ? (
-                    <RequireActiveUser>
-                      <RequirePermission
-                        permission="stats:group:view"
-                        sectionTitle="Групповая статистика"
-                      >
-                        <StatsGroupPage />
-                      </RequirePermission>
-                    </RequireActiveUser>
-                  ) : (
-                    <Navigate to="/stats" replace />
-                  )
-                }
-              />
-              <Route path="/help" element={<HelpPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </AppShell>
+          <AppRoutes />
         </ActiveUserProvider>
       </AuthProvider>
     </BrowserRouter>

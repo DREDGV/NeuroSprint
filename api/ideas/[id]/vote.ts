@@ -40,7 +40,9 @@ async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: strin
       return jsonResponse(res, 404, { error: "Идея не найдена." });
     }
     if (idea.moderation_status !== "approved") {
-      return jsonResponse(res, 403, { error: "Поддержка доступна только для одобренных идей." });
+      return jsonResponse(res, 403, {
+        error: "Поддержка доступна только для одобренных идей."
+      });
     }
     if (idea.author_account_id === accountId) {
       return jsonResponse(res, 403, { error: "Свою идею поддерживать не нужно." });

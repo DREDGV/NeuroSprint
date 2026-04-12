@@ -18,11 +18,13 @@ export function getSelfServiceDefaultRole(): AppRole {
 
 export function getSelfServiceCreateRoles(): AppRole[] {
   return allowPrivilegedProfileRoles()
-    ? ["home", "student", "teacher", "admin"]
+    ? ["home", "student", "teacher"]
     : ["home", "student"];
 }
 
 export function getEditableSelfServiceRoles(currentRole: AppRole): AppRole[] {
   const baseRoles = getSelfServiceCreateRoles();
-  return baseRoles.includes(currentRole) ? baseRoles : [currentRole, ...baseRoles];
+  return baseRoles.includes(currentRole) || currentRole === "admin"
+    ? baseRoles
+    : [currentRole, ...baseRoles];
 }

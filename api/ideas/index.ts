@@ -3,6 +3,8 @@ import { getSupabaseAdmin, verifyAuthToken } from "../_lib/supabase.js";
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_BODY_LENGTH = 5000;
+const MIN_TITLE_LENGTH = 4;
+const MIN_BODY_LENGTH = 10;
 const VALID_CATEGORIES = ["training", "ux", "progress", "social", "account", "stats", "other"];
 
 function trimAndValidateString(value: unknown, maxLength: number): string {
@@ -151,12 +153,16 @@ async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
       ? String(body.category)
       : "other";
 
-    if (!title) {
-      return jsonResponse(res, 400, { error: "Укажите заголовок идеи." });
+    if (title.length < MIN_TITLE_LENGTH) {
+      return jsonResponse(res, 400, {
+        error: `Сделайте заголовок длиннее. Нужны минимум ${MIN_TITLE_LENGTH} символа.`
+      });
     }
 
-    if (!ideaBody) {
-      return jsonResponse(res, 400, { error: "Добавьте описание идеи." });
+    if (ideaBody.length < MIN_BODY_LENGTH) {
+      return jsonResponse(res, 400, {
+        error: `Добавьте описание идеи. Нужны минимум ${MIN_BODY_LENGTH} символов.`
+      });
     }
 
     const { count: existingCount } = await supabaseAdmin

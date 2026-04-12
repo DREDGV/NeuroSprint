@@ -1,7 +1,10 @@
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../app/useAuth";
+import { useAppRole } from "../app/useAppRole";
 import { useRoleAccess } from "../app/useRoleAccess";
 import type { RoleAccess } from "../shared/lib/auth/permissions";
 import { useFeatureFlags } from "../shared/lib/online/featureFlags";
+import { canAccessFeature } from "../shared/lib/auth/siteAccess";
 
 interface NavItem {
   id: string;
@@ -26,15 +29,28 @@ const navItems: NavItem[] = [
 ];
 
 export function MainNav() {
+  const auth = useAuth();
+  const appRole = useAppRole();
   const access = useRoleAccess();
   const flags = useFeatureFlags();
 
+  const canAccessClasses = canAccessFeature("classes_ui", flags.classes_ui, appRole, auth.siteRole);
+  const canAccessCompetitions = canAccessFeature(
+    "competitions_ui",
+    flags.competitions_ui,
+    appRole,
+    auth.siteRole
+  );
+
   const visibleItems = navItems.filter((item) => {
-    if (item.id === "classes" && !flags.classes_ui) {
+    if (item.id === "classes" && !canAccessClasses) {
       return false;
     }
-    if (item.id === "competitions" && !flags.competitions_ui) {
+    if (item.id === "competitions" && !canAccessCompetitions) {
       return false;
+    }
+    if (item.id === "classes" || item.id === "competitions") {
+      return true;
     }
     return item.visible(access);
   });

@@ -303,6 +303,8 @@ export interface AdaptiveDecision {
 export interface ClassGroup {
   id: string;
   name: string;
+  ownerProfileId?: string;
+  ownerAccountId?: string;
   createdAt: string;
 }
 

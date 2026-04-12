@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../app/useAuth";
 import { setAuthReturnPath } from "../shared/lib/auth/authReturnPath";
+import { canModerateIdeas } from "../shared/lib/auth/siteAccess";
 import {
   createIdea,
   fetchIdeas,
@@ -33,6 +34,8 @@ const STATUS_LABELS: Record<IdeaModerationStatus, string> = {
 };
 
 const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1"]);
+const MIN_TITLE_LENGTH = 4;
+const MIN_BODY_LENGTH = 10;
 
 function formatIdeaDate(value: string) {
   return new Date(value).toLocaleDateString("ru-RU");
@@ -56,6 +59,9 @@ export function IdeasPage() {
 
   const isLocalWriteUnavailable =
     typeof window !== "undefined" && LOCALHOST_NAMES.has(window.location.hostname);
+  const titleLength = newTitle.trim().length;
+  const bodyLength = newBody.trim().length;
+  const isCreateInvalid = titleLength < MIN_TITLE_LENGTH || bodyLength < MIN_BODY_LENGTH;
 
   const myIdeas = useMemo(
     () => (auth.isAuthenticated ? ideas.filter((idea) => idea.is_author) : []),
@@ -98,10 +104,7 @@ export function IdeasPage() {
 
   async function handleCreateIdea(event: FormEvent) {
     event.preventDefault();
-    if (!auth.isAuthenticated || !auth.session?.access_token) {
-      return;
-    }
-    if (!newTitle.trim() || !newBody.trim()) {
+    if (!auth.isAuthenticated || !auth.session?.access_token || isCreateInvalid) {
       return;
     }
 
@@ -125,11 +128,15 @@ export function IdeasPage() {
       setNewCategory("other");
       setShowCreateForm(false);
       setShowMyIdeas(true);
-      setSubmitStatus("Идея отправлена. Сейчас она видна в разделе «Мои идеи» со статусом «На проверке».");
+      setSubmitStatus(
+        "Идея отправлена. Сейчас она видна в разделе «Мои идеи» со статусом «На проверке»."
+      );
       await loadIdeas();
     } catch (error) {
       setSubmitError(
-        error instanceof Error ? error.message : "Не удалось отправить идею. Попробуйте ещё раз."
+        error instanceof Error
+          ? error.message
+          : "Не удалось отправить идею. Попробуйте ещё раз."
       );
     } finally {
       setCreating(false);
@@ -230,6 +237,11 @@ export function IdeasPage() {
             >
               {showMyIdeas ? "Скрыть мои идеи" : "Мои идеи"}
             </button>
+            {canModerateIdeas(auth.siteRole) ? (
+              <Link className="btn-ghost" to="/admin/ideas">
+                Модерация
+              </Link>
+            ) : null}
           </>
         ) : (
           <div className="ideas-guest-cta">
@@ -280,6 +292,7 @@ export function IdeasPage() {
               maxLength={200}
               required
             />
+            <small className="ideas-form-hint">Минимум 4 символа.</small>
           </label>
 
           <label className="ideas-form-field">
@@ -292,6 +305,9 @@ export function IdeasPage() {
               maxLength={5000}
               required
             />
+            <small className="ideas-form-hint">
+              Минимум 10 символов, чтобы идея не выглядела как черновик.
+            </small>
           </label>
 
           <div className="ideas-form-field">
@@ -320,7 +336,7 @@ export function IdeasPage() {
           <button
             type="submit"
             className="btn-primary"
-            disabled={creating || !newTitle.trim() || !newBody.trim() || isLocalWriteUnavailable}
+            disabled={creating || isCreateInvalid || isLocalWriteUnavailable}
           >
             {creating ? "Отправляем..." : "Отправить идею"}
           </button>
@@ -333,7 +349,10 @@ export function IdeasPage() {
           {myIdeas.length === 0 ? (
             <div className="ideas-empty-state">
               <strong>У вас пока нет идей</strong>
-              <p>Начните с первого предложения. После отправки идея появится здесь со статусом проверки.</p>
+              <p>
+                Начните с первого предложения. После отправки идея появится здесь со статусом
+                проверки.
+              </p>
             </div>
           ) : (
             <div className="ideas-grid">
@@ -366,7 +385,10 @@ export function IdeasPage() {
         ) : publicIdeas.length === 0 ? (
           <div className="ideas-empty-state">
             <strong>Пока нет одобренных идей</strong>
-            <p>Сообщество ещё не сформировало публичную очередь. Вы можете предложить первую идею.</p>
+            <p>
+              Сообщество ещё не сформировало публичную очередь. Вы можете предложить первую
+              идею.
+            </p>
           </div>
         ) : (
           <>
@@ -410,7 +432,9 @@ export function IdeasPage() {
                           </button>
                         ) : (
                           <span className="idea-support-note">
-                            {idea.is_author ? "Голосовать за свою идею не нужно" : "Только для аккаунтов"}
+                            {idea.is_author
+                              ? "Голосовать за свою идею не нужно"
+                              : "Голосование доступно только из аккаунта"}
                           </span>
                         )}
                         <span className="idea-support-count">Поддержали: {idea.vote_count}</span>

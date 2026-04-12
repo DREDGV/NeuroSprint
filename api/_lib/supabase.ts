@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
+type SiteRole = "user" | "moderator" | "admin";
+
 function resolveServerSupabaseConfig() {
   const supabaseUrl =
     process.env.SUPABASE_URL ||
@@ -64,4 +66,48 @@ export async function verifyAuthToken(token: string | undefined): Promise<string
   } catch {
     return null;
   }
+}
+
+function normalizeSiteRole(value: unknown): SiteRole {
+  if (value === "admin" || value === "moderator" || value === "user") {
+    return value;
+  }
+  return "user";
+}
+
+export async function getAccountSiteRole(accountId: string): Promise<SiteRole> {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
+      .from("account_access")
+      .select("site_role")
+      .eq("account_id", accountId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("account_access lookup failed", error);
+      return "user";
+    }
+
+    return normalizeSiteRole(data?.site_role);
+  } catch (error) {
+    console.error("site role lookup crashed", error);
+    return "user";
+  }
+}
+
+export async function verifyModeratorToken(
+  token: string | undefined
+): Promise<{ accountId: string; siteRole: SiteRole } | null> {
+  const accountId = await verifyAuthToken(token);
+  if (!accountId) {
+    return null;
+  }
+
+  const siteRole = await getAccountSiteRole(accountId);
+  if (siteRole !== "moderator" && siteRole !== "admin") {
+    return null;
+  }
+
+  return { accountId, siteRole };
 }

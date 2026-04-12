@@ -11,6 +11,12 @@ import type { Session, User as SupabaseAuthUser } from "@supabase/supabase-js";
 import type { AccountProfile } from "../shared/types/account";
 import { accountSyncService } from "../entities/account/accountSyncService";
 import {
+  isModerator as checkIsModerator,
+  isSiteAdmin as checkIsSiteAdmin,
+  normalizeSiteRole,
+  type SiteRole
+} from "../shared/lib/auth/siteAccess";
+import {
   getSupabasePublicStatusMessage,
   isSupabaseConfigured,
   requireSupabaseClient,
@@ -27,6 +33,9 @@ import {
 interface AuthContextValue {
   session: Session | null;
   account: AccountProfile | null;
+  siteRole: SiteRole;
+  isSiteAdmin: boolean;
+  isModerator: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
   isConfigured: boolean;
@@ -110,7 +119,7 @@ function clearRecoveryParamsFromUrl(): void {
   window.history.replaceState({}, document.title, nextUrl);
 }
 
-function mapAccount(authUser: SupabaseAuthUser | null): AccountProfile | null {
+function mapAccount(authUser: SupabaseAuthUser | null, siteRole: SiteRole): AccountProfile | null {
   if (!authUser) {
     return null;
   }
@@ -122,13 +131,34 @@ function mapAccount(authUser: SupabaseAuthUser | null): AccountProfile | null {
       typeof authUser.user_metadata?.display_name === "string"
         ? authUser.user_metadata.display_name
         : null,
+    siteRole,
     createdAt: authUser.created_at ?? null,
     lastSignInAt: authUser.last_sign_in_at ?? null
   };
 }
 
+async function loadSiteRole(userId: string): Promise<SiteRole> {
+  if (!supabase || !isSupabaseConfigured) {
+    return "user";
+  }
+
+  const { data, error } = await supabase
+    .from("account_access")
+    .select("site_role")
+    .eq("account_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Failed to load account_access.site_role; falling back to user.", error);
+    return "user";
+  }
+
+  return normalizeSiteRole(data?.site_role);
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
+  const [siteRole, setSiteRole] = useState<SiteRole>("user");
   const [isLoading, setIsLoading] = useState(true);
   const [isRecoveryMode, setIsRecoveryMode] = useState(() => hasRecoveryParamsInUrl());
   const [syncInProgress, setSyncInProgress] = useState(false);
@@ -167,7 +197,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
         console.error("auth session bootstrap failed", error);
       }
 
-      setSession(data.session ?? null);
+      const nextSession = data.session ?? null;
+      const nextSiteRole = nextSession?.user ? await loadSiteRole(nextSession.user.id) : "user";
+
+      if (!active) {
+        return;
+      }
+
+      setSession(nextSession);
+      setSiteRole(nextSiteRole);
       setIsRecoveryMode(recoveryInUrl || hasRecoveryParamsInUrl());
       setIsLoading(false);
     }
@@ -183,6 +221,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setSession(nextSession ?? null);
       setIsRecoveryMode(event === "PASSWORD_RECOVERY" || hasRecoveryParamsInUrl());
       setIsLoading(false);
+      if (!nextSession?.user) {
+        setSiteRole("user");
+        return;
+      }
+
+      void loadSiteRole(nextSession.user.id).then(setSiteRole);
     });
 
     return () => {
@@ -228,6 +272,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     setSession(data.session ?? null);
+    setSiteRole(data.session?.user ? await loadSiteRole(data.session.user.id) : "user");
     trackLoginSucceeded();
   }, []);
 
@@ -249,6 +294,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       setSession(data.session ?? null);
+      setSiteRole(data.session?.user ? await loadSiteRole(data.session.user.id) : "user");
       trackAccountRegistered();
     },
     []
@@ -263,6 +309,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     setSession(null);
+    setSiteRole("user");
     setIsRecoveryMode(false);
     trackLogoutSucceeded();
   }, []);
@@ -360,7 +407,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
-      account: mapAccount(session?.user ?? null),
+      account: mapAccount(session?.user ?? null, siteRole),
+      siteRole,
+      isSiteAdmin: checkIsSiteAdmin(siteRole),
+      isModerator: checkIsModerator(siteRole),
       isAuthenticated: Boolean(session?.user),
       isLoading,
       isConfigured: isSupabaseConfigured,
@@ -385,6 +435,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       register,
       requestPasswordReset,
       session,
+      siteRole,
       syncAccountData,
       syncError,
       syncInProgress,
