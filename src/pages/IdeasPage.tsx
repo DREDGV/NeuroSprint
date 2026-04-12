@@ -9,7 +9,12 @@ import {
   unvoteIdea,
   voteForIdea
 } from "../shared/lib/ideas/ideasService";
-import type { IdeaCategory, IdeaModerationStatus, IdeaSummary } from "../shared/lib/ideas/types";
+import type {
+  IdeaCategory,
+  IdeaModerationStatus,
+  IdeaRoadmapStatus,
+  IdeaSummary
+} from "../shared/lib/ideas/types";
 import {
   trackIdeasViewed,
   trackIdeaSubmitted,
@@ -33,12 +38,35 @@ const STATUS_LABELS: Record<IdeaModerationStatus, string> = {
   rejected: "Отклонено"
 };
 
+const ROADMAP_LABELS: Record<IdeaRoadmapStatus, string> = {
+  new: "Новая",
+  planned: "Запланировано",
+  in_progress: "В работе",
+  done: "Готово",
+  declined: "Отклонено"
+};
+
 const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1"]);
 const MIN_TITLE_LENGTH = 4;
 const MIN_BODY_LENGTH = 10;
 
 function formatIdeaDate(value: string) {
   return new Date(value).toLocaleDateString("ru-RU");
+}
+
+function getRoadmapBadgeClass(status: IdeaRoadmapStatus) {
+  switch (status) {
+    case "planned":
+      return "is-planned";
+    case "in_progress":
+      return "is-in-progress";
+    case "done":
+      return "is-done";
+    case "declined":
+      return "is-declined";
+    default:
+      return "is-new";
+  }
 }
 
 export function IdeasPage() {
@@ -88,7 +116,7 @@ export function IdeasPage() {
       setIdeas([]);
       setListError(
         isLocalWriteUnavailable
-          ? "На localhost доска идей работает как интерфейсный preview. Проверяйте создание и голосование на сайте или в Vercel Preview."
+          ? "На localhost доска идей работает как интерфейсный preview. Создание идей, модерацию и голосование проверяйте на сайте или в Vercel Preview."
           : error instanceof Error
             ? error.message
             : "Не удалось загрузить идеи."
@@ -134,9 +162,7 @@ export function IdeasPage() {
       await loadIdeas();
     } catch (error) {
       setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Не удалось отправить идею. Попробуйте ещё раз."
+        error instanceof Error ? error.message : "Не удалось отправить идею. Попробуйте ещё раз."
       );
     } finally {
       setCreating(false);
@@ -168,11 +194,25 @@ export function IdeasPage() {
     );
 
     try {
+      const nextState = wasVoted
+        ? await unvoteIdea(target.id, auth.session.access_token)
+        : await voteForIdea(target.id, auth.session.access_token);
+
+      setIdeas((current) =>
+        current.map((idea) =>
+          idea.id === target.id
+            ? {
+                ...idea,
+                has_voted: nextState.has_voted,
+                vote_count: nextState.vote_count
+              }
+            : idea
+        )
+      );
+
       if (wasVoted) {
-        await unvoteIdea(target.id, auth.session.access_token);
         trackIdeaVoteRemoved();
       } else {
-        await voteForIdea(target.id, auth.session.access_token);
         trackIdeaVoteAdded();
       }
     } catch (error) {
@@ -202,9 +242,8 @@ export function IdeasPage() {
           <p className="stats-section-kicker">Доска идей</p>
           <h2>Что улучшить в NeuroSprint</h2>
           <p>
-            Здесь собираются предложения по развитию проекта. Публично видны только
-            одобренные идеи. Ваши новые идеи сначала попадают в раздел «Мои идеи» со
-            статусом «На проверке».
+            Здесь собираются предложения по развитию проекта. Публично видны только одобренные идеи.
+            Новые предложения сначала попадают в раздел «Мои идеи» со статусом «На проверке».
           </p>
         </div>
       </div>
@@ -245,7 +284,7 @@ export function IdeasPage() {
           </>
         ) : (
           <div className="ideas-guest-cta">
-            <p>Чтобы предложить идею или поддержать уже существующую, нужен аккаунт.</p>
+            <p>Чтобы предлагать идеи и голосовать, нужен аккаунт.</p>
             <Link
               className="btn-primary"
               to="/auth/login"
@@ -270,7 +309,7 @@ export function IdeasPage() {
             <div>
               <h3>Новая идея</h3>
               <p className="status-line">
-                После отправки идея останется у вас в разделе «Мои идеи» до проверки.
+                После отправки идея останется у вас в разделе «Мои идеи» до проверки модератором.
               </p>
             </div>
             <button
@@ -301,12 +340,12 @@ export function IdeasPage() {
               rows={5}
               value={newBody}
               onChange={(event) => setNewBody(event.target.value)}
-              placeholder="Подробно расскажите, что вы предлагаете и зачем"
+              placeholder="Подробно расскажите, что именно предлагаете и зачем"
               maxLength={5000}
               required
             />
             <small className="ideas-form-hint">
-              Минимум 10 символов, чтобы идея не выглядела как черновик.
+              Минимум 10 символов, чтобы идея не выглядела как черновик или односложный спам.
             </small>
           </label>
 
@@ -328,8 +367,8 @@ export function IdeasPage() {
 
           {isLocalWriteUnavailable ? (
             <p className="status-line">
-              На localhost отправка идей недоступна. Проверяйте этот сценарий на сайте или в
-              Vercel Preview.
+              На localhost отправка идей недоступна. Этот сценарий проверяйте на сайте или в Vercel
+              Preview.
             </p>
           ) : null}
 
@@ -349,10 +388,7 @@ export function IdeasPage() {
           {myIdeas.length === 0 ? (
             <div className="ideas-empty-state">
               <strong>У вас пока нет идей</strong>
-              <p>
-                Начните с первого предложения. После отправки идея появится здесь со статусом
-                проверки.
-              </p>
+              <p>Начните с первого предложения. После отправки идея появится здесь со статусом проверки.</p>
             </div>
           ) : (
             <div className="ideas-grid">
@@ -361,15 +397,34 @@ export function IdeasPage() {
                   <div className="idea-card-head">
                     <div className="idea-card-title">
                       <h4>{idea.title}</h4>
-                      <span className={`idea-status-badge is-${idea.moderation_status}`}>
-                        {STATUS_LABELS[idea.moderation_status]}
-                      </span>
+                      <div className="idea-card-badges">
+                        <span className={`idea-status-badge is-${idea.moderation_status}`}>
+                          {STATUS_LABELS[idea.moderation_status]}
+                        </span>
+                        <span
+                          className={`idea-status-badge idea-roadmap-badge ${getRoadmapBadgeClass(idea.roadmap_status)}`}
+                        >
+                          {ROADMAP_LABELS[idea.roadmap_status]}
+                        </span>
+                      </div>
                     </div>
                     <span className="idea-category-badge">{CATEGORY_LABELS[idea.category]}</span>
                   </div>
+
                   <p className="idea-card-body">{idea.body}</p>
+
+                  {idea.moderation_status === "rejected" && idea.rejection_note ? (
+                    <div className="idea-card-note is-rejected">
+                      <strong>Причина отклонения</strong>
+                      <p>{idea.rejection_note}</p>
+                    </div>
+                  ) : null}
+
                   <div className="idea-card-meta">
-                    <span>Поддержка: {idea.vote_count}</span>
+                    <span>
+                      <strong>Поддержали:</strong> {idea.vote_count}
+                    </span>
+                    <span>{ROADMAP_LABELS[idea.roadmap_status]}</span>
                     <span>{formatIdeaDate(idea.created_at)}</span>
                   </div>
                 </article>
@@ -385,10 +440,7 @@ export function IdeasPage() {
         ) : publicIdeas.length === 0 ? (
           <div className="ideas-empty-state">
             <strong>Пока нет одобренных идей</strong>
-            <p>
-              Сообщество ещё не сформировало публичную очередь. Вы можете предложить первую
-              идею.
-            </p>
+            <p>Сообщество ещё не сформировало публичную очередь. Вы можете предложить первую идею.</p>
           </div>
         ) : (
           <>
@@ -397,14 +449,22 @@ export function IdeasPage() {
               {publicIdeas.map((idea) => {
                 const canVote = auth.isAuthenticated && !idea.is_author;
                 const votePending = votePendingId === idea.id;
+
                 return (
                   <article key={idea.id} className="idea-card">
                     <div className="idea-card-head">
                       <div className="idea-card-title">
                         <h4>{idea.title}</h4>
-                        {idea.is_author ? (
-                          <span className="idea-status-badge is-approved">Ваша идея</span>
-                        ) : null}
+                        <div className="idea-card-badges">
+                          {idea.is_author ? (
+                            <span className="idea-status-badge is-approved">Ваша идея</span>
+                          ) : null}
+                          <span
+                            className={`idea-status-badge idea-roadmap-badge ${getRoadmapBadgeClass(idea.roadmap_status)}`}
+                          >
+                            {ROADMAP_LABELS[idea.roadmap_status]}
+                          </span>
+                        </div>
                       </div>
                       <span className="idea-category-badge">{CATEGORY_LABELS[idea.category]}</span>
                     </div>
@@ -415,13 +475,15 @@ export function IdeasPage() {
                       <div className="idea-card-meta">
                         <span className="idea-author">{idea.author_name}</span>
                         <span className="idea-date">{formatIdeaDate(idea.created_at)}</span>
+                        <span>{ROADMAP_LABELS[idea.roadmap_status]}</span>
                       </div>
+
                       <div className="idea-support-block">
                         {canVote ? (
                           <button
                             type="button"
                             className={`idea-support-btn${idea.has_voted ? " is-voted" : ""}`}
-                            onClick={() => handleVote(idea)}
+                            onClick={() => void handleVote(idea)}
                             disabled={votePending}
                           >
                             {votePending
@@ -433,7 +495,7 @@ export function IdeasPage() {
                         ) : (
                           <span className="idea-support-note">
                             {idea.is_author
-                              ? "Голосовать за свою идею не нужно"
+                              ? "Автор не голосует за свою идею"
                               : "Голосование доступно только из аккаунта"}
                           </span>
                         )}

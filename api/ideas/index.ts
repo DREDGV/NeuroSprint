@@ -74,7 +74,7 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
     let query = supabaseAdmin
       .from("idea_posts")
       .select(
-        "id, title, body, category, moderation_status, roadmap_status, vote_count, created_at, author_account_id",
+        "id, title, body, category, moderation_status, roadmap_status, rejection_note, vote_count, created_at, author_account_id",
         { count: "exact" }
       )
       .order("vote_count", { ascending: false })
@@ -132,6 +132,7 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
         category: idea.category,
         moderation_status: idea.moderation_status,
         roadmap_status: idea.roadmap_status,
+        rejection_note: idea.rejection_note,
         vote_count: idea.vote_count,
         created_at: idea.created_at,
         author_name: authorNames[idea.author_account_id] || "NeuroSprint user",
@@ -221,6 +222,7 @@ async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
       category: newIdea.category,
       moderation_status: newIdea.moderation_status,
       roadmap_status: newIdea.roadmap_status,
+      rejection_note: newIdea.rejection_note,
       vote_count: 0,
       created_at: newIdea.created_at
     });

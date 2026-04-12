@@ -1,4 +1,4 @@
-import type { IdeaCreatePayload, IdeaSummary, IdeasListResponse } from "./types";
+import type { IdeaCreatePayload, IdeaSummary, IdeasListResponse, IdeaVoteState } from "./types";
 
 const API_BASE = "";
 const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1"]);
@@ -67,7 +67,7 @@ export async function createIdea(payload: IdeaCreatePayload, authToken: string):
 export async function voteForIdea(
   ideaId: string,
   authToken: string
-): Promise<{ success: boolean; alreadyVoted?: boolean }> {
+): Promise<IdeaVoteState> {
   assertIdeasApiWriteAvailable();
 
   const response = await fetch(`${API_BASE}/api/ideas/vote`, {
@@ -89,7 +89,7 @@ export async function voteForIdea(
 export async function unvoteIdea(
   ideaId: string,
   authToken: string
-): Promise<{ success: boolean }> {
+): Promise<IdeaVoteState> {
   assertIdeasApiWriteAvailable();
 
   const response = await fetch(`${API_BASE}/api/ideas/vote`, {

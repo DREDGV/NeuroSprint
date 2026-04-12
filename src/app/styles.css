@@ -20074,6 +20074,12 @@ textarea:focus-visible {
   gap: 8px;
 }
 
+.idea-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .idea-card-title h4 {
   margin: 0;
   font-size: 1.1rem;
@@ -20111,6 +20117,36 @@ textarea:focus-visible {
   color: #b91c1c;
 }
 
+.idea-roadmap-badge {
+  background: rgba(148, 163, 184, 0.12);
+  color: #475569;
+}
+
+.idea-roadmap-badge.is-new {
+  background: rgba(148, 163, 184, 0.12);
+  color: #475569;
+}
+
+.idea-roadmap-badge.is-planned {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+}
+
+.idea-roadmap-badge.is-in-progress {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.idea-roadmap-badge.is-done {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.idea-roadmap-badge.is-declined {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
 .idea-category-badge {
   background: rgba(59, 130, 246, 0.1);
   color: #1d4ed8;
@@ -20121,6 +20157,31 @@ textarea:focus-visible {
   margin: 0;
   color: #334155;
   line-height: 1.6;
+}
+
+.idea-card-note {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.idea-card-note strong {
+  color: #0f172a;
+  font-size: 0.88rem;
+}
+
+.idea-card-note p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.idea-card-note.is-rejected {
+  background: rgba(254, 242, 242, 0.95);
+  border-color: rgba(239, 68, 68, 0.18);
 }
 
 .idea-card-footer {
@@ -20138,10 +20199,15 @@ textarea:focus-visible {
   font-size: 0.9rem;
 }
 
+.idea-card-meta strong {
+  color: #334155;
+}
+
 .idea-support-block {
   display: grid;
   gap: 8px;
   justify-items: end;
+  text-align: right;
 }
 
 .idea-support-btn {
@@ -20180,6 +20246,11 @@ textarea:focus-visible {
 .idea-support-note {
   color: #64748b;
   font-size: 0.84rem;
+}
+
+.idea-support-count {
+  font-weight: 700;
+  color: #334155;
 }
 
 .admin-ideas-page {

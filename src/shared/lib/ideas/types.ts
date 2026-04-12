@@ -16,6 +16,7 @@ export interface IdeaSummary {
   category: IdeaCategory;
   moderation_status: IdeaModerationStatus;
   roadmap_status: IdeaRoadmapStatus;
+  rejection_note: string | null;
   vote_count: number;
   created_at: string;
   author_name: string;
@@ -41,4 +42,6 @@ export interface AdminIdeasListResponse {
 
 export interface IdeaVoteState {
   has_voted: boolean;
+  vote_count: number;
+  already_voted?: boolean;
 }

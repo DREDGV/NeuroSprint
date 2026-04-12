@@ -40,6 +40,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return jsonResponse(res, 405, { error: "Method not allowed." });
 }
 
+async function syncIdeaVoteCount(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, ideaId: string) {
+  const ideaVotesTable = supabaseAdmin.from("idea_votes") as any;
+  const ideaPostsTable = supabaseAdmin.from("idea_posts") as any;
+
+  const { count, error: countError } = await ideaVotesTable
+    .select("id", { count: "exact", head: true })
+    .eq("idea_id", ideaId);
+
+  if (countError) {
+    throw countError;
+  }
+
+  const voteCount = count ?? 0;
+  const { error: updateError } = await ideaPostsTable
+    .update({ vote_count: voteCount })
+    .eq("id", ideaId);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  return voteCount;
+}
+
 async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: string) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
@@ -80,7 +104,13 @@ async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: strin
 
     const existingVote = (existingVoteData as Pick<IdeaVoteRow, "id"> | null) ?? null;
     if (existingVote) {
-      return jsonResponse(res, 200, { success: true, alreadyVoted: true });
+      const voteCount = await syncIdeaVoteCount(supabaseAdmin, ideaId);
+      return jsonResponse(res, 200, {
+        success: true,
+        alreadyVoted: true,
+        has_voted: true,
+        vote_count: voteCount
+      });
     }
 
     const insertPayload: IdeaVoteInsert = {
@@ -91,13 +121,20 @@ async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: strin
     const { error: insertError } = await ideaVotesTable.insert(insertPayload);
     if (insertError) {
       if (insertError.code === "23505") {
-        return jsonResponse(res, 200, { success: true, alreadyVoted: true });
+        const voteCount = await syncIdeaVoteCount(supabaseAdmin, ideaId);
+        return jsonResponse(res, 200, {
+          success: true,
+          alreadyVoted: true,
+          has_voted: true,
+          vote_count: voteCount
+        });
       }
       console.error("Vote insert error:", insertError);
       return jsonResponse(res, 500, { error: "Failed to vote for idea." });
     }
 
-    return jsonResponse(res, 200, { success: true });
+    const voteCount = await syncIdeaVoteCount(supabaseAdmin, ideaId);
+    return jsonResponse(res, 200, { success: true, has_voted: true, vote_count: voteCount });
   } catch (error) {
     console.error("Vote API error:", error);
     return jsonResponse(res, 500, { error: "Internal server error." });
@@ -123,7 +160,8 @@ async function handleUnvote(req: VercelRequest, res: VercelResponse, ideaId: str
       return jsonResponse(res, 500, { error: "Failed to remove vote." });
     }
 
-    return jsonResponse(res, 200, { success: true });
+    const voteCount = await syncIdeaVoteCount(supabaseAdmin, ideaId);
+    return jsonResponse(res, 200, { success: true, has_voted: false, vote_count: voteCount });
   } catch (error) {
     console.error("Unvote API error:", error);
     return jsonResponse(res, 500, { error: "Internal server error." });
