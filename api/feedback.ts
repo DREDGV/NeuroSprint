@@ -9,6 +9,11 @@ const MAX_REASONS = 5;
 const MAX_REASON_LENGTH = 100;
 const GUEST_RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 const GUEST_MAX_SUBMISSIONS = 3;
+const VALID_CATEGORIES = ["bug", "ux", "idea", "question", "praise"] as const;
+const VALID_SURFACES = ["post_session", "global_form"] as const;
+
+type FeedbackCategory = (typeof VALID_CATEGORIES)[number];
+type FeedbackSurface = (typeof VALID_SURFACES)[number];
 
 function hashGuestToken(token: string): string {
   return crypto.createHmac("sha256", GUEST_HASH_SECRET).update(token).digest("hex");
@@ -18,6 +23,25 @@ function trimAndValidateString(value: unknown, maxLength: number): string {
   if (typeof value !== "string") return "";
   const trimmed = value.trim();
   return trimmed.slice(0, maxLength);
+}
+
+function optionalString(value: unknown, maxLength: number): string | null {
+  const normalized = trimAndValidateString(value, maxLength);
+  return normalized || null;
+}
+
+function parseFeedbackCategory(value: unknown): FeedbackCategory | null {
+  const normalized = trimAndValidateString(value, 32);
+  return VALID_CATEGORIES.includes(normalized as FeedbackCategory)
+    ? (normalized as FeedbackCategory)
+    : null;
+}
+
+function parseFeedbackSurface(value: unknown): FeedbackSurface | null {
+  const normalized = trimAndValidateString(value, 32);
+  return VALID_SURFACES.includes(normalized as FeedbackSurface)
+    ? (normalized as FeedbackSurface)
+    : null;
 }
 
 function jsonResponse(res: VercelResponse, status: number, body: unknown) {
@@ -51,15 +75,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Validate required fields
-    const category = body.category;
-    const validCategories = ["bug", "ux", "idea", "question", "praise"];
-    if (!validCategories.includes(category)) {
+    const category = parseFeedbackCategory(body.category);
+    if (!category) {
       return jsonResponse(res, 400, { error: "Invalid category" });
     }
 
-    const sourceSurface = body.source_surface;
-    const validSurfaces = ["post_session", "global_form"];
-    if (!validSurfaces.includes(sourceSurface)) {
+    const sourceSurface = parseFeedbackSurface(body.source_surface);
+    if (!sourceSurface) {
       return jsonResponse(res, 400, { error: "Invalid source surface" });
     }
 
@@ -88,9 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Contact email (optional)
-    const contactEmail = body.contact_email
-      ? trimAndValidateString(body.contact_email, MAX_EMAIL_LENGTH)
-      : null;
+    const contactEmail = optionalString(body.contact_email, MAX_EMAIL_LENGTH);
 
     // Determine submitter kind
     const authHeader = req.headers.authorization;
@@ -121,20 +141,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    const trainingProfileId = optionalString(body.training_profile_id, 120);
+    const moduleId = optionalString(body.module_id, 120);
+    const modeId = optionalString(body.mode_id, 120);
+    const route = optionalString(body.route, MAX_COMMENT_LENGTH);
+    const sentiment = optionalString(body.sentiment, 100);
+
     // Duplicate check for post_session feedback
-    if (sourceSurface === "post_session" && body.module_id) {
+    if (sourceSurface === "post_session" && moduleId) {
       const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
       const dedupKey = accountId || guestTokenHash;
-      const { count } = await supabaseAdmin
-        .from("feedback_entries")
-        .select("*", { count: "exact", head: true })
-        .eq(sourceSurface === "post_session" && accountId ? "account_id" : "guest_token_hash", dedupKey!)
-        .eq("module_id", body.module_id)
-        .eq("source_surface", "post_session")
-        .gte("created_at", `${today}T00:00:00`);
+      if (dedupKey) {
+        const dedupColumn = accountId ? "account_id" : "guest_token_hash";
+        const { count } = await supabaseAdmin
+          .from("feedback_entries")
+          .select("*", { count: "exact", head: true })
+          .eq(dedupColumn, dedupKey)
+          .eq("module_id", moduleId)
+          .eq("source_surface", "post_session")
+          .gte("created_at", `${today}T00:00:00`);
 
-      if ((count ?? 0) > 0) {
-        return jsonResponse(res, 200, { success: true, alreadySubmitted: true });
+        if ((count ?? 0) > 0) {
+          return jsonResponse(res, 200, { success: true, alreadySubmitted: true });
+        }
       }
     }
 
@@ -142,17 +171,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { error: insertError } = await supabaseAdmin.from("feedback_entries").insert({
       submitter_kind: submitterKind,
       account_id: accountId || null,
-      training_profile_id: body.training_profile_id || null,
+      training_profile_id: trainingProfileId,
       guest_token_hash: guestTokenHash,
       source_surface: sourceSurface,
-      category: category,
-      module_id: body.module_id || null,
-      mode_id: body.mode_id || null,
-      route: body.route || null,
-      sentiment: body.sentiment || null,
+      category,
+      module_id: moduleId,
+      mode_id: modeId,
+      route,
+      sentiment,
       star_rating: starRating,
       reasons: reasons.length > 0 ? reasons : null,
-      comment: comment,
+      comment,
       contact_email: contactEmail,
       client_context: body.client_context || null,
       review_status: "new"

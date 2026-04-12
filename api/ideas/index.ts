@@ -5,13 +5,30 @@ const MAX_TITLE_LENGTH = 200;
 const MAX_BODY_LENGTH = 5000;
 const MIN_TITLE_LENGTH = 4;
 const MIN_BODY_LENGTH = 10;
-const VALID_CATEGORIES = ["training", "ux", "progress", "social", "account", "stats", "other"];
+const VALID_CATEGORIES = [
+  "training",
+  "ux",
+  "progress",
+  "social",
+  "account",
+  "stats",
+  "other"
+] as const;
+
+type IdeaCategory = (typeof VALID_CATEGORIES)[number];
 
 function trimAndValidateString(value: unknown, maxLength: number): string {
   if (typeof value !== "string") {
     return "";
   }
   return value.trim().slice(0, maxLength);
+}
+
+function parseIdeaCategory(value: unknown): IdeaCategory {
+  const normalized = trimAndValidateString(value, 32);
+  return VALID_CATEGORIES.includes(normalized as IdeaCategory)
+    ? (normalized as IdeaCategory)
+    : "other";
 }
 
 function jsonResponse(res: VercelResponse, status: number, body: unknown) {
@@ -149,9 +166,7 @@ async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
     const body = parseRequestBody(req.body);
     const title = trimAndValidateString(body.title, MAX_TITLE_LENGTH);
     const ideaBody = trimAndValidateString(body.body, MAX_BODY_LENGTH);
-    const category = VALID_CATEGORIES.includes(String(body.category))
-      ? String(body.category)
-      : "other";
+    const category = parseIdeaCategory(body.category);
 
     if (title.length < MIN_TITLE_LENGTH) {
       return jsonResponse(res, 400, {
@@ -197,6 +212,10 @@ async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
         return jsonResponse(res, 409, { error: "Идея с таким названием уже существует." });
       }
       return jsonResponse(res, 500, { error: "Не удалось отправить идею." });
+    }
+
+    if (!newIdea) {
+      return jsonResponse(res, 500, { error: "Не удалось получить созданную идею." });
     }
 
     return jsonResponse(res, 201, {
