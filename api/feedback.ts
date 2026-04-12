@@ -1,13 +1,18 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "crypto";
-import { getSupabaseAdmin, verifyAuthToken } from "./_lib/supabase.js";
+import {
+  getSupabaseAdmin,
+  verifyAuthToken,
+  type FeedbackEntryInsert,
+  type Json
+} from "./_lib/supabase.js";
 
 const GUEST_HASH_SECRET = process.env.FEEDBACK_GUEST_HASH_SECRET || "dev-secret-change-in-production";
 const MAX_COMMENT_LENGTH = 2000;
 const MAX_EMAIL_LENGTH = 254;
 const MAX_REASONS = 5;
 const MAX_REASON_LENGTH = 100;
-const GUEST_RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+const GUEST_RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GUEST_MAX_SUBMISSIONS = 3;
 const VALID_CATEGORIES = ["bug", "ux", "idea", "question", "praise"] as const;
 const VALID_SURFACES = ["post_session", "global_form"] as const;
@@ -19,36 +24,16 @@ function hashGuestToken(token: string): string {
   return crypto.createHmac("sha256", GUEST_HASH_SECRET).update(token).digest("hex");
 }
 
-function trimAndValidateString(value: unknown, maxLength: number): string {
-  if (typeof value !== "string") return "";
-  const trimmed = value.trim();
-  return trimmed.slice(0, maxLength);
+function trimString(value: unknown, maxLength: number): string {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
 function optionalString(value: unknown, maxLength: number): string | null {
-  const normalized = trimAndValidateString(value, maxLength);
+  const normalized = trimString(value, maxLength);
   return normalized || null;
 }
 
-function parseFeedbackCategory(value: unknown): FeedbackCategory | null {
-  const normalized = trimAndValidateString(value, 32);
-  return VALID_CATEGORIES.includes(normalized as FeedbackCategory)
-    ? (normalized as FeedbackCategory)
-    : null;
-}
-
-function parseFeedbackSurface(value: unknown): FeedbackSurface | null {
-  const normalized = trimAndValidateString(value, 32);
-  return VALID_SURFACES.includes(normalized as FeedbackSurface)
-    ? (normalized as FeedbackSurface)
-    : null;
-}
-
-function jsonResponse(res: VercelResponse, status: number, body: unknown) {
-  res.status(status).json(body);
-}
-
-function parseRequestBody(body: unknown) {
+function parseRequestBody(body: unknown): Record<string, unknown> {
   if (typeof body === "string") {
     return JSON.parse(body) as Record<string, unknown>;
   }
@@ -60,37 +45,52 @@ function parseRequestBody(body: unknown) {
   return {};
 }
 
+function parseFeedbackCategory(value: unknown): FeedbackCategory | null {
+  const normalized = trimString(value, 32);
+  return VALID_CATEGORIES.includes(normalized as FeedbackCategory)
+    ? (normalized as FeedbackCategory)
+    : null;
+}
+
+function parseFeedbackSurface(value: unknown): FeedbackSurface | null {
+  const normalized = trimString(value, 32);
+  return VALID_SURFACES.includes(normalized as FeedbackSurface)
+    ? (normalized as FeedbackSurface)
+    : null;
+}
+
+function jsonResponse(res: VercelResponse, status: number, body: unknown) {
+  res.status(status).json(body);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
-    return jsonResponse(res, 405, { error: "Method not allowed" });
+    return jsonResponse(res, 405, { error: "Method not allowed." });
   }
 
   try {
     const supabaseAdmin = getSupabaseAdmin();
     const body = parseRequestBody(req.body);
 
-    // Honeypot check
     if (body._website || body._honeypot) {
-      return jsonResponse(res, 200, { success: true }); // Silent accept for bots
+      return jsonResponse(res, 200, { success: true });
     }
 
-    // Validate required fields
     const category = parseFeedbackCategory(body.category);
     if (!category) {
-      return jsonResponse(res, 400, { error: "Invalid category" });
+      return jsonResponse(res, 400, { error: "Invalid category." });
     }
 
     const sourceSurface = parseFeedbackSurface(body.source_surface);
     if (!sourceSurface) {
-      return jsonResponse(res, 400, { error: "Invalid source surface" });
+      return jsonResponse(res, 400, { error: "Invalid source surface." });
     }
 
-    const comment = trimAndValidateString(body.comment, MAX_COMMENT_LENGTH);
+    const comment = trimString(body.comment, MAX_COMMENT_LENGTH);
     if (!comment) {
-      return jsonResponse(res, 400, { error: "Comment is required" });
+      return jsonResponse(res, 400, { error: "Comment is required." });
     }
 
-    // Star rating validation (optional)
     let starRating: number | null = null;
     if (body.star_rating != null) {
       const rating = Number(body.star_rating);
@@ -99,35 +99,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Reasons validation
     let reasons: string[] = [];
     if (Array.isArray(body.reasons)) {
       reasons = body.reasons
-        .filter((r: unknown) => typeof r === "string")
-        .map((r: string) => trimAndValidateString(r, MAX_REASON_LENGTH))
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => trimString(item, MAX_REASON_LENGTH))
         .filter(Boolean)
         .slice(0, MAX_REASONS);
     }
 
-    // Contact email (optional)
     const contactEmail = optionalString(body.contact_email, MAX_EMAIL_LENGTH);
-
-    // Determine submitter kind
     const authHeader = req.headers.authorization;
     const accountId = await verifyAuthToken(authHeader);
-
     const submitterKind = accountId ? "account" : "guest";
 
-    // Guest rate limiting via duplicate check
     let guestTokenHash: string | null = null;
     if (!accountId) {
-      const guestToken = body.guest_token;
-      if (!guestToken || typeof guestToken !== "string") {
-        return jsonResponse(res, 400, { error: "Guest token required for anonymous feedback" });
+      const guestToken = typeof body.guest_token === "string" ? body.guest_token : "";
+      if (!guestToken) {
+        return jsonResponse(res, 400, { error: "Guest token is required." });
       }
-      guestTokenHash = hashGuestToken(guestToken);
 
-      // Check rate limit: max 3 submissions per 24h for guest
+      guestTokenHash = hashGuestToken(guestToken);
       const twentyFourHoursAgo = new Date(Date.now() - GUEST_RATE_LIMIT_WINDOW_MS).toISOString();
       const { count } = await supabaseAdmin
         .from("feedback_entries")
@@ -147,9 +140,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const route = optionalString(body.route, MAX_COMMENT_LENGTH);
     const sentiment = optionalString(body.sentiment, 100);
 
-    // Duplicate check for post_session feedback
     if (sourceSurface === "post_session" && moduleId) {
-      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const today = new Date().toISOString().slice(0, 10);
       const dedupKey = accountId || guestTokenHash;
       if (dedupKey) {
         const dedupColumn = accountId ? "account_id" : "guest_token_hash";
@@ -167,8 +159,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Insert feedback
-    const { error: insertError } = await supabaseAdmin.from("feedback_entries").insert({
+    const clientContext =
+      body.client_context !== undefined && body.client_context !== null
+        ? (body.client_context as Json)
+        : null;
+
+    const insertPayload: FeedbackEntryInsert = {
       submitter_kind: submitterKind,
       account_id: accountId || null,
       training_profile_id: trainingProfileId,
@@ -183,22 +179,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       reasons: reasons.length > 0 ? reasons : null,
       comment,
       contact_email: contactEmail,
-      client_context: body.client_context || null,
+      client_context: clientContext,
       review_status: "new"
-    });
+    };
 
+    const { error: insertError } = await supabaseAdmin.from("feedback_entries").insert(insertPayload);
     if (insertError) {
       console.error("Feedback insert error:", insertError);
-      // Check for unique violation (duplicate)
       if (insertError.code === "23505") {
         return jsonResponse(res, 200, { success: true, alreadySubmitted: true });
       }
-      return jsonResponse(res, 500, { error: "Failed to save feedback" });
+      return jsonResponse(res, 500, { error: "Failed to save feedback." });
     }
 
     return jsonResponse(res, 200, { success: true });
   } catch (error) {
     console.error("Feedback API error:", error);
-    return jsonResponse(res, 500, { error: "Internal server error" });
+    return jsonResponse(res, 500, { error: "Internal server error." });
   }
 }

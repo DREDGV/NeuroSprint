@@ -1,11 +1,17 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getSupabaseAdmin, verifyAuthToken } from "../_lib/supabase.js";
+import {
+  getSupabaseAdmin,
+  verifyAuthToken,
+  type IdeaPostRow,
+  type IdeaVoteInsert,
+  type IdeaVoteRow
+} from "../_lib/supabase.js";
 
 function jsonResponse(res: VercelResponse, status: number, body: unknown) {
   res.status(status).json(body);
 }
 
-function parseBody(body: unknown) {
+function parseBody(body: unknown): Record<string, unknown> {
   if (typeof body === "string") {
     return JSON.parse(body) as Record<string, unknown>;
   }
@@ -18,8 +24,9 @@ function parseBody(body: unknown) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = parseBody(req.body);
   const ideaId = typeof body.idea_id === "string" ? body.idea_id.trim() : "";
+
   if (!ideaId) {
-    return jsonResponse(res, 400, { error: "Не указан идентификатор идеи." });
+    return jsonResponse(res, 400, { error: "Idea id is required." });
   }
 
   if (req.method === "POST") {
@@ -30,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return handleUnvote(req, res, ideaId);
   }
 
-  return jsonResponse(res, 405, { error: "Метод не поддерживается." });
+  return jsonResponse(res, 405, { error: "Method not allowed." });
 }
 
 async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: string) {
@@ -38,55 +45,61 @@ async function handleVote(req: VercelRequest, res: VercelResponse, ideaId: strin
     const supabaseAdmin = getSupabaseAdmin();
     const accountId = await verifyAuthToken(req.headers.authorization);
     if (!accountId) {
-      return jsonResponse(res, 401, { error: "Войдите в аккаунт, чтобы поддержать идею." });
+      return jsonResponse(res, 401, { error: "Sign in to vote." });
     }
 
-    const { data: idea, error: ideaError } = await supabaseAdmin
+    const { data: ideaData, error: ideaError } = await supabaseAdmin
       .from("idea_posts")
       .select("id, moderation_status, author_account_id")
       .eq("id", ideaId)
       .single();
 
+    const idea =
+      (ideaData as Pick<IdeaPostRow, "id" | "moderation_status" | "author_account_id"> | null) ??
+      null;
+
     if (ideaError || !idea) {
-      return jsonResponse(res, 404, { error: "Идея не найдена." });
-    }
-    if (idea.moderation_status !== "approved") {
-      return jsonResponse(res, 403, {
-        error: "Поддержка доступна только для одобренных идей."
-      });
-    }
-    if (idea.author_account_id === accountId) {
-      return jsonResponse(res, 403, { error: "Свою идею поддерживать не нужно." });
+      return jsonResponse(res, 404, { error: "Idea not found." });
     }
 
-    const { data: existingVote } = await supabaseAdmin
+    if (idea.moderation_status !== "approved") {
+      return jsonResponse(res, 403, { error: "Voting is only available for approved ideas." });
+    }
+
+    if (idea.author_account_id === accountId) {
+      return jsonResponse(res, 403, { error: "You cannot vote for your own idea." });
+    }
+
+    const { data: existingVoteData } = await supabaseAdmin
       .from("idea_votes")
       .select("id")
       .eq("idea_id", ideaId)
       .eq("account_id", accountId)
       .maybeSingle();
 
+    const existingVote = (existingVoteData as Pick<IdeaVoteRow, "id"> | null) ?? null;
     if (existingVote) {
       return jsonResponse(res, 200, { success: true, alreadyVoted: true });
     }
 
-    const { error: insertError } = await supabaseAdmin.from("idea_votes").insert({
+    const insertPayload: IdeaVoteInsert = {
       idea_id: ideaId,
       account_id: accountId
-    });
+    };
 
+    const { error: insertError } = await supabaseAdmin.from("idea_votes").insert(insertPayload);
     if (insertError) {
       if (insertError.code === "23505") {
         return jsonResponse(res, 200, { success: true, alreadyVoted: true });
       }
       console.error("Vote insert error:", insertError);
-      return jsonResponse(res, 500, { error: "Не удалось поддержать идею." });
+      return jsonResponse(res, 500, { error: "Failed to vote for idea." });
     }
 
     return jsonResponse(res, 200, { success: true });
   } catch (error) {
     console.error("Vote API error:", error);
-    return jsonResponse(res, 500, { error: "Внутренняя ошибка сервера." });
+    return jsonResponse(res, 500, { error: "Internal server error." });
   }
 }
 
@@ -95,7 +108,7 @@ async function handleUnvote(req: VercelRequest, res: VercelResponse, ideaId: str
     const supabaseAdmin = getSupabaseAdmin();
     const accountId = await verifyAuthToken(req.headers.authorization);
     if (!accountId) {
-      return jsonResponse(res, 401, { error: "Войдите в аккаунт, чтобы снять поддержку." });
+      return jsonResponse(res, 401, { error: "Sign in to remove your vote." });
     }
 
     const { error: deleteError } = await supabaseAdmin
@@ -105,13 +118,13 @@ async function handleUnvote(req: VercelRequest, res: VercelResponse, ideaId: str
       .eq("account_id", accountId);
 
     if (deleteError) {
-      console.error("Unvote error:", deleteError);
-      return jsonResponse(res, 500, { error: "Не удалось снять поддержку с идеи." });
+      console.error("Vote delete error:", deleteError);
+      return jsonResponse(res, 500, { error: "Failed to remove vote." });
     }
 
     return jsonResponse(res, 200, { success: true });
   } catch (error) {
     console.error("Unvote API error:", error);
-    return jsonResponse(res, 500, { error: "Внутренняя ошибка сервера." });
+    return jsonResponse(res, 500, { error: "Internal server error." });
   }
 }

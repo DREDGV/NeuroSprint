@@ -1,5 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getSupabaseAdmin, verifyAuthToken } from "../_lib/supabase.js";
+import {
+  getSupabaseAdmin,
+  verifyAuthToken,
+  type AccountRow,
+  type IdeaPostInsert,
+  type IdeaPostRow,
+  type IdeaVoteRow
+} from "../_lib/supabase.js";
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_BODY_LENGTH = 5000;
@@ -17,25 +24,11 @@ const VALID_CATEGORIES = [
 
 type IdeaCategory = (typeof VALID_CATEGORIES)[number];
 
-function trimAndValidateString(value: unknown, maxLength: number): string {
-  if (typeof value !== "string") {
-    return "";
-  }
-  return value.trim().slice(0, maxLength);
+function trimString(value: unknown, maxLength: number): string {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
-function parseIdeaCategory(value: unknown): IdeaCategory {
-  const normalized = trimAndValidateString(value, 32);
-  return VALID_CATEGORIES.includes(normalized as IdeaCategory)
-    ? (normalized as IdeaCategory)
-    : "other";
-}
-
-function jsonResponse(res: VercelResponse, status: number, body: unknown) {
-  res.status(status).json(body);
-}
-
-function parseRequestBody(body: unknown) {
+function parseRequestBody(body: unknown): Record<string, unknown> {
   if (typeof body === "string") {
     return JSON.parse(body) as Record<string, unknown>;
   }
@@ -47,6 +40,17 @@ function parseRequestBody(body: unknown) {
   return {};
 }
 
+function parseIdeaCategory(value: unknown): IdeaCategory {
+  const normalized = trimString(value, 32);
+  return VALID_CATEGORIES.includes(normalized as IdeaCategory)
+    ? (normalized as IdeaCategory)
+    : "other";
+}
+
+function jsonResponse(res: VercelResponse, status: number, body: unknown) {
+  res.status(status).json(body);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET") {
     return handleGetIdeas(req, res);
@@ -56,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return handleCreateIdea(req, res);
   }
 
-  return jsonResponse(res, 405, { error: "Метод не поддерживается." });
+  return jsonResponse(res, 405, { error: "Method not allowed." });
 }
 
 async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
@@ -70,17 +74,7 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
     let query = supabaseAdmin
       .from("idea_posts")
       .select(
-        `
-          id,
-          title,
-          body,
-          category,
-          moderation_status,
-          roadmap_status,
-          vote_count,
-          created_at,
-          author_account_id
-        `,
+        "id, title, body, category, moderation_status, roadmap_status, vote_count, created_at, author_account_id",
         { count: "exact" }
       )
       .order("vote_count", { ascending: false })
@@ -93,45 +87,45 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
       query = query.or(`moderation_status.eq.approved,author_account_id.eq.${accountId}`);
     }
 
-    const { data: ideas, error, count } = await query;
-
+    const { data: ideasData, error, count } = await query;
     if (error) {
       console.error("Ideas fetch error:", error);
-      return jsonResponse(res, 500, { error: "Не удалось загрузить идеи." });
+      return jsonResponse(res, 500, { error: "Failed to load ideas." });
     }
 
-    const authorIds = [
-      ...new Set((ideas ?? []).map((idea) => idea.author_account_id).filter(Boolean) as string[])
-    ];
+    const ideas = (ideasData ?? []) as IdeaPostRow[];
+    const authorIds = [...new Set(ideas.map((idea) => idea.author_account_id).filter(Boolean))];
     const authorNames: Record<string, string> = {};
 
     if (authorIds.length > 0) {
-      const { data: users } = await supabaseAdmin
+      const { data: usersData } = await supabaseAdmin
         .from("accounts")
         .select("id, display_name")
         .in("id", authorIds);
 
-      for (const user of users ?? []) {
-        authorNames[user.id] = user.display_name || "Пользователь NeuroSprint";
+      const users = (usersData ?? []) as AccountRow[];
+      for (const user of users) {
+        authorNames[user.id] = user.display_name || "NeuroSprint user";
       }
     }
 
     let userVotes = new Set<string>();
-    if (accountId && (ideas?.length ?? 0) > 0) {
-      const { data: votes } = await supabaseAdmin
+    if (accountId && ideas.length > 0) {
+      const { data: votesData } = await supabaseAdmin
         .from("idea_votes")
         .select("idea_id")
         .eq("account_id", accountId)
         .in(
           "idea_id",
-          ideas!.map((idea) => idea.id)
+          ideas.map((idea) => idea.id)
         );
 
-      userVotes = new Set((votes ?? []).map((vote) => vote.idea_id));
+      const votes = (votesData ?? []) as Pick<IdeaVoteRow, "idea_id">[];
+      userVotes = new Set(votes.map((vote) => vote.idea_id));
     }
 
     return jsonResponse(res, 200, {
-      ideas: (ideas ?? []).map((idea) => ({
+      ideas: ideas.map((idea) => ({
         id: idea.id,
         title: idea.title,
         body: idea.body,
@@ -140,7 +134,7 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
         roadmap_status: idea.roadmap_status,
         vote_count: idea.vote_count,
         created_at: idea.created_at,
-        author_name: authorNames[idea.author_account_id] || "Пользователь NeuroSprint",
+        author_name: authorNames[idea.author_account_id] || "NeuroSprint user",
         is_author: idea.author_account_id === accountId,
         has_voted: userVotes.has(idea.id)
       })),
@@ -150,7 +144,7 @@ async function handleGetIdeas(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     console.error("Ideas API error:", error);
-    return jsonResponse(res, 500, { error: "Внутренняя ошибка сервера." });
+    return jsonResponse(res, 500, { error: "Internal server error." });
   }
 }
 
@@ -158,25 +152,24 @@ async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
     const accountId = await verifyAuthToken(req.headers.authorization);
-
     if (!accountId) {
-      return jsonResponse(res, 401, { error: "Войдите в аккаунт, чтобы предложить идею." });
+      return jsonResponse(res, 401, { error: "Sign in to submit an idea." });
     }
 
     const body = parseRequestBody(req.body);
-    const title = trimAndValidateString(body.title, MAX_TITLE_LENGTH);
-    const ideaBody = trimAndValidateString(body.body, MAX_BODY_LENGTH);
+    const title = trimString(body.title, MAX_TITLE_LENGTH);
+    const ideaBody = trimString(body.body, MAX_BODY_LENGTH);
     const category = parseIdeaCategory(body.category);
 
     if (title.length < MIN_TITLE_LENGTH) {
       return jsonResponse(res, 400, {
-        error: `Сделайте заголовок длиннее. Нужны минимум ${MIN_TITLE_LENGTH} символа.`
+        error: `Title must be at least ${MIN_TITLE_LENGTH} characters long.`
       });
     }
 
     if (ideaBody.length < MIN_BODY_LENGTH) {
       return jsonResponse(res, 400, {
-        error: `Добавьте описание идеи. Нужны минимум ${MIN_BODY_LENGTH} символов.`
+        error: `Description must be at least ${MIN_BODY_LENGTH} characters long.`
       });
     }
 
@@ -188,34 +181,37 @@ async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
       .in("moderation_status", ["pending", "approved"]);
 
     if ((existingCount ?? 0) > 0) {
-      return jsonResponse(res, 409, { error: "Идея с таким названием уже существует." });
+      return jsonResponse(res, 409, { error: "An idea with this title already exists." });
     }
 
-    const { data: newIdea, error: insertError } = await supabaseAdmin
+    const insertPayload: IdeaPostInsert = {
+      author_account_id: accountId,
+      author_profile_id: null,
+      title,
+      body: ideaBody,
+      category,
+      moderation_status: "pending",
+      roadmap_status: "new",
+      vote_count: 0
+    };
+
+    const { data: newIdeaData, error: insertError } = await supabaseAdmin
       .from("idea_posts")
-      .insert({
-        author_account_id: accountId,
-        author_profile_id: null,
-        title,
-        body: ideaBody,
-        category,
-        moderation_status: "pending",
-        roadmap_status: "new",
-        vote_count: 0
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
     if (insertError) {
       console.error("Idea insert error:", insertError);
       if (insertError.code === "23505") {
-        return jsonResponse(res, 409, { error: "Идея с таким названием уже существует." });
+        return jsonResponse(res, 409, { error: "An idea with this title already exists." });
       }
-      return jsonResponse(res, 500, { error: "Не удалось отправить идею." });
+      return jsonResponse(res, 500, { error: "Failed to create idea." });
     }
 
+    const newIdea = (newIdeaData ?? null) as IdeaPostRow | null;
     if (!newIdea) {
-      return jsonResponse(res, 500, { error: "Не удалось получить созданную идею." });
+      return jsonResponse(res, 500, { error: "Failed to load created idea." });
     }
 
     return jsonResponse(res, 201, {
@@ -230,6 +226,6 @@ async function handleCreateIdea(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     console.error("Create idea API error:", error);
-    return jsonResponse(res, 500, { error: "Внутренняя ошибка сервера." });
+    return jsonResponse(res, 500, { error: "Internal server error." });
   }
 }

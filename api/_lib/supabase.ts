@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 type SiteRole = "user" | "moderator" | "admin";
-type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -9,7 +9,7 @@ type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-type ServerDatabase = {
+export type ServerDatabase = {
   public: {
     Tables: {
       accounts: {
@@ -196,8 +196,20 @@ type ServerDatabase = {
         };
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 };
+
+export type AccountRow = ServerDatabase["public"]["Tables"]["accounts"]["Row"];
+export type FeedbackEntryInsert = ServerDatabase["public"]["Tables"]["feedback_entries"]["Insert"];
+export type IdeaPostRow = ServerDatabase["public"]["Tables"]["idea_posts"]["Row"];
+export type IdeaPostInsert = ServerDatabase["public"]["Tables"]["idea_posts"]["Insert"];
+export type IdeaPostUpdate = ServerDatabase["public"]["Tables"]["idea_posts"]["Update"];
+export type IdeaVoteRow = ServerDatabase["public"]["Tables"]["idea_votes"]["Row"];
+export type IdeaVoteInsert = ServerDatabase["public"]["Tables"]["idea_votes"]["Insert"];
 
 function resolveServerSupabaseConfig() {
   const supabaseUrl =
@@ -256,7 +268,7 @@ export async function verifyAuthToken(token: string | undefined): Promise<string
   try {
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin.auth.getUser(rawToken);
-    if (error || !data.user) {
+    if (error || !data?.user) {
       return null;
     }
     return data.user.id;
