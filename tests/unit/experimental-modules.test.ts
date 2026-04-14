@@ -24,7 +24,9 @@ describe("experimentalModules", () => {
     const blockPattern = EXPERIMENTAL_MODULES.find((item) => item.id === "block_pattern");
 
     expect(blockPattern).toBeDefined();
-    expect(getExperimentalModuleCurrentMilestone(blockPattern!)?.label).toBe("Обратная связь и обучение");
+    expect(getExperimentalModuleCurrentMilestone(blockPattern!)?.label).toBe(
+      "Обратная связь и обучение"
+    );
     expect(getExperimentalModuleNextMilestone(blockPattern!)?.label).toBe(
       "Проверка перед переводом в основные"
     );

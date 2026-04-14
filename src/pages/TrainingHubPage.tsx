@@ -668,7 +668,11 @@ export function TrainingHubPage() {
   }, [activeUserId]);
 
   useEffect(() => {
-    if (hasManualSkillPick && trainersSectionRef.current) {
+    if (
+      hasManualSkillPick &&
+      trainersSectionRef.current &&
+      typeof trainersSectionRef.current.scrollIntoView === "function"
+    ) {
       trainersSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [hasManualSkillPick, trainersSectionRef, activeSkillId]);
@@ -908,6 +912,7 @@ export function TrainingHubPage() {
                 <Link
                   to={modulePrimaryRouteById[selectedModulePair.module.id]}
                   className="training-skill-start-card"
+                  data-testid={`training-skill-start-${selectedModulePair.module.id}`}
                   style={{ "--scenario-color": activeSkill.accent } as CSSProperties}
                 >
                   <span className="training-skill-start-kicker">Быстрый запуск</span>

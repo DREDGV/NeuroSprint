@@ -1,291 +1,932 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   getExperimentalModuleCurrentMilestone,
   getExperimentalModuleMeta,
-  getExperimentalModuleProgress,
-  getExperimentalModulePromotionReadiness
+  getExperimentalModuleProgress
 } from "../shared/lib/training/experimentalModules";
+import {
+  BLOCK_PATTERN_DIFFICULTIES,
+  BLOCK_PATTERN_GRID,
+  type BlockPatternDifficulty,
+  type BlockPatternMode,
+  createRound,
+  evaluateAttempt,
+  getPreviewRound,
+  toggleSelection
+} from "../shared/lib/training/blockPatternGame";
 
-type PatternDifficulty = "easy" | "medium" | "hard";
-type PatternMode = "classic" | "rotation" | "mirror";
-type PatternPhase = "setup" | "memorize" | "recall" | "result";
+type PatternPhase =
+  | "setup"
+  | "preview"
+  | "memorize"
+  | "transform"
+  | "recall"
+  | "result";
 
-interface DifficultyConfig {
-  label: string;
-  blocks: number;
-  memorizeSec: number;
-}
+const CELL_SIZE = 72;
 
-const GRID = 4;
-
-const DIFFICULTIES: Record<PatternDifficulty, DifficultyConfig> = {
-  easy: { label: "Легко", blocks: 3, memorizeSec: 3 },
-  medium: { label: "Средне", blocks: 5, memorizeSec: 3 },
-  hard: { label: "Сложно", blocks: 7, memorizeSec: 4 }
+const MODE_LABELS: Record<BlockPatternMode, { name: string; icon: string; hint: string }> = {
+  classic: { name: "Классика", icon: "🎯", hint: "Повторите фигуру как была" },
+  rotation: { name: "Поворот", icon: "🔄", hint: "Мысленно поверните фигуру" },
+  mirror: { name: "Зеркало", icon: "↔️", hint: "Мысленно отразите фигуру" }
 };
 
-function randomSet(size: number, count: number): number[] {
-  const values = Array.from({ length: size }, (_, index) => index);
-  for (let i = values.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [values[i], values[j]] = [values[j], values[i]];
-  }
-  return values.slice(0, count);
-}
+function PatternGrid({
+  activeCells = [],
+  cellStates,
+  onCellClick,
+  interactive = false,
+  label,
+  highlightColor = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+  cellOpacity = 1
+}: {
+  activeCells?: number[];
+  cellStates?: Record<number, "correct" | "wrong" | "missed">;
+  onCellClick?: (index: number) => void;
+  interactive?: boolean;
+  label?: string;
+  highlightColor?: string;
+  cellOpacity?: number;
+}) {
+  const totalCells = BLOCK_PATTERN_GRID * BLOCK_PATTERN_GRID;
 
-function rotate90(index: number, grid: number): number {
-  const row = Math.floor(index / grid);
-  const col = index % grid;
-  return col * grid + (grid - 1 - row);
-}
+  return (
+    <div style={{ textAlign: "center" }}>
+      {label ? (
+        <div
+          style={{
+            marginBottom: "8px",
+            color: "#6b7280",
+            fontSize: "12px",
+            fontWeight: 600,
+            letterSpacing: "0.03em",
+            textTransform: "uppercase"
+          }}
+        >
+          {label}
+        </div>
+      ) : null}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${BLOCK_PATTERN_GRID}, ${CELL_SIZE}px)`,
+          gap: "4px",
+          width: "fit-content",
+          margin: "0 auto",
+          padding: "12px",
+          background: "#f9fafb",
+          border: "2px solid #e5e7eb",
+          borderRadius: "12px"
+        }}
+      >
+        {Array.from({ length: totalCells }, (_, index) => {
+          const isActive = activeCells.includes(index);
+          const cellState = cellStates?.[index];
+          const isSelected = interactive && isActive;
 
-function rotate(index: number, grid: number, angle: 90 | 180 | 270): number {
-  if (angle === 90) {
-    return rotate90(index, grid);
-  }
-  if (angle === 180) {
-    return rotate90(rotate90(index, grid), grid);
-  }
-  return rotate90(rotate90(rotate90(index, grid), grid), grid);
-}
+          let background = "#e5e7eb";
+          let boxShadow = "none";
 
-function mirrorHorizontal(index: number, grid: number): number {
-  const row = Math.floor(index / grid);
-  const col = index % grid;
-  return row * grid + (grid - 1 - col);
+          if (!cellStates && isActive) {
+            background = highlightColor;
+            boxShadow = "0 2px 8px rgba(59, 130, 246, 0.28)";
+          }
+
+          if (cellState === "correct") {
+            background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
+            boxShadow = "0 2px 8px rgba(16, 185, 129, 0.28)";
+          }
+
+          if (cellState === "wrong") {
+            background = "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)";
+            boxShadow = "0 2px 8px rgba(239, 68, 68, 0.25)";
+          }
+
+          if (cellState === "missed") {
+            background = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
+            boxShadow = "0 2px 8px rgba(245, 158, 11, 0.25)";
+          }
+
+          if (interactive) {
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => onCellClick?.(index)}
+                aria-pressed={isSelected}
+                style={{
+                  width: `${CELL_SIZE}px`,
+                  height: `${CELL_SIZE}px`,
+                  borderRadius: "8px",
+                  border: isSelected ? "2px solid #059669" : "2px solid #d1d5db",
+                  background: isSelected
+                    ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                    : "#fff",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  boxShadow: isSelected ? "0 2px 8px rgba(5, 150, 105, 0.25)" : "none"
+                }}
+              />
+            );
+          }
+
+          return (
+            <div
+              key={index}
+              style={{
+                width: `${CELL_SIZE}px`,
+                height: `${CELL_SIZE}px`,
+                borderRadius: "8px",
+                background,
+                opacity: !cellStates && isActive ? cellOpacity : 1,
+                transition: "all 0.2s ease",
+                boxShadow
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function BlockPatternRecallPage() {
   const experimentalMeta = getExperimentalModuleMeta("block_pattern");
-  const [difficulty, setDifficulty] = useState<PatternDifficulty>("easy");
-  const [mode, setMode] = useState<PatternMode>("classic");
+  const [difficulty, setDifficulty] = useState<BlockPatternDifficulty>("easy");
+  const [mode, setMode] = useState<BlockPatternMode>("classic");
   const [phase, setPhase] = useState<PatternPhase>("setup");
   const [basePattern, setBasePattern] = useState<number[]>([]);
   const [expectedPattern, setExpectedPattern] = useState<number[]>([]);
   const [rotationAngle, setRotationAngle] = useState<90 | 180 | 270>(90);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [countdown, setCountdown] = useState(0);
+  const [memorizeFade, setMemorizeFade] = useState(1);
+  const [transformProgress, setTransformProgress] = useState(0);
+  const [selectionHint, setSelectionHint] = useState<string | null>(null);
+  const [combo, setCombo] = useState(0);
+  const [bestCombo, setBestCombo] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
+  const [roundsPlayed, setRoundsPlayed] = useState(0);
+  const animationFrameRef = useRef<number | null>(null);
+  const previousPhaseRef = useRef<PatternPhase>("setup");
 
-  const config = DIFFICULTIES[difficulty];
+  const config = BLOCK_PATTERN_DIFFICULTIES[difficulty];
+  const previewRound = useMemo(() => getPreviewRound(mode), [mode]);
+  const selectedCells = useMemo(
+    () => Array.from(selected).sort((left, right) => left - right),
+    [selected]
+  );
+  const roundResult = useMemo(
+    () => evaluateAttempt(expectedPattern, selectedCells),
+    [expectedPattern, selectedCells]
+  );
+  const progress = experimentalMeta ? getExperimentalModuleProgress(experimentalMeta) : 0;
+  const currentMilestone = experimentalMeta
+    ? getExperimentalModuleCurrentMilestone(experimentalMeta)
+    : null;
 
-  useEffect(() => {
-    if (phase !== "memorize") {
-      return;
+  const stopTransformAnimation = useCallback(() => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
+  }, []);
 
-    setCountdown(config.memorizeSec);
-    const timerId = window.setInterval(() => {
-      setCountdown((value) => {
-        if (value <= 1) {
-          window.clearInterval(timerId);
-          setPhase("recall");
-          return 0;
-        }
-        return value - 1;
-      });
-    }, 1000);
+  const resetSessionStats = useCallback(() => {
+    setCombo(0);
+    setBestCombo(0);
+    setTotalScore(0);
+    setRoundsPlayed(0);
+  }, []);
 
-    return () => window.clearInterval(timerId);
-  }, [config.memorizeSec, phase]);
-
-  const baseSet = useMemo(() => new Set(basePattern), [basePattern]);
-  const expectedSet = useMemo(() => new Set(expectedPattern), [expectedPattern]);
-
-  function startRound(): void {
-    const pattern = randomSet(GRID * GRID, config.blocks);
-    const angleOptions: Array<90 | 180 | 270> = [90, 180, 270];
-    const randomAngle = angleOptions[Math.floor(Math.random() * angleOptions.length)];
-
-    let expected = [...pattern];
-    if (mode === "rotation") {
-      expected = pattern.map((cell) => rotate(cell, GRID, randomAngle));
-    } else if (mode === "mirror") {
-      expected = pattern.map((cell) => mirrorHorizontal(cell, GRID));
-    }
-
-    setRotationAngle(randomAngle);
-    setBasePattern(pattern);
-    setExpectedPattern(expected);
-    setSelected(new Set());
-    setPhase("memorize");
-  }
-
-  function resetToSetup(): void {
-    setPhase("setup");
+  const clearRoundState = useCallback(() => {
     setBasePattern([]);
     setExpectedPattern([]);
     setSelected(new Set());
     setCountdown(0);
-  }
+    setMemorizeFade(1);
+    setTransformProgress(0);
+    setSelectionHint(null);
+  }, []);
 
-  function toggleCell(index: number): void {
-    if (phase !== "recall") {
-      return;
-    }
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
+  const resetToSetup = useCallback(() => {
+    stopTransformAnimation();
+    clearRoundState();
+    resetSessionStats();
+    setPhase("setup");
+  }, [clearRoundState, resetSessionStats, stopTransformAnimation]);
+
+  const startRound = useCallback(() => {
+    stopTransformAnimation();
+    clearRoundState();
+
+    const round = createRound(config.blocks, mode);
+    setBasePattern(round.basePattern);
+    setExpectedPattern(round.expectedPattern);
+    setRotationAngle(round.rotationAngle);
+    setPhase("memorize");
+  }, [clearRoundState, config.blocks, mode, stopTransformAnimation]);
+
+  const startPreview = useCallback(() => {
+    stopTransformAnimation();
+    clearRoundState();
+    setRotationAngle(previewRound.rotationAngle);
+    setPhase("preview");
+  }, [clearRoundState, previewRound.rotationAngle, stopTransformAnimation]);
+
+  const animateTransform = useCallback(() => {
+    const startTime = performance.now();
+    const durationMs = 1600;
+
+    const step = (now: number) => {
+      const progressValue = Math.min((now - startTime) / durationMs, 1);
+      const easedProgress = 1 - Math.pow(1 - progressValue, 3);
+      setTransformProgress(easedProgress);
+
+      if (progressValue < 1) {
+        animationFrameRef.current = requestAnimationFrame(step);
+        return;
       }
-      return next;
-    });
-  }
 
-  function finishRecall(): void {
+      animationFrameRef.current = null;
+      setPhase("recall");
+    };
+
+    animationFrameRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(() => stopTransformAnimation, [stopTransformAnimation]);
+
+  useEffect(() => {
+    if (phase !== "memorize") {
+      return undefined;
+    }
+
+    setCountdown(config.memorizeSec);
+    setMemorizeFade(1);
+    setTransformProgress(0);
+
+    const timerId = window.setInterval(() => {
+      setCountdown((value) => {
+        if (value <= 1) {
+          window.clearInterval(timerId);
+          if (mode === "classic") {
+            setPhase("recall");
+          } else {
+            setPhase("transform");
+            animateTransform();
+          }
+          return 0;
+        }
+
+        return value - 1;
+      });
+    }, 1000);
+
+    if (difficulty === "easy" || difficulty === "medium") {
+      const fadeDelayRatio = difficulty === "easy" ? 0.62 : 0.48;
+      const targetOpacity = difficulty === "easy" ? 0.18 : 0.06;
+      const fadeDurationMs = config.memorizeSec * 1000;
+      const fadeIntervalMs = 50;
+      let elapsed = 0;
+
+      const fadeTimerId = window.setInterval(() => {
+        elapsed += fadeIntervalMs;
+        if (elapsed <= fadeDurationMs * fadeDelayRatio) {
+          return;
+        }
+
+        const localProgress =
+          (elapsed - fadeDurationMs * fadeDelayRatio) /
+          (fadeDurationMs * (1 - fadeDelayRatio));
+        setMemorizeFade(Math.max(targetOpacity, 1 - localProgress));
+      }, fadeIntervalMs);
+
+      return () => {
+        window.clearInterval(timerId);
+        window.clearInterval(fadeTimerId);
+      };
+    }
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [animateTransform, config.memorizeSec, difficulty, mode, phase]);
+
+  useEffect(() => {
+    const previousPhase = previousPhaseRef.current;
+    previousPhaseRef.current = phase;
+
+    if (phase !== "result" || previousPhase !== "recall") {
+      return;
+    }
+
+    setRoundsPlayed((current) => current + 1);
+    setTotalScore((current) => current + roundResult.score);
+    setCombo((current) => {
+      const nextCombo = roundResult.comboEligible ? current + 1 : 0;
+      setBestCombo((best) => Math.max(best, nextCombo));
+      return nextCombo;
+    });
+  }, [phase, roundResult.comboEligible, roundResult.score]);
+
+  const toggleCell = useCallback(
+    (index: number) => {
+      if (phase !== "recall") {
+        return;
+      }
+
+      setSelected((current) => {
+        const { next, limitReached } = toggleSelection(
+          current,
+          index,
+          expectedPattern.length
+        );
+        setSelectionHint(
+          limitReached
+            ? `Можно выбрать не больше ${expectedPattern.length} клеток.`
+            : null
+        );
+        return next;
+      });
+    },
+    [expectedPattern.length, phase]
+  );
+
+  const finishRecall = useCallback(() => {
     if (phase !== "recall") {
       return;
     }
+
     setPhase("result");
-  }
+  }, [phase]);
 
-  const hits = [...selected].filter((cell) => expectedSet.has(cell)).length;
-  const misses = expectedPattern.filter((cell) => !selected.has(cell)).length;
-  const falseHits = [...selected].filter((cell) => !expectedSet.has(cell)).length;
-  const accuracy = expectedPattern.length === 0 ? 0 : (hits / expectedPattern.length) * 100;
-  const score = Math.max(0, Math.round(accuracy * 8 - (misses + falseHits) * 12));
-  const progress = experimentalMeta ? getExperimentalModuleProgress(experimentalMeta) : 0;
-  const currentMilestone = experimentalMeta ? getExperimentalModuleCurrentMilestone(experimentalMeta) : null;
-  const readiness = experimentalMeta ? getExperimentalModulePromotionReadiness(experimentalMeta) : null;
+  const renderTransformIndicator = () => {
+    if (mode === "rotation") {
+      return (
+        <>
+          <div
+            style={{
+              fontSize: "36px",
+              color: "#8b5cf6",
+              transform: `rotate(${rotationAngle * transformProgress}deg)`,
+              transition: "transform 0.08s linear"
+            }}
+          >
+            ↻
+          </div>
+          <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
+            {rotationAngle}°
+          </div>
+        </>
+      );
+    }
 
-  const instruction =
-    mode === "classic"
-      ? "Повторите фигуру как была."
-      : mode === "rotation"
-        ? `Повторите фигуру после поворота на ${rotationAngle}°.`
-        : "Повторите зеркальную версию фигуры.";
+    return (
+      <>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            color: "#8b5cf6",
+            fontSize: "30px"
+          }}
+        >
+          <span>→</span>
+          <span
+            style={{
+              width: "2px",
+              height: "26px",
+              background: "#8b5cf6",
+              display: "inline-block",
+              opacity: 0.25 + transformProgress * 0.75
+            }}
+          />
+          <span>←</span>
+        </div>
+        <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
+          Зеркало
+        </div>
+      </>
+    );
+  };
+
+  const previewInstruction =
+    mode === "rotation"
+      ? "Запомните фигуру слева, мысленно поверните её по часовой стрелке и воспроизведите справа."
+      : mode === "mirror"
+        ? "Запомните фигуру слева, отразите её горизонтально и воспроизведите справа."
+        : "Запомните фигуру и повторите её без изменений.";
 
   return (
     <section className="panel" data-testid="block-pattern-page">
-      <h2>Block Pattern Recall (альфа)</h2>
-      <p>Запомните фигуру из блоков и воспроизведите её по правилу.</p>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+        <span style={{ fontSize: "32px" }}>🧩</span>
+        <h2 style={{ margin: 0 }}>Мысленный поворот</h2>
+      </div>
+      <p style={{ margin: "0 0 16px", color: "#6b7280", fontSize: "15px", lineHeight: 1.5 }}>
+        Запомните фигуру и воспроизведите её после трансформации. Тренажёр проверяет,
+        насколько точно вы удерживаете образ и применяете правило поворота или зеркала.
+      </p>
+
       {experimentalMeta ? (
-        <div className="setup-block experimental-module-status" data-testid="experimental-status-block-pattern">
-          <div className="experimental-module-status-head">
-            <div>
-              <p className="stats-section-kicker">Статус разработки</p>
-              <h3>{experimentalMeta.stageLabel}</h3>
-            </div>
-            <strong>{progress}%</strong>
+        <div
+          style={{
+            padding: "12px 16px",
+            marginBottom: "20px",
+            borderRadius: "10px",
+            border: "1px solid #86efac",
+            background: "#f0fdf4",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px"
+          }}
+        >
+          <span style={{ fontSize: "20px" }}>🧪</span>
+          <div>
+            <strong style={{ color: "#166534", fontSize: "13px" }}>
+              Альфа-версия • {experimentalMeta.stageLabel}
+            </strong>
+            <p style={{ margin: "2px 0 0", color: "#15803d", fontSize: "12px" }}>
+              Прогресс: {progress}% • {currentMilestone?.label ?? "Готово"}
+            </p>
           </div>
-          <div className="training-alpha-progress-track" aria-hidden="true">
-            <span className="training-alpha-progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+      ) : null}
+
+      {phase !== "setup" && roundsPlayed > 0 ? (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            padding: "10px 16px",
+            marginBottom: "16px",
+            borderRadius: "10px",
+            border: "1px solid #fbbf24",
+            background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "20px" }}>🔥</span>
+            <strong style={{ color: "#92400e", fontSize: "14px" }}>Серия: {combo}</strong>
           </div>
-          <p className="comparison-note">
-            {currentMilestone?.label ?? experimentalMeta.stageLabel}. {experimentalMeta.nextFocus}
-          </p>
-          {readiness ? (
-            <div className={`experimental-module-readiness is-${readiness.tier}`}>
-              <strong>Готовность к переводу: {readiness.score}/100</strong>
-              <span>{readiness.label}</span>
-              <p>{readiness.summary}</p>
-            </div>
-          ) : null}
+          <div style={{ color: "#92400e", fontSize: "13px" }}>
+            Лучшая: {bestCombo} • Суммарный score: {totalScore}
+          </div>
         </div>
       ) : null}
 
       {phase === "setup" ? (
         <>
-          <div className="segmented-row">
-            {(["easy", "medium", "hard"] as const).map((level) => (
-              <button
-                key={level}
-                type="button"
-                className={difficulty === level ? "btn-secondary is-active" : "btn-secondary"}
-                onClick={() => setDifficulty(level)}
-              >
-                {DIFFICULTIES[level].label}
-              </button>
-            ))}
+          <div style={{ marginBottom: "20px" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 600 }}>
+              🎮 Режим игры
+            </h3>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: "10px"
+              }}
+            >
+              {(["classic", "rotation", "mirror"] as const).map((nextMode) => (
+                <button
+                  key={nextMode}
+                  type="button"
+                  className={mode === nextMode ? "btn-secondary is-active" : "btn-secondary"}
+                  onClick={() => setMode(nextMode)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "14px 10px",
+                    textAlign: "center"
+                  }}
+                >
+                  <span style={{ fontSize: "24px" }}>{MODE_LABELS[nextMode].icon}</span>
+                  <span style={{ fontWeight: 600, fontSize: "15px" }}>
+                    {MODE_LABELS[nextMode].name}
+                  </span>
+                  <span style={{ color: "#6b7280", fontSize: "12px", lineHeight: 1.3 }}>
+                    {MODE_LABELS[nextMode].hint}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="segmented-row">
-            {(["classic", "rotation", "mirror"] as const).map((nextMode) => (
-              <button
-                key={nextMode}
-                type="button"
-                className={mode === nextMode ? "btn-secondary is-active" : "btn-secondary"}
-                onClick={() => setMode(nextMode)}
-              >
-                {nextMode === "classic" ? "Classic" : nextMode === "rotation" ? "Rotation" : "Mirror"}
-              </button>
-            ))}
+          <div style={{ marginBottom: "20px" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 600 }}>
+              ⚡ Сложность
+            </h3>
+            <div className="segmented-row">
+              {(["easy", "medium", "hard"] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  className={difficulty === level ? "btn-secondary is-active" : "btn-secondary"}
+                  onClick={() => setDifficulty(level)}
+                >
+                  {BLOCK_PATTERN_DIFFICULTIES[level].label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="setup-block">
-            <p>Сетка: 4x4</p>
-            <p>Блоков в паттерне: {config.blocks}</p>
-            <p>Режим: {mode}</p>
+          <div
+            style={{
+              padding: "16px",
+              marginBottom: "20px",
+              borderRadius: "10px",
+              border: "1px solid #e5e7eb",
+              background: "#f9fafb"
+            }}
+          >
+            <h4 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: 600 }}>📋 Параметры</h4>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+                color: "#6b7280",
+                fontSize: "13px"
+              }}
+            >
+              <span>Сетка:</span>
+              <strong>4×4</strong>
+              <span>Блоков:</span>
+              <strong>{config.blocks}</strong>
+              <span>Режим:</span>
+              <strong>{MODE_LABELS[mode].name}</strong>
+              <span>Время показа:</span>
+              <strong>{config.memorizeSec} сек</strong>
+            </div>
           </div>
 
-          <div className="action-row">
+          <div
+            style={{
+              padding: "16px",
+              marginBottom: "20px",
+              borderRadius: "10px",
+              border: "1px solid #93c5fd",
+              background: "#eff6ff"
+            }}
+          >
+            <h4 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: 600, color: "#1e40af" }}>
+              💡 Как играть
+            </h4>
+            <ol
+              style={{
+                margin: "0 0 0 16px",
+                color: "#1e40af",
+                fontSize: "13px",
+                lineHeight: 1.6
+              }}
+            >
+              <li>На экране появится фигура из нескольких клеток.</li>
+              <li>Запомните её как можно точнее.</li>
+              <li>
+                Во время ответа можно выбрать не больше {config.blocks} клеток, чтобы нельзя
+                было угадать «заполнением всей доски».
+              </li>
+              <li>
+                {mode === "rotation"
+                  ? `Потом мысленно поверните фигуру на ${rotationAngle}° и отметьте результат.`
+                  : mode === "mirror"
+                    ? "Потом мысленно отразите фигуру по горизонтали и отметьте результат."
+                    : "Потом повторите фигуру по памяти без изменений."}
+              </li>
+            </ol>
+          </div>
+
+          <div className="action-row" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             <button type="button" className="btn-primary" onClick={startRound}>
-              Начать
+              ▶️ Начать
+            </button>
+            <button type="button" className="btn-secondary" onClick={startPreview}>
+              👀 Показать пример
             </button>
             <Link className="btn-ghost" to="/training">
-              К тренировкам
+              ← К тренировкам
             </Link>
           </div>
         </>
       ) : null}
 
-      {phase === "memorize" ? (
-        <>
-          <p className="status-line">Запомните фигуру ({countdown}) — {instruction}</p>
-          <div className="pattern-grid" data-testid="block-pattern-grid-memorize">
-            {Array.from({ length: GRID * GRID }, (_, index) => (
-              <div
-                key={index}
-                className={baseSet.has(index) ? "pattern-cell is-active" : "pattern-cell"}
-              />
-            ))}
+      {phase === "preview" ? (
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "inline-block",
+              marginBottom: "24px",
+              padding: "10px 18px",
+              borderRadius: "20px",
+              background: "#dbeafe",
+              color: "#1e40af",
+              fontSize: "14px",
+              fontWeight: 600
+            }}
+          >
+            👀 Пример режима: {MODE_LABELS[mode].name}
           </div>
-        </>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "20px",
+              flexWrap: "wrap",
+              marginBottom: "16px"
+            }}
+          >
+            <PatternGrid
+              activeCells={previewRound.basePattern}
+              label="Запомните"
+              highlightColor="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+            />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+              {mode === "classic" ? <span style={{ color: "#9ca3af", fontSize: "24px" }}>↓</span> : renderTransformIndicator()}
+            </div>
+            <PatternGrid
+              activeCells={previewRound.expectedPattern}
+              label="Правильный ответ"
+              highlightColor="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+            />
+          </div>
+
+          <div
+            style={{
+              marginBottom: "24px",
+              padding: "10px 16px",
+              borderRadius: "8px",
+              border: "1px solid #fbbf24",
+              background: "#fef3c7",
+              color: "#92400e",
+              fontSize: "13px"
+            }}
+          >
+            {previewInstruction}
+          </div>
+
+          <button type="button" className="btn-primary" onClick={resetToSetup}>
+            ← Назад к настройкам
+          </button>
+        </div>
+      ) : null}
+
+      {phase === "memorize" || phase === "transform" ? (
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "inline-block",
+              marginBottom: "20px",
+              padding: "10px 18px",
+              borderRadius: "20px",
+              background: phase === "memorize" ? "#fef3c7" : "#ede9fe",
+              color: phase === "memorize" ? "#92400e" : "#6d28d9",
+              fontSize: "15px",
+              fontWeight: 600
+            }}
+          >
+            {phase === "memorize"
+              ? `👀 Запомните фигуру (${countdown} сек)`
+              : mode === "rotation"
+                ? `🔄 Мысленно поверните на ${rotationAngle}°`
+                : "🪞 Мысленно отразите фигуру"}
+          </div>
+
+          {mode === "classic" ? (
+            <PatternGrid
+              activeCells={basePattern}
+              highlightColor="linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+              cellOpacity={memorizeFade}
+            />
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "center",
+                gap: "24px",
+                flexWrap: "wrap",
+                marginBottom: "16px"
+              }}
+            >
+              <PatternGrid
+                activeCells={basePattern}
+                label="Исходная фигура"
+                highlightColor="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+                cellOpacity={memorizeFade}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  paddingTop: "40px"
+                }}
+              >
+                {renderTransformIndicator()}
+              </div>
+              <PatternGrid
+                activeCells={[]}
+                label="Представьте результат"
+                highlightColor="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                cellOpacity={0.08 + transformProgress * 0.05}
+              />
+            </div>
+          )}
+
+          <p style={{ color: "#6b7280", fontSize: "14px" }}>
+            {phase === "memorize"
+              ? "Сейчас правильный ответ не показывается — его нужно удержать мысленно."
+              : "Трансформация показана только как подсказка правила, а не как готовое решение."}
+          </p>
+        </div>
       ) : null}
 
       {phase === "recall" ? (
-        <>
-          <p className="status-line">{instruction}</p>
-          <div className="pattern-grid" data-testid="block-pattern-grid-recall">
-            {Array.from({ length: GRID * GRID }, (_, index) => (
-              <button
-                key={index}
-                type="button"
-                className={selected.has(index) ? "pattern-cell-button is-selected" : "pattern-cell-button"}
-                onClick={() => toggleCell(index)}
-              />
-            ))}
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "inline-block",
+              marginBottom: "16px",
+              padding: "10px 18px",
+              borderRadius: "20px",
+              background: "#ecfdf5",
+              color: "#065f46",
+              fontSize: "15px",
+              fontWeight: 600
+            }}
+          >
+            ✏️ Воспроизведите фигуру
           </div>
-          <div className="action-row">
-            <button type="button" className="btn-primary" onClick={finishRecall}>
-              Готово
+
+          <p style={{ margin: "0 0 12px", color: "#6b7280", fontSize: "15px" }}>
+            {mode === "rotation"
+              ? `Поверните фигуру мысленно на ${rotationAngle}° по часовой стрелке`
+              : mode === "mirror"
+                ? "Отразите фигуру горизонтально и отметьте получившийся образ"
+                : "Повторите фигуру по памяти"}
+          </p>
+
+          <p
+            style={{
+              margin: "0 0 16px",
+              color: "#374151",
+              fontSize: "13px",
+              fontWeight: 600
+            }}
+          >
+            Выбрано: {selectedCells.length} из {expectedPattern.length}
+          </p>
+
+          {selectionHint ? (
+            <div
+              style={{
+                marginBottom: "16px",
+                padding: "10px 14px",
+                borderRadius: "10px",
+                border: "1px solid #fbbf24",
+                background: "#fef3c7",
+                color: "#92400e",
+                fontSize: "13px"
+              }}
+            >
+              {selectionHint}
+            </div>
+          ) : null}
+
+          {mode !== "classic" && difficulty !== "hard" ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "center",
+                gap: "24px",
+                flexWrap: "wrap",
+                marginBottom: "24px"
+              }}
+            >
+              <PatternGrid
+                activeCells={basePattern}
+                label="Подсказка"
+                highlightColor="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+                cellOpacity={difficulty === "easy" ? 0.18 : 0.06}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  paddingTop: "40px",
+                  color: "#8b5cf6",
+                  fontSize: "32px"
+                }}
+              >
+                {mode === "rotation" ? "↻" : "↔"}
+              </div>
+              <PatternGrid
+                activeCells={selectedCells}
+                onCellClick={toggleCell}
+                interactive
+                label="Ваш ответ"
+              />
+            </div>
+          ) : (
+            <div style={{ marginBottom: "24px" }}>
+              <PatternGrid activeCells={selectedCells} onCellClick={toggleCell} interactive />
+            </div>
+          )}
+
+          <div className="action-row" style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={finishRecall}
+              disabled={selectedCells.length === 0}
+            >
+              ✅ Проверить ответ
+            </button>
+            <button type="button" className="btn-ghost" onClick={resetToSetup}>
+              ↩️ Назад
             </button>
           </div>
-        </>
+        </div>
       ) : null}
 
       {phase === "result" ? (
         <>
-          <div className="setup-block" data-testid="block-pattern-result">
-            <h3>Результат</h3>
-            <p>Верно: {hits} из {expectedPattern.length}</p>
-            <p>Пропуски: {misses}</p>
-            <p>Лишние: {falseHits}</p>
-            <p>Точность: {accuracy.toFixed(1)}%</p>
-            <p>Score: {score}</p>
+          <h3 style={{ margin: "0 0 16px", textAlign: "center", fontSize: "20px", fontWeight: 700 }}>
+            {roundResult.isPerfect
+              ? "🎉 Идеально"
+              : roundResult.accuracyPercent >= 70
+                ? "👍 Хороший ответ"
+                : "💪 Можно точнее"}
+          </h3>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+              gap: "12px",
+              marginBottom: "20px"
+            }}
+          >
+            {[
+              { label: "Точность", value: `${roundResult.accuracyPercent}%`, icon: "🎯" },
+              { label: "Верно", value: `${roundResult.hits}/${expectedPattern.length}`, icon: "✅" },
+              { label: "Пропуски", value: String(roundResult.misses), icon: "⚠️" },
+              { label: "Лишние", value: String(roundResult.falseHits), icon: "❌" },
+              { label: "Score", value: String(roundResult.score), icon: "🏆" },
+              { label: "Серия", value: String(combo), icon: "🔥" }
+            ].map((metric) => (
+              <div
+                key={metric.label}
+                style={{
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
+                  background: "#f9fafb",
+                  textAlign: "center"
+                }}
+              >
+                <div style={{ marginBottom: "4px", fontSize: "20px" }}>{metric.icon}</div>
+                <div style={{ color: "#111827", fontSize: "18px", fontWeight: 700 }}>
+                  {metric.value}
+                </div>
+                <div style={{ color: "#6b7280", fontSize: "12px" }}>{metric.label}</div>
+              </div>
+            ))}
           </div>
 
-          <div className="action-row">
+          <div style={{ marginBottom: "20px", textAlign: "center" }}>
+            <PatternGrid
+              activeCells={selectedCells}
+              cellStates={roundResult.cellStates}
+              label="Разбор ответа: зелёный — верно, жёлтый — пропуск, красный — лишняя клетка"
+            />
+          </div>
+
+          <div className="action-row" style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
             <button type="button" className="btn-primary" onClick={startRound}>
-              Ещё раунд
+              🔄 Ещё раунд
             </button>
             <button type="button" className="btn-secondary" onClick={resetToSetup}>
-              Сменить режим
+              ⚙️ Настройки
             </button>
             <Link className="btn-ghost" to="/training">
-              К тренировкам
+              ← К тренировкам
             </Link>
           </div>
         </>

@@ -36,16 +36,16 @@ const STAGE_ORDER: ExperimentalModuleStage[] = ["prototype", "polish", "validati
 export const EXPERIMENTAL_MODULES: ExperimentalModuleMeta[] = [
   {
     id: "block_pattern",
-    title: "Block Pattern Recall",
+    title: "Мысленный поворот",
     route: "/training/block-pattern",
-    category: "Логика и память",
-    skills: ["Паттерны", "Мысленный поворот"],
+    category: "Память и пространство",
+    skills: ["Пространственное мышление", "Мысленная трансформация"],
     description:
-      "Работа с паттернами, поворотами и зеркальностью. База уже собрана, но продукт ещё требует доводки.",
+      "Запомните фигуру и воспроизведите её после поворота или зеркального отражения. Тренирует способность мысленно вращать и трансформировать объекты — навык, полезный в архитектуре, инженерии и повседневной жизни.",
     stage: "polish",
     stageLabel: "Сборка режима",
     nextFocus:
-      "Следующий шаг: усилить обучающий слой, метрики качества и подготовить режим к валидации.",
+      "Следующий шаг: стабилизировать механику ответа, убрать логические утечки и подготовить тренажёр к валидации перед переводом в основные.",
     milestones: [
       { id: "core-loop", label: "Базовый игровой цикл", status: "done", weight: 3 },
       { id: "transform-rules", label: "Поворот и зеркальность", status: "done", weight: 2 },
@@ -83,11 +83,15 @@ export function getExperimentalModuleDoneCount(meta: ExperimentalModuleMeta): nu
   return meta.milestones.filter((item) => item.status === "done").length;
 }
 
-export function getExperimentalModuleCurrentMilestone(meta: ExperimentalModuleMeta): ExperimentalMilestone | null {
+export function getExperimentalModuleCurrentMilestone(
+  meta: ExperimentalModuleMeta
+): ExperimentalMilestone | null {
   return meta.milestones.find((item) => item.status === "in_progress") ?? null;
 }
 
-export function getExperimentalModuleNextMilestone(meta: ExperimentalModuleMeta): ExperimentalMilestone | null {
+export function getExperimentalModuleNextMilestone(
+  meta: ExperimentalModuleMeta
+): ExperimentalMilestone | null {
   return meta.milestones.find((item) => item.status === "planned") ?? null;
 }
 
@@ -99,11 +103,15 @@ export function getExperimentalModuleStageTotal(): number {
   return STAGE_ORDER.length;
 }
 
-export function getExperimentalModuleMeta(id: ExperimentalModuleMeta["id"]): ExperimentalModuleMeta | undefined {
+export function getExperimentalModuleMeta(
+  id: ExperimentalModuleMeta["id"]
+): ExperimentalModuleMeta | undefined {
   return EXPERIMENTAL_MODULES.find((item) => item.id === id);
 }
 
-export function getExperimentalModulePromotionReadiness(meta: ExperimentalModuleMeta): ExperimentalPromotionReadiness {
+export function getExperimentalModulePromotionReadiness(
+  meta: ExperimentalModuleMeta
+): ExperimentalPromotionReadiness {
   const progress = getExperimentalModuleProgress(meta);
   const stageRatio = getExperimentalModuleStageIndex(meta) / getExperimentalModuleStageTotal();
   const milestoneCoverage =

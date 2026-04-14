@@ -84,21 +84,19 @@ describe("TrainingHubPage", () => {
 
     expect(screen.getByTestId("training-hub-page")).toBeInTheDocument();
     expect(screen.getByText("Тренировки")).toBeInTheDocument();
-    expect(screen.getByTestId("training-hub-today-card")).toBeInTheDocument();
-    expect(screen.getByTestId("training-skill-system-strip")).toBeInTheDocument();
-    expect(screen.getByTestId("training-skill-system-action")).toBeInTheDocument();
     expect(screen.getByTestId("training-skill-tabs")).toBeInTheDocument();
     expect(screen.getByTestId("training-skill-tab-attention")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("training-skill-tab-memory")).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByTestId("training-skill-panel-attention")).toBeInTheDocument();
     expect(screen.getByTestId("training-featured-modules-attention")).toBeInTheDocument();
+    expect(screen.getByTestId("training-skill-start-schulte")).toHaveAttribute("href", "/training/schulte");
   });
 
   it("shows a usable top recommendation even before history is collected", () => {
     renderHub();
 
-    expect(screen.getByTestId("training-hub-today-card")).toHaveTextContent("Внимание и концентрация");
-    expect(screen.getByTestId("training-hub-guidance-start")).toHaveAttribute("href", "/training/schulte");
+    expect(screen.getByTestId("training-skill-panel-attention")).toHaveTextContent("Таблица Шульте");
+    expect(screen.getByTestId("training-skill-start-schulte")).toHaveAttribute("href", "/training/schulte");
   });
 
   it("updates visible modules when the active skill changes", () => {
@@ -111,10 +109,10 @@ describe("TrainingHubPage", () => {
 
     expect(screen.getByTestId("training-skill-panel-math")).toBeInTheDocument();
     expect(screen.getByTestId("training-featured-modules-math")).toBeInTheDocument();
-    expect(screen.getByTestId("training-skill-progress-math")).toBeInTheDocument();
-    expect(screen.getByTestId("training-open-sprint_math")).toHaveAttribute("href", "/training/sprint-math");
+    expect(screen.getByTestId("training-open-sprint_math")).toBeInTheDocument();
+    expect(screen.getByTestId("training-skill-start-sprint_math")).toHaveAttribute("href", "/training/sprint-math");
     expect(screen.queryByTestId("training-open-schulte")).not.toBeInTheDocument();
-    expect(screen.getByTestId("training-scenario-sprint_math")).toBeInTheDocument();
+    expect(screen.getByTestId("training-skill-panel-math")).toHaveTextContent("Математический спринт");
   });
 
   it("shows Spatial Memory alongside the main memory trainers", () => {
@@ -124,14 +122,11 @@ describe("TrainingHubPage", () => {
 
     expect(screen.getByTestId("training-skill-panel-memory")).toBeInTheDocument();
     expect(screen.getByTestId("training-featured-modules-memory")).toBeInTheDocument();
-    expect(screen.getByTestId("training-open-memory_match")).toHaveAttribute("href", "/training/memory-match");
-    expect(screen.getByTestId("training-plan-memory_match")).toHaveAttribute("href", "/training/pre-session?module=memory_match");
-    expect(screen.getByTestId("training-open-spatial_memory")).toHaveAttribute("href", "/training/spatial-memory");
-    expect(screen.getByTestId("training-plan-spatial_memory")).toHaveAttribute(
-      "href",
-      "/training/pre-session?module=spatial_memory"
-    );
-    expect(screen.getByTestId("training-scenario-memory_match")).toBeInTheDocument();
+    expect(screen.getByTestId("training-open-memory_match")).toBeInTheDocument();
+    expect(screen.getByTestId("training-open-spatial_memory")).toBeInTheDocument();
+    expect(screen.getByTestId("training-skill-start-memory_match")).toHaveAttribute("href", "/training/memory-match");
+    fireEvent.click(screen.getByTestId("training-open-spatial_memory"));
+    expect(screen.getByTestId("training-skill-start-spatial_memory")).toHaveAttribute("href", "/training/spatial-memory");
     expect(screen.queryByTestId("training-alpha-spatial-memory")).not.toBeInTheDocument();
   });
 
@@ -140,7 +135,7 @@ describe("TrainingHubPage", () => {
 
     expect(screen.getByTestId("training-alpha-trainers")).toBeInTheDocument();
     expect(screen.getByTestId("training-alpha-block-pattern")).toHaveAttribute("href", "/training/block-pattern");
-    expect(screen.getByLabelText("Готовность Block Pattern Recall")).toHaveAttribute("aria-valuenow", "81");
+    expect(screen.getByLabelText("Готовность Мысленный поворот")).toHaveAttribute("aria-valuenow", "81");
     expect(screen.getByText("Сборка режима")).toBeInTheDocument();
     expect(screen.getAllByText("Готовность к переводу")).toHaveLength(1);
     expect(screen.getByTestId("training-alpha-block-pattern")).toHaveTextContent("71/100");
@@ -166,8 +161,8 @@ describe("TrainingHubPage", () => {
     renderHub();
 
     expect(await screen.findByTestId("training-skill-panel-memory")).toBeInTheDocument();
-    expect(screen.getByTestId("training-hub-today-card")).toHaveTextContent("Фокус: Память");
-    expect(screen.getByTestId("training-hub-guidance-start")).toHaveAttribute(
+    expect(screen.getByTestId("training-skill-panel-memory")).toHaveTextContent("Пары памяти");
+    expect(screen.getByTestId("training-skill-start-memory_match")).toHaveAttribute(
       "href",
       "/training/memory-match"
     );
