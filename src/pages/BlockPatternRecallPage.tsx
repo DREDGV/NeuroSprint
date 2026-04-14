@@ -680,7 +680,101 @@ export function BlockPatternRecallPage() {
         </div>
       ) : null}
 
-      {phase === "memorize" || phase === "transform" ? (
+      {phase === "memorize" ? (
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "inline-block",
+              marginBottom: "20px",
+              padding: "10px 18px",
+              borderRadius: "20px",
+              background: "#fef3c7",
+              color: "#92400e",
+              fontSize: "15px",
+              fontWeight: 600
+            }}
+          >
+            👀 Запомните фигуру ({countdown} сек)
+          </div>
+
+          <PatternGrid
+            activeCells={basePattern}
+            highlightColor="linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+            cellOpacity={memorizeFade}
+          />
+
+          <p style={{ color: "#6b7280", fontSize: "14px" }}>
+            Сейчас правильный ответ не показывается — его нужно удержать мысленно.
+          </p>
+        </div>
+      ) : null}
+
+      {phase === "transform" ? (
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "inline-block",
+              marginBottom: "20px",
+              padding: "10px 18px",
+              borderRadius: "20px",
+              background: "#ede9fe",
+              color: "#6d28d9",
+              fontSize: "15px",
+              fontWeight: 600
+            }}
+          >
+            {mode === "rotation"
+              ? `🔄 Мысленно поверните на ${rotationAngle}°`
+              : "🪞 Мысленно отразите фигуру"}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "14px",
+              minHeight: `${CELL_SIZE * BLOCK_PATTERN_GRID + 56}px`,
+              marginBottom: "16px"
+            }}
+          >
+            <div
+              style={{
+                padding: "20px 24px",
+                borderRadius: "18px",
+                border: "1px solid #ddd6fe",
+                background: "linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%)",
+                minWidth: "260px"
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px"
+                }}
+              >
+                {renderTransformIndicator()}
+                <strong style={{ color: "#5b21b6", fontSize: "16px" }}>
+                  {mode === "rotation" ? `Поворот на ${rotationAngle}°` : "Зеркальное отражение"}
+                </strong>
+                <p style={{ margin: 0, color: "#6b7280", fontSize: "14px", lineHeight: 1.5 }}>
+                  Фигура уже скрыта. Сохраните её в памяти и подготовьтесь к воспроизведению.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p style={{ color: "#6b7280", fontSize: "14px" }}>
+            На этом этапе подсказок нет: ни исходная фигура, ни готовое решение больше не показываются.
+          </p>
+        </div>
+      ) : null}
+
+      {false && (phase === "memorize" || phase === "transform") ? (
         <div style={{ textAlign: "center" }}>
           <div
             style={{
@@ -805,7 +899,16 @@ export function BlockPatternRecallPage() {
             </div>
           ) : null}
 
-          {mode !== "classic" && difficulty !== "hard" ? (
+          <div style={{ marginBottom: "24px" }}>
+            <PatternGrid
+              activeCells={selectedCells}
+              onCellClick={toggleCell}
+              interactive
+              label={mode === "classic" ? undefined : "Ваш ответ"}
+            />
+          </div>
+
+          {false && mode !== "classic" && difficulty !== "hard" ? (
             <div
               style={{
                 display: "flex",
