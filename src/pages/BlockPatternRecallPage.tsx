@@ -27,7 +27,7 @@ type PatternPhase =
 const CELL_SIZE = 72;
 
 const MODE_LABELS: Record<BlockPatternMode, { name: string; icon: string; hint: string }> = {
-  classic: { name: "Классика", icon: "🎯", hint: "Повторите фигуру как была" },
+  classic: { name: "Классика", icon: "🎯", hint: "Повторите фигуру без изменений" },
   rotation: { name: "Поворот", icon: "🔄", hint: "Мысленно поверните фигуру" },
   mirror: { name: "Зеркало", icon: "↔️", hint: "Мысленно отразите фигуру" }
 };
@@ -338,11 +338,7 @@ export function BlockPatternRecallPage() {
       }
 
       setSelected((current) => {
-        const { next, limitReached } = toggleSelection(
-          current,
-          index,
-          expectedPattern.length
-        );
+        const { next, limitReached } = toggleSelection(current, index, expectedPattern.length);
         setSelectionHint(
           limitReached
             ? `Можно выбрать не больше ${expectedPattern.length} клеток.`
@@ -406,9 +402,7 @@ export function BlockPatternRecallPage() {
           />
           <span>←</span>
         </div>
-        <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
-          Зеркало
-        </div>
+        <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>Зеркало</div>
       </>
     );
   };
@@ -419,6 +413,41 @@ export function BlockPatternRecallPage() {
       : mode === "mirror"
         ? "Запомните фигуру слева, отразите её горизонтально и воспроизведите справа."
         : "Запомните фигуру и повторите её без изменений.";
+
+  const isRoundActive =
+    phase === "memorize" || phase === "transform" || phase === "recall";
+  const boardCells =
+    phase === "memorize" ? basePattern : phase === "recall" ? selectedCells : [];
+  const boardInteractive = phase === "recall";
+  const boardOpacity = phase === "memorize" ? memorizeFade : 1;
+  const boardHighlight =
+    phase === "memorize"
+      ? "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+      : "linear-gradient(135deg, #10b981 0%, #059669 100%)";
+  const runtimeInstruction =
+    phase === "memorize"
+      ? `Запомните фигуру (${countdown} сек)`
+      : phase === "transform"
+        ? mode === "rotation"
+          ? `Мысленно поверните на ${rotationAngle}°`
+          : "Мысленно отразите фигуру"
+        : "Воспроизведите фигуру";
+  const runtimeCaption =
+    phase === "memorize"
+      ? "Поле остаётся на месте. Запоминайте фигуру без смены сцены."
+      : phase === "transform"
+        ? "Фигура уже скрыта, но поле не меняется. Держите в голове правило трансформации."
+        : mode === "rotation"
+          ? `Поверните фигуру мысленно на ${rotationAngle}° по часовой стрелке и отметьте результат.`
+          : mode === "mirror"
+            ? "Отразите фигуру горизонтально и отметьте получившийся образ."
+            : "Повторите фигуру по памяти.";
+  const runtimeBadgeColors =
+    phase === "memorize"
+      ? { background: "#fef3c7", color: "#92400e" }
+      : phase === "transform"
+        ? { background: "#ede9fe", color: "#6d28d9" }
+        : { background: "#ecfdf5", color: "#065f46" };
 
   return (
     <section className="panel" data-testid="block-pattern-page">
@@ -592,7 +621,7 @@ export function BlockPatternRecallPage() {
               <li>Запомните её как можно точнее.</li>
               <li>
                 Во время ответа можно выбрать не больше {config.blocks} клеток, чтобы нельзя
-                было угадать «заполнением всей доски».
+                было угадать простым заполнением всей доски.
               </li>
               <li>
                 {mode === "rotation"
@@ -651,7 +680,11 @@ export function BlockPatternRecallPage() {
               highlightColor="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
             />
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-              {mode === "classic" ? <span style={{ color: "#9ca3af", fontSize: "24px" }}>↓</span> : renderTransformIndicator()}
+              {mode === "classic" ? (
+                <span style={{ color: "#9ca3af", fontSize: "24px" }}>↓</span>
+              ) : (
+                renderTransformIndicator()
+              )}
             </div>
             <PatternGrid
               activeCells={previewRound.expectedPattern}
@@ -680,174 +713,7 @@ export function BlockPatternRecallPage() {
         </div>
       ) : null}
 
-      {phase === "memorize" ? (
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              display: "inline-block",
-              marginBottom: "20px",
-              padding: "10px 18px",
-              borderRadius: "20px",
-              background: "#fef3c7",
-              color: "#92400e",
-              fontSize: "15px",
-              fontWeight: 600
-            }}
-          >
-            👀 Запомните фигуру ({countdown} сек)
-          </div>
-
-          <PatternGrid
-            activeCells={basePattern}
-            highlightColor="linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
-            cellOpacity={memorizeFade}
-          />
-
-          <p style={{ color: "#6b7280", fontSize: "14px" }}>
-            Сейчас правильный ответ не показывается — его нужно удержать мысленно.
-          </p>
-        </div>
-      ) : null}
-
-      {phase === "transform" ? (
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              display: "inline-block",
-              marginBottom: "20px",
-              padding: "10px 18px",
-              borderRadius: "20px",
-              background: "#ede9fe",
-              color: "#6d28d9",
-              fontSize: "15px",
-              fontWeight: 600
-            }}
-          >
-            {mode === "rotation"
-              ? `🔄 Мысленно поверните на ${rotationAngle}°`
-              : "🪞 Мысленно отразите фигуру"}
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "14px",
-              minHeight: `${CELL_SIZE * BLOCK_PATTERN_GRID + 56}px`,
-              marginBottom: "16px"
-            }}
-          >
-            <div
-              style={{
-                padding: "20px 24px",
-                borderRadius: "18px",
-                border: "1px solid #ddd6fe",
-                background: "linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%)",
-                minWidth: "260px"
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px"
-                }}
-              >
-                {renderTransformIndicator()}
-                <strong style={{ color: "#5b21b6", fontSize: "16px" }}>
-                  {mode === "rotation" ? `Поворот на ${rotationAngle}°` : "Зеркальное отражение"}
-                </strong>
-                <p style={{ margin: 0, color: "#6b7280", fontSize: "14px", lineHeight: 1.5 }}>
-                  Фигура уже скрыта. Сохраните её в памяти и подготовьтесь к воспроизведению.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <p style={{ color: "#6b7280", fontSize: "14px" }}>
-            На этом этапе подсказок нет: ни исходная фигура, ни готовое решение больше не показываются.
-          </p>
-        </div>
-      ) : null}
-
-      {false && (phase === "memorize" || phase === "transform") ? (
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              display: "inline-block",
-              marginBottom: "20px",
-              padding: "10px 18px",
-              borderRadius: "20px",
-              background: phase === "memorize" ? "#fef3c7" : "#ede9fe",
-              color: phase === "memorize" ? "#92400e" : "#6d28d9",
-              fontSize: "15px",
-              fontWeight: 600
-            }}
-          >
-            {phase === "memorize"
-              ? `👀 Запомните фигуру (${countdown} сек)`
-              : mode === "rotation"
-                ? `🔄 Мысленно поверните на ${rotationAngle}°`
-                : "🪞 Мысленно отразите фигуру"}
-          </div>
-
-          {mode === "classic" ? (
-            <PatternGrid
-              activeCells={basePattern}
-              highlightColor="linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
-              cellOpacity={memorizeFade}
-            />
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "center",
-                gap: "24px",
-                flexWrap: "wrap",
-                marginBottom: "16px"
-              }}
-            >
-              <PatternGrid
-                activeCells={basePattern}
-                label="Исходная фигура"
-                highlightColor="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
-                cellOpacity={memorizeFade}
-              />
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  paddingTop: "40px"
-                }}
-              >
-                {renderTransformIndicator()}
-              </div>
-              <PatternGrid
-                activeCells={[]}
-                label="Представьте результат"
-                highlightColor="linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                cellOpacity={0.08 + transformProgress * 0.05}
-              />
-            </div>
-          )}
-
-          <p style={{ color: "#6b7280", fontSize: "14px" }}>
-            {phase === "memorize"
-              ? "Сейчас правильный ответ не показывается — его нужно удержать мысленно."
-              : "Трансформация показана только как подсказка правила, а не как готовое решение."}
-          </p>
-        </div>
-      ) : null}
-
-      {phase === "recall" ? (
+      {isRoundActive ? (
         <div style={{ textAlign: "center" }}>
           <div
             style={{
@@ -855,35 +721,53 @@ export function BlockPatternRecallPage() {
               marginBottom: "16px",
               padding: "10px 18px",
               borderRadius: "20px",
-              background: "#ecfdf5",
-              color: "#065f46",
+              background: runtimeBadgeColors.background,
+              color: runtimeBadgeColors.color,
               fontSize: "15px",
               fontWeight: 600
             }}
           >
-            ✏️ Воспроизведите фигуру
+            {runtimeInstruction}
           </div>
 
           <p style={{ margin: "0 0 12px", color: "#6b7280", fontSize: "15px" }}>
-            {mode === "rotation"
-              ? `Поверните фигуру мысленно на ${rotationAngle}° по часовой стрелке`
-              : mode === "mirror"
-                ? "Отразите фигуру горизонтально и отметьте получившийся образ"
-                : "Повторите фигуру по памяти"}
+            {runtimeCaption}
           </p>
 
-          <p
-            style={{
-              margin: "0 0 16px",
-              color: "#374151",
-              fontSize: "13px",
-              fontWeight: 600
-            }}
-          >
-            Выбрано: {selectedCells.length} из {expectedPattern.length}
-          </p>
+          {phase === "transform" ? (
+            <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "8px",
+                  color: "#8b5cf6"
+                }}
+              >
+                {renderTransformIndicator()}
+              </div>
+            </div>
+          ) : (
+            <div style={{ height: "44px", marginBottom: "12px" }} />
+          )}
 
-          {selectionHint ? (
+          {phase === "recall" ? (
+            <p
+              style={{
+                margin: "0 0 16px",
+                color: "#374151",
+                fontSize: "13px",
+                fontWeight: 600
+              }}
+            >
+              Выбрано: {selectedCells.length} из {expectedPattern.length}
+            </p>
+          ) : (
+            <div style={{ height: "18px", marginBottom: "16px" }} />
+          )}
+
+          {selectionHint && phase === "recall" ? (
             <div
               style={{
                 marginBottom: "16px",
@@ -901,70 +785,30 @@ export function BlockPatternRecallPage() {
 
           <div style={{ marginBottom: "24px" }}>
             <PatternGrid
-              activeCells={selectedCells}
-              onCellClick={toggleCell}
-              interactive
-              label={mode === "classic" ? undefined : "Ваш ответ"}
+              activeCells={boardCells}
+              onCellClick={boardInteractive ? toggleCell : undefined}
+              interactive={boardInteractive}
+              label={phase === "recall" && mode !== "classic" ? "Ваш ответ" : undefined}
+              highlightColor={boardHighlight}
+              cellOpacity={boardOpacity}
             />
           </div>
 
-          {false && mode !== "classic" && difficulty !== "hard" ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "center",
-                gap: "24px",
-                flexWrap: "wrap",
-                marginBottom: "24px"
-              }}
-            >
-              <PatternGrid
-                activeCells={basePattern}
-                label="Подсказка"
-                highlightColor="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
-                cellOpacity={difficulty === "easy" ? 0.18 : 0.06}
-              />
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  paddingTop: "40px",
-                  color: "#8b5cf6",
-                  fontSize: "32px"
-                }}
+          {phase === "recall" ? (
+            <div className="action-row" style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={finishRecall}
+                disabled={selectedCells.length === 0}
               >
-                {mode === "rotation" ? "↻" : "↔"}
-              </div>
-              <PatternGrid
-                activeCells={selectedCells}
-                onCellClick={toggleCell}
-                interactive
-                label="Ваш ответ"
-              />
+                ✅ Проверить ответ
+              </button>
+              <button type="button" className="btn-ghost" onClick={resetToSetup}>
+                ↩️ Назад
+              </button>
             </div>
-          ) : (
-            <div style={{ marginBottom: "24px" }}>
-              <PatternGrid activeCells={selectedCells} onCellClick={toggleCell} interactive />
-            </div>
-          )}
-
-          <div className="action-row" style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={finishRecall}
-              disabled={selectedCells.length === 0}
-            >
-              ✅ Проверить ответ
-            </button>
-            <button type="button" className="btn-ghost" onClick={resetToSetup}>
-              ↩️ Назад
-            </button>
-          </div>
+          ) : null}
         </div>
       ) : null}
 
