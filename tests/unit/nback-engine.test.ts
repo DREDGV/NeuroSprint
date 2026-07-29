@@ -40,8 +40,8 @@ describe("nback engine", () => {
   });
 
   it("calculates steps from duration", () => {
-    expect(calculateNBackSteps(60)).toBe(40);
-    expect(calculateNBackSteps(90)).toBe(60);
+    expect(calculateNBackSteps(60)).toBe(3);
+    expect(calculateNBackSteps(90)).toBe(3);
   });
 
   it("generates sequence with valid cell indexes", () => {

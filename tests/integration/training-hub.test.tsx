@@ -42,7 +42,8 @@ function makeSession(
     spatial_memory: "spatial_memory",
     decision_rush: "decision_rush",
     memory_match: "memory_match",
-    pattern_recognition: "pattern_recognition"
+    pattern_recognition: "pattern_recognition",
+    mental_rotation: "mental_rotation"
   };
 
   return {
@@ -84,12 +85,14 @@ describe("TrainingHubPage", () => {
 
     expect(screen.getByTestId("training-hub-page")).toBeInTheDocument();
     expect(screen.getByText("Тренировки")).toBeInTheDocument();
+    expect(screen.getByTestId("training-hub-today-card")).toHaveTextContent("Таблица Шульте");
     expect(screen.getByTestId("training-skill-tabs")).toBeInTheDocument();
     expect(screen.getByTestId("training-skill-tab-attention")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("training-skill-tab-memory")).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByTestId("training-skill-panel-attention")).toBeInTheDocument();
     expect(screen.getByTestId("training-featured-modules-attention")).toBeInTheDocument();
     expect(screen.getByTestId("training-skill-start-schulte")).toHaveAttribute("href", "/training/schulte");
+    expect(screen.getByTestId("training-hero-start-schulte")).toHaveAttribute("href", "/training/schulte");
   });
 
   it("shows a usable top recommendation even before history is collected", () => {
@@ -111,11 +114,12 @@ describe("TrainingHubPage", () => {
     expect(screen.getByTestId("training-featured-modules-math")).toBeInTheDocument();
     expect(screen.getByTestId("training-open-sprint_math")).toBeInTheDocument();
     expect(screen.getByTestId("training-skill-start-sprint_math")).toHaveAttribute("href", "/training/sprint-math");
+    expect(screen.getByTestId("training-hero-start-sprint_math")).toHaveAttribute("href", "/training/sprint-math");
     expect(screen.queryByTestId("training-open-schulte")).not.toBeInTheDocument();
     expect(screen.getByTestId("training-skill-panel-math")).toHaveTextContent("Математический спринт");
   });
 
-  it("shows Spatial Memory alongside the main memory trainers", () => {
+  it("shows Spatial Memory and Mental Rotation alongside the main memory trainers", () => {
     renderHub();
 
     fireEvent.click(screen.getByTestId("training-skill-tab-memory"));
@@ -124,24 +128,21 @@ describe("TrainingHubPage", () => {
     expect(screen.getByTestId("training-featured-modules-memory")).toBeInTheDocument();
     expect(screen.getByTestId("training-open-memory_match")).toBeInTheDocument();
     expect(screen.getByTestId("training-open-spatial_memory")).toBeInTheDocument();
+    expect(screen.getByTestId("training-open-mental_rotation")).toBeInTheDocument();
     expect(screen.getByTestId("training-skill-start-memory_match")).toHaveAttribute("href", "/training/memory-match");
     fireEvent.click(screen.getByTestId("training-open-spatial_memory"));
     expect(screen.getByTestId("training-skill-start-spatial_memory")).toHaveAttribute("href", "/training/spatial-memory");
     expect(screen.queryByTestId("training-alpha-spatial-memory")).not.toBeInTheDocument();
   });
 
-  it("keeps a separate experimental block for unfinished prototypes", () => {
+  it("shows no experimental block after block_pattern was promoted to main catalog", () => {
     renderHub();
 
-    expect(screen.getByTestId("training-alpha-trainers")).toBeInTheDocument();
-    expect(screen.getByTestId("training-alpha-block-pattern")).toHaveAttribute("href", "/training/block-pattern");
-    expect(screen.getByLabelText("Готовность Мысленный поворот")).toHaveAttribute("aria-valuenow", "81");
-    expect(screen.getByText("Сборка режима")).toBeInTheDocument();
-    expect(screen.getAllByText("Готовность к переводу")).toHaveLength(1);
-    expect(screen.getByTestId("training-alpha-block-pattern")).toHaveTextContent("71/100");
-    expect(screen.getByTestId("training-alpha-block-pattern")).toHaveTextContent("Нужна доработка");
-    expect(screen.queryByTestId("training-alpha-memory-match")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("training-alpha-spatial-memory")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("training-alpha-trainers")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("training-alpha-block-pattern")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("training-skill-tab-memory"));
+    expect(screen.getByTestId("training-open-mental_rotation")).toBeInTheDocument();
   });
 
   it("opens the current focus skill from the growth system when history exists", async () => {

@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  getExperimentalModuleCurrentMilestone,
-  getExperimentalModuleMeta,
-  getExperimentalModuleProgress
-} from "../shared/lib/training/experimentalModules";
-import {
   BLOCK_PATTERN_DIFFICULTIES,
   BLOCK_PATTERN_GRID,
   type BlockPatternDifficulty,
@@ -152,7 +147,6 @@ function PatternGrid({
 }
 
 export function BlockPatternRecallPage() {
-  const experimentalMeta = getExperimentalModuleMeta("block_pattern");
   const [difficulty, setDifficulty] = useState<BlockPatternDifficulty>("easy");
   const [mode, setMode] = useState<BlockPatternMode>("classic");
   const [phase, setPhase] = useState<PatternPhase>("setup");
@@ -181,11 +175,6 @@ export function BlockPatternRecallPage() {
     () => evaluateAttempt(expectedPattern, selectedCells),
     [expectedPattern, selectedCells]
   );
-  const progress = experimentalMeta ? getExperimentalModuleProgress(experimentalMeta) : 0;
-  const currentMilestone = experimentalMeta
-    ? getExperimentalModuleCurrentMilestone(experimentalMeta)
-    : null;
-
   const stopTransformAnimation = useCallback(() => {
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -459,31 +448,6 @@ export function BlockPatternRecallPage() {
         Запомните фигуру и воспроизведите её после трансформации. Тренажёр проверяет,
         насколько точно вы удерживаете образ и применяете правило поворота или зеркала.
       </p>
-
-      {experimentalMeta ? (
-        <div
-          style={{
-            padding: "12px 16px",
-            marginBottom: "20px",
-            borderRadius: "10px",
-            border: "1px solid #86efac",
-            background: "#f0fdf4",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px"
-          }}
-        >
-          <span style={{ fontSize: "20px" }}>🧪</span>
-          <div>
-            <strong style={{ color: "#166534", fontSize: "13px" }}>
-              Альфа-версия • {experimentalMeta.stageLabel}
-            </strong>
-            <p style={{ margin: "2px 0 0", color: "#15803d", fontSize: "12px" }}>
-              Прогресс: {progress}% • {currentMilestone?.label ?? "Готово"}
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       {phase !== "setup" && roundsPlayed > 0 ? (
         <div

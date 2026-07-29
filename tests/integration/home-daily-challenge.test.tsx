@@ -77,6 +77,7 @@ function makeSession(
     n_back: "n_back",
     memory_grid: "memory_grid",
     spatial_memory: "spatial_memory",
+    mental_rotation: "mental_rotation",
     decision_rush: "decision_rush",
     memory_match: "memory_match",
     pattern_recognition: "pattern_recognition"

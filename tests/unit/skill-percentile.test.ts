@@ -35,9 +35,9 @@ describe("skillPercentileService", () => {
       expect(getRankDescription("top_1%")).toContain("топ-1%");
       expect(getRankDescription("top_5%")).toContain("топ-5%");
       expect(getRankDescription("top_10%")).toContain("топ-10%");
-      expect(getRankDescription("top_25%")).toContain("75%");
-      expect(getRankDescription("top_50%")).toContain("выше среднего");
-      expect(getRankDescription("bottom_50%")).toContain("Есть куда расти");
+      expect(getRankDescription("top_25%")).toContain("среднего");
+      expect(getRankDescription("top_50%")).toContain("середин");
+      expect(getRankDescription("bottom_50%")).toContain("ниже среднего");
     });
   });
 

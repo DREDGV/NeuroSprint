@@ -36,6 +36,7 @@ const MODULE_TITLE_BY_ID: Record<TrainingModuleId, string> = {
   n_back: "N-Back",
   memory_grid: "Сетка памяти",
   spatial_memory: "Пространственная память",
+  mental_rotation: "Мысленный поворот",
   decision_rush: "Быстрые решения",
   memory_match: "Пары памяти",
   pattern_recognition: "Распознавание паттернов"

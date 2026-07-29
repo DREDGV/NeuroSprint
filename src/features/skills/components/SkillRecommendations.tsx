@@ -22,12 +22,16 @@ const MODULE_LABELS: Record<TrainingModuleId, string> = {
   n_back: "N-Назад",
   memory_grid: "Сетка памяти",
   spatial_memory: "Пространственная память",
+  mental_rotation: "Мысленный поворот",
   decision_rush: "Быстрые решения",
   memory_match: "Пары памяти",
   pattern_recognition: "Распознавание паттернов"
 };
 
 function moduleLaunchPath(moduleId: TrainingModuleId): string {
+  if (moduleId === "mental_rotation") {
+    return "/training/block-pattern";
+  }
   return `/training/pre-session?module=${moduleId}`;
 }
 

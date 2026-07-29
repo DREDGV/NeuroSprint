@@ -9,7 +9,8 @@
   | "spatial_memory"
   | "decision_rush"
   | "memory_match"
-  | "pattern_recognition";
+  | "pattern_recognition"
+  | "mental_rotation";
 export type AppRole = "teacher" | "student" | "home" | "admin";
 export type ProfileOwnershipKind = "guest" | "linked";
 export type ProfileSyncState = "local" | "pending" | "synced" | "error";
@@ -22,7 +23,8 @@ export type TrainingModuleId =
   | "spatial_memory"
   | "decision_rush"
   | "memory_match"
-  | "pattern_recognition";
+  | "pattern_recognition"
+  | "mental_rotation";
 export type SkillProfileId = "attention" | "memory" | "reaction" | "math" | "logic";
 export type TrainingModeId =
   | "classic_plus"
@@ -61,7 +63,8 @@ export type TrainingModeId =
   | "pattern_progressive"
   | "pattern_learning"
   | "pattern_multi"
-  | "pattern_survival";
+  | "pattern_survival"
+  | "mental_rotation_classic";
 export type AdaptiveSource = "auto" | "manual" | "legacy";
 export type TrainingPresetId =
   | "easy"
@@ -144,7 +147,7 @@ export interface Difficulty {
 export interface Session {
   id: string;
   userId: string;
-  taskId: "schulte" | "sprint_math" | "reaction" | "n_back" | "decision_rush" | "memory_grid" | "spatial_memory" | "memory_match" | "pattern_recognition";
+  taskId: TrainingModuleId;
   mode: Mode;
   moduleId: TrainingModuleId;
   modeId: TrainingModeId;

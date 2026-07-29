@@ -94,8 +94,8 @@ function pickUniqueNumbers(count: number): number[] {
 }
 
 function buildStroopChallenge(): ReactionChallenge {
-  // Создаём 2-3 правильных варианта (где цвет текста совпадает с надписью)
-  const correctCount = 2;
+  // Создаём 1 правильный вариант (где цвет текста совпадает с надписью)
+  const correctCount = 1;
   const correctOptions: ReactionOption[] = [];
   const usedCorrect = new Set<string>();
   
@@ -117,7 +117,7 @@ function buildStroopChallenge(): ReactionChallenge {
   const distractors: ReactionOption[] = [];
   const usedPairs = new Set<string>();
   
-  while (distractors.length < 2) {
+  while (distractors.length < 3) {
     const word = pickOne(COLOR_WORDS);
     const color = pickOne(COLOR_WORDS);
     

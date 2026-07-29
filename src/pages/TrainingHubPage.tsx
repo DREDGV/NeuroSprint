@@ -4,16 +4,6 @@ import { useEffect } from "react";
 import { useActiveUser } from "../app/ActiveUserContext";
 import { sessionRepository } from "../entities/session/sessionRepository";
 import { TRAINING_MODULES } from "../shared/lib/training/presets";
-import {
-  EXPERIMENTAL_MODULES,
-  getExperimentalModuleCurrentMilestone,
-  getExperimentalModuleDoneCount,
-  getExperimentalModuleNextMilestone,
-  getExperimentalModuleProgress,
-  getExperimentalModulePromotionReadiness,
-  getExperimentalModuleStageIndex,
-  getExperimentalModuleStageTotal
-} from "../shared/lib/training/experimentalModules";
 import { buildSkillGuidance } from "../shared/lib/training/skillGuidance";
 import type { Session } from "../shared/types/domain";
 
@@ -26,7 +16,8 @@ const modulePrimaryRouteById: Record<string, string> = {
   memory_match: "/training/memory-match",
   spatial_memory: "/training/spatial-memory",
   decision_rush: "/training/decision-rush",
-  pattern_recognition: "/training/pattern-recognition"
+  pattern_recognition: "/training/pattern-recognition",
+  mental_rotation: "/training/block-pattern"
 };
 
 const moduleTitleById: Record<string, string> = {
@@ -38,7 +29,8 @@ const moduleTitleById: Record<string, string> = {
   memory_match: "Пары памяти",
   spatial_memory: "Пространственная память",
   decision_rush: "Быстрые решения",
-  pattern_recognition: "Распознавание паттернов"
+  pattern_recognition: "Распознавание паттернов",
+  mental_rotation: "Мысленный поворот"
 };
 
 function declensionTrainers(count: number): string {
@@ -111,6 +103,14 @@ const PatternIcon = ({ size = 32 }: { size?: number }) => (
     <circle cx="6" cy="18" r="2.8" fill="currentColor" fillOpacity="0.65" />
     <circle cx="18" cy="18" r="2.8" fill="currentColor" fillOpacity="0.95" />
     <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" opacity="0.7" />
+  </svg>
+);
+
+const RotationIcon = ({ size = 32 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" fill="currentColor" fillOpacity="0.2" />
+    <path d="M3 3v5h5" />
+    <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" fillOpacity="0.65" />
   </svg>
 );
 
@@ -287,6 +287,21 @@ const MODULE_META: ModuleMeta[] = [
     routeLabel: "Лучший первый шаг",
     formatLabel: "Закономерности",
     skillId: "logic"
+  },
+  {
+    id: "mental_rotation",
+    color: "#5b21b6",
+    gradient: "linear-gradient(135deg, #5b21b6 0%, #8b5cf6 100%)",
+    bgLight: "rgba(91, 33, 182, 0.08)",
+    icon: <RotationIcon size={36} />,
+    primarySkill: "Пространственное мышление",
+    secondarySkills: ["Поворот", "Воображение"],
+    timeLabel: "3-6 мин",
+    benefit: "Тренирует мысленно вращать и отражать фигуры. Полезно в инженерии, архитектуре и при работе с пространственными задачами.",
+    bestFor: "Когда хочется нагрузки на пространственное воображение",
+    routeLabel: "Пространственный вызов",
+    formatLabel: "Поворот и зеркало",
+    skillId: "memory"
   }
 ];
 
@@ -420,6 +435,14 @@ const MODULE_DETAILS: Record<string, ModuleDetailDefinition> = {
     mechanic: "Вы сравниваете элементы ряда, ищете повтор, сдвиг или трансформацию и прогнозируете следующий шаг.",
     signal: "Хороший прогресс появляется, когда вы перестаёте угадывать и начинаете видеть тип закономерности почти сразу.",
     tip: "Сначала задайте себе вопрос: что меняется — форма, позиция, число или ритм. Это сильно ускоряет поиск правила."
+  },
+  mental_rotation: {
+    overview:
+      "Мысленный поворот развивает способность мысленно трансформировать пространственные образы: вращать фигуры на заданный угол или отражать их по оси.",
+    trains: "Пространственное воображение, точность мысленных трансформаций и удержание сложного образа под нагрузкой.",
+    mechanic: "Вы запоминаете фигуру на сетке, затем мысленно применяете поворот или зеркальное отражение и воспроизводите результат.",
+    signal: "Прогресс ощущается, когда образ начинает «поворачиваться» в голове сам — без побуждного пересчёта каждой клетки.",
+    tip: "Не пересчитывайте клетки по одной. Захватите фигуру целиком и разворачивайте её как единый объект."
   }
 };
 
@@ -750,6 +773,14 @@ export function TrainingHubPage() {
     skillGuidance.focusSkillId === activeSkillId ? "Рекомендуем сейчас" : "Что уже получается лучше всего";
   const skillPanelInsightMessage =
     skillGuidance.focusSkillId === activeSkillId ? skillGuidance.summary : strongestSkillMessage;
+  const heroRecommendationTitle =
+    skillGuidance.hasData && skillGuidance.focusSkillId === activeSkillId
+      ? "Подбор по вашему прогрессу"
+      : "С чего лучше начать";
+  const heroRecommendationMessage =
+    skillGuidance.hasData && skillGuidance.focusSkillId === activeSkillId
+      ? skillGuidance.summary
+      : activeSkill.recommendation;
 
   useEffect(() => {
     if (selectedModulePair?.module.id === activeModuleId) {
@@ -763,10 +794,40 @@ export function TrainingHubPage() {
       <div className="training-hub-top-shell">
         <header className="training-hub-hero">
           <div className="training-hub-hero-content">
+            <p className="training-hub-kicker">Экран выбора тренировки</p>
             <h1 className="training-hub-title">Тренировки</h1>
             <p className="training-hub-subtitle">
-              Выберите навык для тренировки. Внутри каждой ветки — лучшие тренажёры для старта.
+              Выберите навык для тренировки. {activeSkill.description}
             </p>
+            <div className="training-hub-today-pills" aria-label="Краткая сводка по выбранному навыку">
+              <span className="training-hub-today-pill">{activeSkill.shortTitle}</span>
+              <span className="training-hub-today-pill">
+                {featuredModules.length} {declensionTrainers(featuredModules.length)}
+              </span>
+              {selectedModulePair ? (
+                <span className="training-hub-today-pill">{selectedModulePair.meta.timeLabel}</span>
+              ) : null}
+            </div>
+          </div>
+          <div className="training-hub-today-card" data-testid="training-hub-today-card">
+            <p className="training-hub-today-kicker">{heroRecommendationTitle}</p>
+            <h2>{selectedModulePair?.module.title ?? activeSkill.title}</h2>
+            <p>{heroRecommendationMessage}</p>
+            <div className="training-hub-today-pills">
+              <span className="training-hub-today-pill">{activeSkill.whyItMatters}</span>
+              {selectedModulePair ? (
+                <span className="training-hub-today-pill">{selectedModulePair.meta.formatLabel}</span>
+              ) : null}
+            </div>
+            {selectedModulePair ? (
+              <Link
+                to={modulePrimaryRouteById[selectedModulePair.module.id]}
+                className="training-hub-today-action"
+                data-testid={`training-hero-start-${selectedModulePair.module.id}`}
+              >
+                Открыть {selectedModulePair.module.title}
+              </Link>
+            ) : null}
           </div>
         </header>
 
@@ -950,81 +1011,6 @@ export function TrainingHubPage() {
           </div>
         </section>
       </div>
-
-      <section className="setup-block training-alpha-section" data-testid="training-alpha-trainers">
-        <div className="training-alpha-section-head">
-          <div>
-            <p className="stats-section-kicker">Отдельный блок</p>
-            <h2>Экспериментальные тренажёры</h2>
-          </div>
-          <p className="status-line">
-            Эти режимы можно тестировать уже сейчас, но они ещё не входят в основную статистику, рекомендации и прогресс-систему.
-          </p>
-        </div>
-        <div className="training-alpha-grid">
-          {EXPERIMENTAL_MODULES.map((module) => {
-            const progress = getExperimentalModuleProgress(module);
-            const currentMilestone = getExperimentalModuleCurrentMilestone(module);
-            const nextMilestone = getExperimentalModuleNextMilestone(module);
-            const doneCount = getExperimentalModuleDoneCount(module);
-            const readiness = getExperimentalModulePromotionReadiness(module);
-            const stageIndex = getExperimentalModuleStageIndex(module);
-            const stageTotal = getExperimentalModuleStageTotal();
-
-            return (
-              <Link
-                key={module.id}
-                className="training-alpha-card"
-                to={module.route}
-                data-testid={`training-alpha-${module.id.replace("_", "-")}`}
-              >
-                <div className="training-alpha-topline">
-                  <span className="training-alpha-title">{module.title}</span>
-                  <span className="module-card-badge locked">Эксперимент</span>
-                </div>
-                <div className="training-alpha-meta-row" aria-hidden="true">
-                  <span className="training-alpha-chip">{module.category}</span>
-                  <span className="training-alpha-chip">{module.skills.join(" • ")}</span>
-                </div>
-                <span className="training-alpha-desc">{module.description}</span>
-
-                <div className="training-alpha-progress-block">
-                  <div className="training-alpha-progress-head">
-                    <span className="training-alpha-progress-label">{module.stageLabel}</span>
-                    <strong className="training-alpha-progress-value">{progress}%</strong>
-                  </div>
-                  <div
-                    className="training-alpha-progress-track"
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={progress}
-                    aria-label={`Готовность ${module.title}`}
-                  >
-                    <span className="training-alpha-progress-fill" style={{ width: `${progress}%` }} />
-                  </div>
-                  <div className="training-alpha-progress-meta">
-                    <span>Этап {stageIndex} из {stageTotal}</span>
-                    <span>{doneCount}/{module.milestones.length} этапов закрыто</span>
-                  </div>
-                </div>
-
-                <div className="training-alpha-next-step">
-                  <span className="training-alpha-next-kicker">Сейчас в работе</span>
-                  <strong>{currentMilestone?.label ?? module.stageLabel}</strong>
-                  <p>{module.nextFocus}</p>
-                  {nextMilestone ? <span className="training-alpha-next-target">Дальше: {nextMilestone.label}</span> : null}
-                </div>
-                <div className={`training-alpha-readiness is-${readiness.tier}`}>
-                  <span className="training-alpha-readiness-kicker">Готовность к переводу</span>
-                  <strong>{readiness.score}/100 · {readiness.label}</strong>
-                  <p>{readiness.summary}</p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
 
       <section className="training-quick-actions">
         <div className="training-quick-actions-head">

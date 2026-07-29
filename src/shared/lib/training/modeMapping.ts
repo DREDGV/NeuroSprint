@@ -40,8 +40,10 @@ const PATTERN_MODE_IDS: TrainingModeId[] = [
   "pattern_timed",
   "pattern_progressive",
   "pattern_learning",
-  "pattern_multi"
+  "pattern_multi",
+  "pattern_survival"
 ];
+const MENTAL_ROTATION_MODE_IDS: TrainingModeId[] = ["mental_rotation_classic"];
 
 export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
   if (SPRINT_MODE_IDS.includes(modeId)) {
@@ -67,6 +69,9 @@ export function moduleIdByModeId(modeId: TrainingModeId): TrainingModuleId {
   }
   if (PATTERN_MODE_IDS.includes(modeId)) {
     return "pattern_recognition";
+  }
+  if (MENTAL_ROTATION_MODE_IDS.includes(modeId)) {
+    return "mental_rotation";
   }
   return "schulte";
 }

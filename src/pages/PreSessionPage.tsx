@@ -58,6 +58,9 @@ function fallbackModeForModule(moduleId: TrainingModuleId): TrainingModeId {
   if (moduleId === "spatial_memory") {
     return "spatial_memory_classic";
   }
+  if (moduleId === "mental_rotation") {
+    return "mental_rotation_classic";
+  }
   if (moduleId === "pattern_recognition") {
     return "pattern_classic";
   }
@@ -86,6 +89,9 @@ function setupRouteByMode(modeId: TrainingModeId): string {
   }
   if (moduleId === "spatial_memory") {
     return `/training/spatial-memory?mode=${modeId}`;
+  }
+  if (moduleId === "mental_rotation") {
+    return "/training/block-pattern";
   }
   if (moduleId === "pattern_recognition") {
     return `/training/pattern-recognition?mode=${modeId}`;
@@ -156,6 +162,9 @@ function getReactionModeTip(modeId: TrainingModeId): string | null {
   }
   if (modeId === "spatial_memory_classic") {
     return "Пространственная память: держите в памяти не порядок, а форму поля, зоны и опорные точки без лишних кликов.";
+  }
+  if (modeId === "mental_rotation_classic") {
+    return "Мысленный поворот: удерживайте фигуру как целый образ и применяйте поворот или зеркало без поклеточного пересчёта.";
   }
   return null;
 }

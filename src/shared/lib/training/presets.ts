@@ -67,6 +67,12 @@ export const TRAINING_MODULES: TrainingModule[] = [
     title: "Распознавание паттернов",
     description: "Поиск закономерностей в последовательностях. Тренирует логическое мышление, способность видеть паттерны и предсказывать следующие элементы.",
     status: "active"
+  },
+  {
+    id: "mental_rotation",
+    title: "Мысленный поворот",
+    description: "Запомните фигуру на сетке и воспроизведите её после мысленного поворота или зеркального отражения. Тренирует пространственное воображение и способность мысленно трансформировать объекты.",
+    status: "active"
   }
 ];
 
@@ -283,6 +289,15 @@ export const PATTERN_MODES: TrainingMode[] = [
   }
 ];
 
+export const MENTAL_ROTATION_MODES: TrainingMode[] = [
+  {
+    id: "mental_rotation_classic",
+    moduleId: "mental_rotation",
+    title: "Мысленный поворот: Классика",
+    description: "Запомните фигуру и воспроизведите её после поворота или зеркального отражения."
+  }
+];
+
 export const TRAINING_MODES: TrainingMode[] = [
   ...SCHULTE_MODES,
   ...SPRINT_MATH_MODES,
@@ -292,7 +307,8 @@ export const TRAINING_MODES: TrainingMode[] = [
   ...DECISION_RUSH_MODES,
   ...MEMORY_MATCH_MODES,
   ...SPATIAL_MEMORY_MODES,
-  ...PATTERN_MODES
+  ...PATTERN_MODES,
+  ...MENTAL_ROTATION_MODES
 ];
 
 const PRESET_MAP: Record<TrainingPresetId, TrainingSetup> = {

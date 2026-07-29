@@ -95,6 +95,7 @@ describe("sessionRepository.save progress pipeline", () => {
         n_back: 0,
         memory_grid: 0,
         spatial_memory: 0,
+        mental_rotation: 0,
         decision_rush: 0,
         memory_match: 0,
         pattern_recognition: 0

@@ -33,28 +33,7 @@ export interface ExperimentalPromotionReadiness {
 
 const STAGE_ORDER: ExperimentalModuleStage[] = ["prototype", "polish", "validation", "ready"];
 
-export const EXPERIMENTAL_MODULES: ExperimentalModuleMeta[] = [
-  {
-    id: "block_pattern",
-    title: "Мысленный поворот",
-    route: "/training/block-pattern",
-    category: "Память и пространство",
-    skills: ["Пространственное мышление", "Мысленная трансформация"],
-    description:
-      "Запомните фигуру и воспроизведите её после поворота или зеркального отражения. Тренирует способность мысленно вращать и трансформировать объекты — навык, полезный в архитектуре, инженерии и повседневной жизни.",
-    stage: "polish",
-    stageLabel: "Сборка режима",
-    nextFocus:
-      "Следующий шаг: стабилизировать механику ответа, убрать логические утечки и подготовить тренажёр к валидации перед переводом в основные.",
-    milestones: [
-      { id: "core-loop", label: "Базовый игровой цикл", status: "done", weight: 3 },
-      { id: "transform-rules", label: "Поворот и зеркальность", status: "done", weight: 2 },
-      { id: "difficulty", label: "Режимы сложности", status: "done", weight: 2 },
-      { id: "feedback", label: "Обратная связь и обучение", status: "in_progress", weight: 2 },
-      { id: "promotion", label: "Проверка перед переводом в основные", status: "planned", weight: 1 }
-    ]
-  }
-];
+export const EXPERIMENTAL_MODULES: ExperimentalModuleMeta[] = [];
 
 function milestoneProgress(status: ExperimentalMilestoneStatus): number {
   if (status === "done") {

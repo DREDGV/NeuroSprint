@@ -370,23 +370,7 @@ export function buildDailyProgressSummary(
 
 function normalizeSession(session: Session): Session {
   const resolvedTaskId = session.taskId ?? "schulte";
-  const resolvedModuleId =
-    session.moduleId ??
-    (resolvedTaskId === "sprint_math"
-      ? "sprint_math"
-      : resolvedTaskId === "reaction"
-        ? "reaction"
-      : resolvedTaskId === "n_back"
-        ? "n_back"
-        : resolvedTaskId === "memory_grid"
-          ? "memory_grid"
-      : resolvedTaskId === "spatial_memory"
-        ? "spatial_memory"
-      : resolvedTaskId === "decision_rush"
-        ? "decision_rush"
-        : resolvedTaskId === "pattern_recognition"
-          ? "pattern_recognition"
-        : "schulte");
+  const resolvedModuleId = session.moduleId ?? resolvedTaskId;
 
   return {
     ...session,
@@ -412,6 +396,10 @@ function normalizeSession(session: Session): Session {
                 ? "decision_standard"
               : session.mode === "pattern_recognition"
                 ? "pattern_classic"
+              : session.mode === "memory_match"
+                ? "memory_match_classic"
+              : session.mode === "mental_rotation"
+                ? "mental_rotation_classic"
               : "classic_plus"),
     level: session.level ?? 1,
     presetId: session.presetId ?? "legacy",

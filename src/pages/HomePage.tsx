@@ -44,6 +44,7 @@ function getModeLabel(modeId: TrainingModeId | string): string {
     n_back: "N-Назад",
     decision_rush_classic: "Быстрые решения",
     spatial_memory_classic: "Пространственная память",
+    mental_rotation_classic: "Мысленный поворот",
     pattern_classic: "Распознавание паттернов"
   };
 
@@ -95,6 +96,7 @@ const modulePrimaryRouteById: Record<TrainingModuleId, string> = {
   n_back: "/training/nback",
   memory_grid: "/training/memory-grid",
   spatial_memory: "/training/spatial-memory",
+  mental_rotation: "/training/block-pattern",
   memory_match: "/training/memory-match",
   decision_rush: "/training/decision-rush",
   pattern_recognition: "/training/pattern-recognition"

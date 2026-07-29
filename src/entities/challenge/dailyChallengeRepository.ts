@@ -86,7 +86,8 @@ const MODE_TITLES: Record<TrainingModeId, string> = {
   pattern_progressive: "Распознавание паттернов Прогрессивный",
   pattern_learning: "Распознавание паттернов Обучение",
   pattern_multi: "Распознавание паттернов Мульти",
-  pattern_survival: "Распознавание паттернов Выживание"
+  pattern_survival: "Распознавание паттернов Выживание",
+  mental_rotation_classic: "Мысленный поворот"
 };
 
 function addDays(localDate: string, days: number): string {
@@ -155,6 +156,9 @@ function modeIdForGrowthModule(moduleId: TrainingModuleId): TrainingModeId | nul
   if (moduleId === "memory_match") {
     return "memory_match_classic";
   }
+  if (moduleId === "mental_rotation") {
+    return "mental_rotation_classic";
+  }
   if (moduleId === "pattern_recognition") {
     return "pattern_classic";
   }
@@ -206,6 +210,9 @@ export function getChallengeLaunchPath(modeId: TrainingModeId): string {
   }
   if (moduleId === "memory_match") {
     return "/training/memory-match";
+  }
+  if (moduleId === "mental_rotation") {
+    return "/training/block-pattern";
   }
   if (moduleId === "pattern_recognition") {
     return `/training/pattern-recognition?mode=${modeId}`;

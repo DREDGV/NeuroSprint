@@ -19,7 +19,8 @@ const DEFAULT_SESSIONS_BY_MODULE: Record<TrainingModuleId, number> = {
   spatial_memory: 0,
   decision_rush: 0,
   memory_match: 0,
-  pattern_recognition: 0
+  pattern_recognition: 0,
+  mental_rotation: 0
 };
 
 interface CreateUserOptions {

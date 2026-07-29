@@ -66,6 +66,7 @@ const STATS_MODULE_LABELS: Record<TrainingModuleId, string> = {
   n_back: "N-Назад",
   memory_grid: "Сетка памяти",
   spatial_memory: "Пространственная память",
+  mental_rotation: "Мысленный поворот",
   decision_rush: "Быстрые решения",
   memory_match: "Пары памяти",
   pattern_recognition: "Распознавание паттернов"

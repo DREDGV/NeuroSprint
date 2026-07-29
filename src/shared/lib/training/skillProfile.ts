@@ -81,6 +81,7 @@ const MODULE_SCORE_TARGETS: Record<TrainingModuleId, number> = {
   n_back: 140,
   memory_grid: 170,
   spatial_memory: 170,
+  mental_rotation: 170,
   decision_rush: 220,
   memory_match: 170,
   pattern_recognition: 180
@@ -93,6 +94,7 @@ const MODULE_SKILL_WEIGHTS: Record<TrainingModuleId, Partial<Record<SkillProfile
   n_back: { memory: 1, attention: 0.35 },
   memory_grid: { memory: 1, attention: 0.2 },
   spatial_memory: { memory: 0.8, attention: 0.45 },
+  mental_rotation: { memory: 0.8, logic: 0.4, attention: 0.2 },
   decision_rush: { logic: 0.7, reaction: 0.4, attention: 0.25 },
   memory_match: { memory: 1, attention: 0.3 },
   pattern_recognition: { logic: 1, attention: 0.28, memory: 0.15 }
