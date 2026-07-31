@@ -1,6 +1,6 @@
 ﻿# NeuroSprint Execution Status (RU)
 
-Обновлено: 2026-03-10
+Обновлено: 2026-07-31
 Назначение: короткий operational snapshot
 
 ## Что реально завершено
@@ -41,6 +41,7 @@
 - N-Back Lite
 - Decision Rush
 - Memory Grid
+- Мысленный поворот (Mental Rotation)
 
 ### Частично внедрённые, но ещё не завершённые слои
 - `Skill Guidance`
@@ -49,7 +50,7 @@
 - `Pattern Recognition` как рабочий, но не текущий приоритетный модуль
 
 ### Experimental / prototype-линия
-- `Block Pattern Recall` — alpha
+- `Block Pattern Recall` — переведён в основной каталог как «Мысленный поворот»; полная интеграция сохранения сессии ещё требует проверки
 - `Spatial Memory` — переведён в основной каталог памяти после product-pass
 
 ## Статус по Progress System
@@ -68,7 +69,6 @@
 - Stabilization-pass по ранним progress/discovery слоям.
 
 ## Что пока не продвигается
-- `Block Pattern Recall` — alpha.
 - Публичные рейтинги и feedback-маркетплейс для тренажёров.
 - Полноценный AI recommendation layer.
 
