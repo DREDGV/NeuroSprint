@@ -7,6 +7,27 @@ import { NBackSessionPage } from "../../src/pages/NBackSessionPage";
 import { NBackSetupPage } from "../../src/pages/NBackSetupPage";
 import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
 
+vi.mock("../../src/app/useAuth", () => ({
+  useAuth: () => ({
+    isConfigured: true,
+    isAuthenticated: true,
+    isLoading: false,
+    account: { id: "acc-1", email: "t@t.com", displayName: "T", createdAt: null, lastSignInAt: null },
+    siteRole: "user",
+    isSiteAdmin: false,
+    isModerator: false
+  })
+}));
+
+vi.mock("../../src/app/useActiveUserDisplayName", () => ({
+  useActiveUserDisplayName: () => ({
+    activeUserId: "u1",
+    activeUserName: "Тестер",
+    activeUserRole: "student",
+    activeUserLocked: false
+  })
+}));
+
 const mocks = vi.hoisted(() => ({
   sessionRepository: {
     save: vi.fn()
@@ -84,18 +105,19 @@ describe("NBack setup/session", () => {
     );
 
     expect(await screen.findByTestId("nback-session-page")).toBeInTheDocument();
-    const realNow = Date.now;
-    let offsetMs = 0;
-    const dateNowSpy = vi.spyOn(Date, "now").mockImplementation(() => realNow() + offsetMs);
 
     await user.click(screen.getByTestId("nback-start-session-btn"));
-    offsetMs = 61_000;
+
+    for (let i = 0; i < 2; i++) {
+      await waitFor(() => {
+        expect(screen.getByTestId("nback-answer-non-match")).toBeInTheDocument();
+      }, { timeout: 3_000 });
+      await user.click(screen.getByTestId("nback-answer-non-match"));
+    }
 
     await waitFor(() => {
       expect(mocks.sessionRepository.save).toHaveBeenCalledTimes(1);
     }, { timeout: 5_000 });
-
-    dateNowSpy.mockRestore();
 
     await waitFor(() => {
       expect(screen.getByTestId("nback-result")).toBeInTheDocument();

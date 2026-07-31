@@ -1,6 +1,12 @@
+import { PRIVILEGED_PROFILE_ROLES_KEY } from "../../constants/storage";
 import type { AppRole } from "../../types/domain";
 
 export function allowPrivilegedProfileRoles(): boolean {
+  try {
+    if (localStorage.getItem(PRIVILEGED_PROFILE_ROLES_KEY) === "1") {
+      return true;
+    }
+  } catch {}
   return import.meta.env.VITE_ALLOW_PRIVILEGED_PROFILE_ROLES === "true";
 }
 

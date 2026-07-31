@@ -5,6 +5,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
 import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
 
+vi.mock("../../src/app/useAuth", () => ({
+  useAuth: () => ({
+    isConfigured: true,
+    isAuthenticated: true,
+    isLoading: false,
+    account: { id: "acc-1", email: "t@t.com", displayName: "T", createdAt: null, lastSignInAt: null },
+    siteRole: "user",
+    isSiteAdmin: false,
+    isModerator: false
+  })
+}));
+
+vi.mock("../../src/app/useActiveUserDisplayName", () => ({
+  useActiveUserDisplayName: () => ({
+    activeUserId: "u1",
+    activeUserName: "Тестер",
+    activeUserRole: "student",
+    activeUserLocked: false
+  })
+}));
+
 const mocks = vi.hoisted(() => ({
   sessionRepository: {
     getDailyProgressSummary: vi.fn(),

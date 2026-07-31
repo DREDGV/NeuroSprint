@@ -1291,7 +1291,7 @@ export function ProfilesPage() {
               </select>
             </>
           ) : (
-            <p className="status-line">
+            <p className="status-line" data-testid="profiles-create-role-note">
               В публичной версии новые профили создаются как «Домашний» или «Ученик».
               Учебные роли скрыты и не доступны в self-service режиме.
             </p>

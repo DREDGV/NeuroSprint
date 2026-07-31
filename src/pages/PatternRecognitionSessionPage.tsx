@@ -339,18 +339,19 @@ export function PatternRecognitionSessionPage() {
       answersNeeded: currentQuestion.answersNeeded
     };
 
-    setAnswers([...answers, nextAnswer]);
+    const nextAnswers = [...answers, nextAnswer];
+    setAnswers(nextAnswers);
     setStreak(0); // Сбрасываем серию
     setHintCredits(hintCredits - 1); // Тратим подсказку
     setShowResult(true);
 
     // Переход к следующему вопросу через 1.5 сек
     window.setTimeout(() => {
-      goToNextQuestion();
+      goToNextQuestion(nextAnswers);
     }, 1500);
   }
 
-  function goToNextQuestion() {
+  function goToNextQuestion(finalAnswers: PatternAnswer[]) {
     if (!setup) {
       return;
     }
@@ -404,12 +405,12 @@ export function PatternRecognitionSessionPage() {
       setup.modeId === "pattern_survival";
 
     if (hasFixedLength && nextIndex >= setup.questionCount) {
-      void finishSession();
+      void finishSession(finalAnswers);
       return;
     }
 
     if (nextIndex >= questionPoolLength) {
-      void finishSession();
+      void finishSession(finalAnswers);
       return;
     }
 
@@ -472,7 +473,7 @@ export function PatternRecognitionSessionPage() {
       setStreak(nextStreak);
       setErrorCount(nextErrorCount);
 
-      goToNextQuestion();
+      goToNextQuestion(nextAnswers);
     }, 900);
   }
 

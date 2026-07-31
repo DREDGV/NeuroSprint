@@ -1,6 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { APP_ROLE_KEY } from "../../src/shared/constants/storage";
+
+vi.mock("../../src/app/useAuth", () => ({
+  useAuth: () => ({
+    isConfigured: true,
+    isAuthenticated: true,
+    isLoading: false,
+    account: { id: "acc-1", email: "t@t.com", displayName: "T", createdAt: null, lastSignInAt: null },
+    siteRole: "user",
+    isSiteAdmin: false,
+    isModerator: false
+  })
+}));
 
 const mocks = vi.hoisted(() => {
   const groupRepository = {
@@ -42,6 +55,7 @@ import { StatsGroupPage } from "../../src/pages/StatsGroupPage";
 describe("StatsGroup comparison", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.setItem(APP_ROLE_KEY, "teacher");
 
     mocks.groupRepository.listGroups.mockResolvedValue([
       { id: "g1", name: "Group A", createdAt: "2026-02-20T00:00:00.000Z" },
@@ -114,7 +128,7 @@ describe("StatsGroup comparison", () => {
     );
 
     expect(await screen.findByTestId("group-comparison-block")).toBeInTheDocument();
-    expect(screen.getByText("Сравнение групп и общей статистики")).toBeInTheDocument();
+    expect(screen.getByText("Дополнительно: сравнение групп и общей статистики")).toBeInTheDocument();
     expect(screen.getByText("Группа для сравнения")).toBeInTheDocument();
     expect(screen.getByText("Все пользователи")).toBeInTheDocument();
 

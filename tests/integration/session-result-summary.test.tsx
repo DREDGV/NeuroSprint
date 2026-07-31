@@ -29,9 +29,10 @@ describe("SessionResultSummary", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId("session-result")).toBeInTheDocument();
-    expect(screen.getByText("Точность: 95.0%")).toBeInTheDocument();
-    expect(screen.getByText("Score: 12.50")).toBeInTheDocument();
+    const result = screen.getByTestId("session-result");
+    expect(result).toBeInTheDocument();
+    expect(result).toHaveTextContent("Точность: 95.0%");
+    expect(result).toHaveTextContent("Score: 12.50");
     expect(screen.getByText("С прошлой попыткой: +1.10")).toBeInTheDocument();
     expect(screen.getByText("Лучший результат: 13.00")).toBeInTheDocument();
     expect(screen.getByText("Сохраняйте точность выше 85%.")).toBeInTheDocument();

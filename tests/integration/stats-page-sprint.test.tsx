@@ -6,6 +6,18 @@ import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
 import { StatsPage } from "../../src/pages/StatsPage";
 import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
 
+vi.mock("../../src/app/useAuth", () => ({
+  useAuth: () => ({
+    isConfigured: true,
+    isAuthenticated: true,
+    isLoading: false,
+    account: { id: "acc-1", email: "t@t.com", displayName: "T", createdAt: null, lastSignInAt: null },
+    siteRole: "user",
+    isSiteAdmin: false,
+    isModerator: false
+  })
+}));
+
 const mocks = vi.hoisted(() => ({
   sessionRepository: {
     aggregateDailyClassic: vi.fn(),
@@ -222,7 +234,7 @@ describe("StatsPage sprint filters", () => {
     const roadmap = await screen.findByTestId("stats-growth-plan");
     expect(roadmap).toHaveTextContent("7 дней на память");
     expect(roadmap).toHaveTextContent("Подтянуть память");
-    expect(screen.getByTestId("stats-growth-plan-step-4")).toHaveTextContent("Reaction");
+    expect(screen.getByTestId("stats-growth-plan-step-4")).toHaveTextContent("Реакция");
     expect(screen.getByTestId("stats-growth-plan-cta")).toHaveAttribute(
       "href",
       "/training/pre-session?module=memory_match"
@@ -359,7 +371,7 @@ describe("StatsPage sprint filters", () => {
 
     await user.click(await screen.findByTestId("stats-mode-nback"));
     const summary = await screen.findByTestId("stats-nback-summary");
-    expect(within(summary).getByText("N-Back Lite: итоги")).toBeInTheDocument();
+    expect(within(summary).getByText("N-Назад Lite: итоги")).toBeInTheDocument();
     expect(within(summary).getByText("2")).toBeInTheDocument();
     expect(within(summary).getByText("82.0%")).toBeInTheDocument();
     expect(within(summary).getByText("36.00")).toBeInTheDocument();
