@@ -106,8 +106,8 @@ describe("MemoryMatchPage", () => {
       unlockedAchievements: [
         {
           id: "skill_memory_match_10",
-          title: "РџР°РјСЏС‚СЊ Р±РµР· СЃСѓРµС‚С‹",
-          icon: "рџ§ ",
+          title: "Память без суеты",
+          icon: "🧠",
           category: "skill"
         }
       ],
@@ -196,7 +196,7 @@ describe("MemoryMatchPage", () => {
     fireEvent.click(screen.getByTestId("trainer-feedback-submit"));
 
     expect(screen.getByTestId("trainer-feedback-card")).toHaveTextContent("Отзыв сохранён");
-    expect(screen.getByTestId("achievement-toast")).toHaveTextContent("РџР°РјСЏС‚СЊ Р±РµР· СЃСѓРµС‚С‹");
+    expect(screen.getByTestId("achievement-toast")).toHaveTextContent("Память без суеты");
   });
 });
 
