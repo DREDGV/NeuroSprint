@@ -1,7 +1,10 @@
 ﻿import { expect, test } from "@playwright/test";
+import { enableFeatureFlags } from "./helpers";
 
 test.describe("NeuroSprint role policy", () => {
   test("student role keeps training flow but restricts management actions", async ({ page }) => {
+    await enableFeatureFlags(page, { classes_ui: true, group_stats_ui: true });
+
     await page.goto("/profiles");
     await expect(page.getByTestId("profiles-recovery-mode-note")).toBeVisible();
 
@@ -37,7 +40,11 @@ test.describe("NeuroSprint role policy", () => {
 
     await page.goto("/settings");
     await expect(page.getByTestId("dev-mode-role-note")).toBeVisible();
+
+    await page.getByRole("button", { name: "Экспорт" }).click();
     await expect(page.getByTestId("export-role-note")).toBeVisible();
+
+    await page.getByRole("button", { name: "Профиль" }).click();
     await expect(page.getByTestId("app-role-select")).toBeDisabled();
 
     await page.goto("/stats/individual");
@@ -45,10 +52,10 @@ test.describe("NeuroSprint role policy", () => {
     await expect(page.getByTestId("individual-comparison-block")).toHaveCount(0);
 
     await page.goto("/classes");
-    await expect(page.getByTestId("permission-denied-panel")).toBeVisible();
+    await expect(page).not.toHaveURL(/\/classes/);
 
     await page.goto("/stats/group");
-    await expect(page.getByTestId("permission-denied-panel")).toBeVisible();
+    await expect(page).not.toHaveURL(/\/stats\/group/);
 
     await page.goto("/");
     await expect(page.getByTestId("nav-link-classes")).toHaveCount(0);

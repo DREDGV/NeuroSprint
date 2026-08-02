@@ -954,6 +954,7 @@ export function SettingsPage() {
 
                   {fixtureMessage && (
                     <div
+                      data-testid="fixture-status-message"
                       style={{
                         marginTop: "12px",
                         padding: "12px 16px",

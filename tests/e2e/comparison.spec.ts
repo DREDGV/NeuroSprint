@@ -1,7 +1,16 @@
 ﻿import { expect, test } from "@playwright/test";
+import { enableFeatureFlags } from "./helpers";
 
 test.describe("NeuroSprint comparisons", () => {
   test("fixture generation enables individual and group comparison blocks", async ({ page }) => {
+    await enableFeatureFlags(page, { group_stats_ui: true });
+
+    await page.goto("/profiles");
+    await page.getByTestId("profile-name-input").fill("ComparisonAdmin");
+    await page.getByTestId("profile-role-select").selectOption("teacher");
+    await page.getByTestId("create-profile-btn").click();
+    await expect(page.getByTestId("active-profile-status")).toContainText("ComparisonAdmin");
+
     await page.goto("/settings");
     page.on("dialog", (dialog) => dialog.accept());
 
@@ -11,13 +20,12 @@ test.describe("NeuroSprint comparisons", () => {
     }
     await page.getByTestId("save-settings-btn").click();
 
+    await page.getByRole("button", { name: "Инструменты" }).click();
+
     await page.getByTestId("generate-demo-fixture-btn").click();
     const fixtureStatus = page.getByTestId("fixture-status-message");
     await expect(fixtureStatus).toBeVisible({ timeout: 45_000 });
     await expect(fixtureStatus).toContainText("Демо-данные созданы");
-
-    await page.getByTestId("app-role-select").selectOption("teacher");
-    await page.getByTestId("save-settings-btn").click();
 
     await page.goto("/stats/individual");
     await expect(page.getByTestId("stats-individual-page")).toBeVisible();
