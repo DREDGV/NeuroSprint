@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingModuleFromHub } from "./helpers";
 
 test.describe("NeuroSprint Sprint Math", () => {
   test("setup -> session -> finish -> stats sprint mode", async ({ page }) => {
@@ -7,9 +8,7 @@ test.describe("NeuroSprint Sprint Math", () => {
     await page.getByTestId("create-profile-btn").click();
     await expect(page.getByTestId("active-profile-status")).toContainText("SprintUser1");
 
-    await page.goto("/training");
-    await expect(page.getByTestId("training-hub-page")).toBeVisible();
-    await page.getByTestId("training-open-sprint_math").click();
+    await openTrainingModuleFromHub(page, "math", "sprint_math");
     await expect(page.getByTestId("sprint-math-setup-page")).toBeVisible();
     await page.getByTestId("sprint-math-start-btn").click();
 

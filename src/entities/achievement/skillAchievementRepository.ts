@@ -8,7 +8,7 @@ import type {
 } from "../../shared/types/domain";
 
 /**
- * РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ skill РґРѕСЃС‚РёР¶РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+ * Получить все skill достижения пользователя
  */
 export async function getUserSkillAchievements(userId: string): Promise<UserSkillAchievement[]> {
   return db.userSkillAchievements
@@ -18,7 +18,7 @@ export async function getUserSkillAchievements(userId: string): Promise<UserSkil
 }
 
 /**
- * РџРѕР»СѓС‡РёС‚СЊ РєРѕРЅРєСЂРµС‚РЅРѕРµ skill РґРѕСЃС‚РёР¶РµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+ * Получить конкретное skill достижение пользователя
  */
 export async function getUserSkillAchievement(
   userId: string,
@@ -32,7 +32,7 @@ export async function getUserSkillAchievement(
 }
 
 /**
- * РЎРѕР·РґР°С‚СЊ РёР»Рё РѕР±РЅРѕРІРёС‚СЊ skill РґРѕСЃС‚РёР¶РµРЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+ * Создать или обновить skill достижение пользователя
  */
 async function upsertUserSkillAchievement(
   userId: string,
@@ -70,7 +70,7 @@ async function upsertUserSkillAchievement(
 }
 
 /**
- * РџСЂРѕРІРµСЂРёС‚СЊ Рё РѕР±РЅРѕРІРёС‚СЊ РІСЃРµ skill РґРѕСЃС‚РёР¶РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅР° РѕСЃРЅРѕРІРµ РµРіРѕ РЅР°РІС‹РєРѕРІ
+ * Проверить и обновить все skill достижения пользователя на основе его навыков
  */
 export async function checkSkillAchievements(
   userId: string,
@@ -116,7 +116,7 @@ export async function checkSkillAchievements(
 }
 
 /**
- * РџРѕР»СѓС‡РёС‚СЊ РґРѕСЃС‚СѓРїРЅС‹Рµ skill РґРѕСЃС‚РёР¶РµРЅРёСЏ (РєРѕС‚РѕСЂС‹Рµ РµС‰С‘ РЅРµ РїРѕР»СѓС‡РµРЅС‹)
+ * Получить доступные skill достижения (которые ещё не получены)
  */
 export async function getAvailableSkillAchievements(userId: string): Promise<SkillAchievement[]> {
   const userAchievements = await getUserSkillAchievements(userId);
@@ -130,7 +130,7 @@ export async function getAvailableSkillAchievements(userId: string): Promise<Ski
 }
 
 /**
- * РџРѕР»СѓС‡РёС‚СЊ РїСЂРѕРіСЂРµСЃСЃ skill РґРѕСЃС‚РёР¶РµРЅРёР№ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+ * Получить прогресс skill достижений пользователя
  */
 export async function getSkillAchievementProgress(userId: string): Promise<{
   total: number;
@@ -155,7 +155,7 @@ export async function getSkillAchievementProgress(userId: string): Promise<{
 }
 
 /**
- * РџРѕР»СѓС‡РёС‚СЊ skill РґРѕСЃС‚РёР¶РµРЅРёСЏ РїРѕ РЅР°РІС‹РєСѓ
+ * Получить skill достижения по навыку
  */
 export async function getSkillAchievementsBySkill(
   userId: string,
@@ -194,7 +194,7 @@ export async function getSkillAchievementsBySkill(
 }
 
 /**
- * РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ Р·Р°РІРµСЂС€С‘РЅРЅС‹Рµ skill РґРѕСЃС‚РёР¶РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+ * Получить все завершённые skill достижения пользователя
  */
 export async function getCompletedSkillAchievements(userId: string): Promise<UserSkillAchievement[]> {
   return db.userSkillAchievements
@@ -205,7 +205,7 @@ export async function getCompletedSkillAchievements(userId: string): Promise<Use
 }
 
 /**
- * РџРѕР»СѓС‡РёС‚СЊ РЅРµРґР°РІРЅРѕ РїРѕР»СѓС‡РµРЅРЅС‹Рµ skill РґРѕСЃС‚РёР¶РµРЅРёСЏ
+ * Получить недавно полученные skill достижения
  */
 export async function getRecentSkillAchievements(
   userId: string,

@@ -820,7 +820,7 @@ textarea:focus-visible {
   font-size: 1.2rem;
 }
 
-/* Р С’Р Т‘Р В°Р С—РЎвЂљР С‘Р Р†Р Р…Р С•РЎРѓРЎвЂљРЎРЉ */
+/* Адаптивность */
 @media (max-width: 768px) {
   .profiles-control-panel {
     padding: 12px;
@@ -1652,7 +1652,7 @@ textarea:focus-visible {
   margin-bottom: 16px;
 }
 
-/* Р С™Р В°РЎР‚РЎвЂљР С•РЎвЂЎР С”Р С‘ Р С”Р В»Р В°РЎРѓРЎРѓР С•Р Р† */
+/* Карточки классов */
 .classes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1738,7 +1738,7 @@ textarea:focus-visible {
   background: #fee2e2;
 }
 
-/* Р вЂ”Р В°Р С–Р С•Р В»Р С•Р Р†Р С•Р С” Р С”Р В»Р В°РЎРѓРЎРѓР В° */
+/* Заголовок класса */
 .class-header {
   display: flex;
   justify-content: space-between;
@@ -1760,7 +1760,7 @@ textarea:focus-visible {
   flex-wrap: wrap;
 }
 
-/* Р С™Р В°РЎР‚РЎвЂљР С•РЎвЂЎР С”Р С‘ РЎС“РЎвЂЎР ВµР Р…Р С‘Р С”Р С•Р Р† */
+/* Карточки учеников */
 .students-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -1811,7 +1811,7 @@ textarea:focus-visible {
   color: #6b7280;
 }
 
-/* Р СљР С•Р Т‘Р В°Р В»РЎРЉР Р…РЎвЂ№Р Вµ Р С•Р С”Р Р…Р В° */
+/* Модальные окна */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1855,7 +1855,7 @@ textarea:focus-visible {
   justify-content: flex-end;
 }
 
-/* Р РЋРЎвЂљР В°РЎвЂљР С‘РЎРѓРЎвЂљР С‘Р С”Р В° Р С”Р В»Р В°РЎРѓРЎРѓР В° */
+/* Статистика класса */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1896,7 +1896,7 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
-/* Р СћР С•Р С— РЎС“РЎвЂЎР ВµР Р…Р С‘Р С”Р С•Р Р† */
+/* Топ учеников */
 .top-students {
   margin-top: 24px;
   padding: 20px;
@@ -1957,7 +1957,7 @@ textarea:focus-visible {
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.2);
 }
 
-/* Р В§Р ВµР С”Р В±Р С•Р С”РЎРѓРЎвЂ№ Р С‘ Р Р†РЎвЂ№Р Т‘Р ВµР В»Р ВµР Р…Р С‘Р Вµ */
+/* Чекбоксы и выделение */
 .student-checkbox {
   width: 20px;
   height: 20px;
@@ -1982,7 +1982,7 @@ textarea:focus-visible {
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
 }
 
-/* Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓРЎвЂ№ */
+/* Статусы */
 .status-line.success {
   color: #059669;
   background: #d1fae5;
@@ -2001,7 +2001,7 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
-/* Р С’Р Т‘Р В°Р С—РЎвЂљР С‘Р Р†Р Р…Р С•РЎРѓРЎвЂљРЎРЉ */
+/* Адаптивность */
 @media (max-width: 768px) {
   .alpha-page-hero,
   .alpha-guide-grid,
@@ -2126,7 +2126,7 @@ textarea:focus-visible {
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
-/* Р С’Р Т‘Р В°Р С—РЎвЂљР С‘Р Р†Р Р…Р С•РЎРѓРЎвЂљРЎРЉ Р Т‘Р В»РЎРЏ Р СР С•Р В±Р С‘Р В»РЎРЉР Р…РЎвЂ№РЎвЂ¦ */
+/* Адаптивность для мобильных */
 @media (max-width: 600px) {
   .stats-summary-hero,
   .stats-compare-quick-header {
@@ -5547,7 +5547,7 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
-/* Progress bar РЎРѓР ВµРЎРѓРЎРѓР С‘Р С‘ */
+/* Progress bar сессии */
 .nback-session-progress {
   display: flex;
   align-items: center;
@@ -5849,7 +5849,7 @@ textarea:focus-visible {
   line-height: 1.2;
 }
 
-/* Р С™Р Р…Р С•Р С—Р С”Р В° "Р СњР Вµ РЎРѓР С•Р Р†Р С—Р В°Р В»Р С•" - Р С”РЎР‚Р В°РЎРѓР Р…Р В°РЎРЏ */
+/* Кнопка "Не совпало" - красная */
 .nback-btn-no {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
@@ -5862,7 +5862,7 @@ textarea:focus-visible {
     0 6px 20px rgba(220, 38, 38, 0.4);
 }
 
-/* Р С™Р Р…Р С•Р С—Р С”Р В° "Р РЋРЎвЂљР В°РЎР‚РЎвЂљ" - Р В·Р ВµР В»РЎвЂР Р…Р В°РЎРЏ */
+/* Кнопка "Старт" - зелёная */
 .nback-btn-start {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #fff;
@@ -5873,7 +5873,7 @@ textarea:focus-visible {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
 }
 
-/* Р С™Р Р…Р С•Р С—Р С”Р В° "Р РЋР С•Р Р†Р С—Р В°Р В»Р С•" - Р В·Р ВµР В»РЎвЂР Р…Р В°РЎРЏ (Р С—РЎР‚Р В°Р Р†Р С‘Р В»РЎРЉР Р…Р С•/Р Т‘Р В°) */
+/* Кнопка "Совпало" - зелёная (правильно/да) */
 .nback-btn-yes {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #fff;
@@ -5946,7 +5946,7 @@ textarea:focus-visible {
   }
 }
 
-/* Р С’Р Т‘Р В°Р С—РЎвЂљР С‘Р Р†Р Р…Р С•РЎРѓРЎвЂљРЎРЉ Р Т‘Р В»РЎРЏ Р СР С•Р В±Р С‘Р В»РЎРЉР Р…РЎвЂ№РЎвЂ¦ */
+/* Адаптивность для мобильных */
 @media (max-width: 500px) {
   .nback-stats-row {
     grid-template-columns: repeat(2, 1fr);

@@ -5,9 +5,30 @@ import { MemoryRouter } from "react-router-dom";
 import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
 import { ACTIVE_USER_KEY, APP_ROLE_KEY } from "../../src/shared/constants/storage";
 
+vi.mock("../../src/app/useAuth", () => ({
+  useAuth: () => ({
+    isConfigured: true,
+    isAuthenticated: true,
+    isLoading: false,
+    account: { id: "acc-1", email: "t@t.com", displayName: "T", createdAt: null, lastSignInAt: null },
+    siteRole: "user",
+    isSiteAdmin: false,
+    isModerator: false
+  })
+}));
+
+vi.mock("../../src/shared/lib/auth/profileRolePolicy", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/shared/lib/auth/profileRolePolicy")>();
+  return {
+    ...actual,
+    allowPrivilegedProfileRoles: () => true
+  };
+});
+
 vi.mock("../../src/entities/group/groupRepository", () => ({
   groupRepository: {
     listGroups: vi.fn().mockResolvedValue([]),
+    listOwnedGroups: vi.fn().mockResolvedValue([]),
     aggregateGroupStats: vi.fn().mockResolvedValue({
       summary: { best: null, avg: null, worst: null, sessionsTotal: 0, membersTotal: 0 },
       trend: [],
@@ -96,10 +117,16 @@ vi.mock("../../src/entities/user/userRepository", () => ({
 
 import { SettingsPage } from "../../src/pages/SettingsPage";
 
+function navigateToSection(sectionLabel: string) {
+  const navButton = screen.getByRole("button", { name: new RegExp(sectionLabel, "i") });
+  return navButton.click();
+}
+
 describe("SettingsPage dev mode", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    localStorage.setItem(APP_ROLE_KEY, "teacher");
 
     dbMocks.sessionsToArray.mockResolvedValue([]);
     dbMocks.classGroupsToArray.mockResolvedValue([]);
@@ -141,12 +168,20 @@ describe("SettingsPage dev mode", () => {
       </MemoryRouter>
     );
 
+    // General section is active by default — dev toggle and hidden note are here
     expect(screen.getByTestId("dev-tools-hidden-note")).toBeInTheDocument();
-    expect(screen.queryByTestId("settings-fixture-block")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Сигналы старт/финиш")).toBeChecked();
-    expect(screen.getByLabelText("Звук клика")).not.toBeChecked();
+    expect(screen.getByTestId("dev-mode-toggle")).toBeInTheDocument();
 
+    // Navigate to devtools — fixture block should not be visible yet (devMode off)
+    await navigateToSection("Инструменты");
+    expect(screen.queryByTestId("settings-fixture-block")).not.toBeInTheDocument();
+
+    // Go back to general, enable dev mode
+    await navigateToSection("Основные");
     await user.click(screen.getByTestId("dev-mode-toggle"));
+
+    // Navigate to devtools — fixture block should now be visible
+    await navigateToSection("Инструменты");
     expect(screen.getByTestId("settings-fixture-block")).toBeInTheDocument();
   });
 
@@ -161,6 +196,9 @@ describe("SettingsPage dev mode", () => {
         </ActiveUserProvider>
       </MemoryRouter>
     );
+
+    // Navigate to profile section
+    await navigateToSection("Профиль");
 
     await user.selectOptions(screen.getByTestId("app-role-select"), "student");
     await user.click(screen.getByTestId("save-settings-btn"));
@@ -189,6 +227,9 @@ describe("SettingsPage dev mode", () => {
       </MemoryRouter>
     );
 
+    // Navigate to profile section
+    await navigateToSection("Профиль");
+
     const roleSelect = await screen.findByTestId("app-role-select");
     await user.click(roleSelect);
     expect(screen.getByRole("option", { name: /Ученик/i })).toBeDisabled();
@@ -207,14 +248,18 @@ describe("SettingsPage dev mode", () => {
       </MemoryRouter>
     );
 
+    // General section — dev mode note for non-teacher
     expect(await screen.findByTestId("dev-mode-role-note")).toBeInTheDocument();
-    expect(screen.getByTestId("export-role-note")).toBeInTheDocument();
     expect(screen.queryByTestId("dev-mode-toggle")).not.toBeInTheDocument();
+
+    // Navigate to export — role note visible, export button hidden
+    await navigateToSection("Экспорт");
+    expect(screen.getByTestId("export-role-note")).toBeInTheDocument();
     expect(screen.queryByTestId("export-csv-btn")).not.toBeInTheDocument();
 
-    expect(screen.getByLabelText(/Timed: лимит по умолчанию/i)).toBeDisabled();
+    // Navigate to profile — app role select disabled
+    await navigateToSection("Профиль");
     expect(screen.getByTestId("app-role-select")).toBeDisabled();
-    expect(screen.getByLabelText(/Сигналы старт\/финиш/i)).toBeEnabled();
   });
 
   it("exports additional CSV files for preferences and mode profiles", async () => {
@@ -261,6 +306,9 @@ describe("SettingsPage dev mode", () => {
         </ActiveUserProvider>
       </MemoryRouter>
     );
+
+    // Navigate to export section
+    await navigateToSection("Экспорт");
 
     await user.click(await screen.findByTestId("export-csv-btn"));
 

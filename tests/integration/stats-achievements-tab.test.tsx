@@ -5,6 +5,18 @@ import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
 import { StatsPage } from "../../src/pages/StatsPage";
 import { ACTIVE_USER_KEY } from "../../src/shared/constants/storage";
 
+vi.mock("../../src/app/useAuth", () => ({
+  useAuth: () => ({
+    isConfigured: true,
+    isAuthenticated: true,
+    isLoading: false,
+    account: { id: "acc-1", email: "t@t.com", displayName: "T", createdAt: null, lastSignInAt: null },
+    siteRole: "user",
+    isSiteAdmin: false,
+    isModerator: false
+  })
+}));
+
 const mocks = vi.hoisted(() => ({
   sessionRepository: {
     aggregateDailyClassic: vi.fn(),

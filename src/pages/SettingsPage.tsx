@@ -10,7 +10,6 @@ import { sessionRepository } from "../entities/session/sessionRepository";
 import { isTeacherRole, isUserRoleGuardError, userRoleGuardMessage } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
 import { guardAccess } from "../shared/lib/auth/permissions";
-import { allowPrivilegedProfileRoles } from "../shared/lib/auth/profileRolePolicy";
 import {
   DEFAULT_AUDIO_SETTINGS,
   getAudioSettings,
@@ -59,13 +58,15 @@ function ToggleSwitch({
   onChange,
   disabled = false,
   label,
-  icon
+  icon,
+  testId
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
   disabled?: boolean;
   label: string;
   icon?: string;
+  testId?: string;
 }) {
   return (
     <div className="settings-toggle-row">
@@ -78,6 +79,7 @@ function ToggleSwitch({
         role="switch"
         aria-checked={checked}
         disabled={disabled}
+        data-testid={testId}
         onClick={() => onChange(!checked)}
         style={{
           width: "48px",
@@ -116,17 +118,20 @@ function SectionCard({
   title,
   description,
   children,
-  accentColor
+  accentColor,
+  testId
 }: {
   icon: string;
   title: string;
   description?: string;
   children: React.ReactNode;
   accentColor?: string;
+  testId?: string;
 }) {
   return (
     <div
       className="settings-section-card"
+      data-testid={testId}
       style={{
         borderLeft: accentColor ? `4px solid ${accentColor}` : "4px solid #e5e7eb",
         padding: "24px",
@@ -417,7 +422,6 @@ export function SettingsPage() {
 
   const isLastTeacherActive = activeUserId != null && activeUserRole === "teacher" && teachersCount <= 1;
   const hasFeatureOverrides = FEATURE_FLAG_DEFINITIONS.some((definition) => getFeatureFlagOverride(definition.key) !== null);
-  const allowPrivilegedRoles = allowPrivilegedProfileRoles();
 
   const accountSettingsHint = !auth.isConfigured
     ? "Сервис аккаунтов ещё подключается. Пока все настройки сохраняются только на этом устройстве."
@@ -432,7 +436,7 @@ export function SettingsPage() {
   const sections: { id: SettingsSection; icon: string; title: string; show: boolean }[] = [
     { id: "general", icon: "⚙️", title: "Основные", show: true },
     { id: "audio", icon: "🔊", title: "Звук", show: access.settings.view },
-    { id: "profile", icon: "👤", title: "Профиль", show: allowPrivilegedRoles },
+    { id: "profile", icon: "👤", title: "Профиль", show: true },
     { id: "export", icon: "📊", title: "Экспорт", show: access.settings.view },
     { id: "devtools", icon: "🛠️", title: "Инструменты", show: access.settings.devtools }
   ];
@@ -602,13 +606,25 @@ export function SettingsPage() {
                   />
                 </div>
 
-                {access.settings.devtools && (
-                  <ToggleSwitch
-                    checked={devModeEnabled}
-                    onChange={setDevModeState}
-                    label="Режим разработчика"
-                    icon="🔧"
-                  />
+                {access.settings.devtools ? (
+                  <>
+                    <ToggleSwitch
+                      checked={devModeEnabled}
+                      onChange={setDevModeState}
+                      label="Режим разработчика"
+                      icon="🔧"
+                      testId="dev-mode-toggle"
+                    />
+                    {!devModeEnabled && (
+                      <p className="status-line" data-testid="dev-tools-hidden-note">
+                        Включите режим разработчика для доступа к инструментам.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="status-line" data-testid="dev-mode-role-note">
+                    Режим разработчика доступен только для роли «Учитель».
+                  </p>
                 )}
 
                 <div className="settings-actions" style={{ marginTop: "20px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
@@ -616,6 +632,7 @@ export function SettingsPage() {
                     type="submit"
                     className="btn-primary"
                     disabled={!canPersistSettings}
+                    data-testid="save-settings-btn"
                     style={{
                       padding: "12px 24px",
                       borderRadius: "10px",
@@ -786,6 +803,7 @@ export function SettingsPage() {
                     type="submit"
                     className="btn-primary"
                     disabled={!canPersistSettings}
+                    data-testid="save-settings-btn"
                     style={{
                       padding: "12px 24px",
                       borderRadius: "10px",
@@ -857,7 +875,8 @@ export function SettingsPage() {
             {/* Dev Tools Section */}
             {activeSection === "devtools" && access.settings.devtools && (
               <>
-                <SectionCard icon="🧪" title="Тестовые данные" description="Генерация демо-данных для тестирования" accentColor="#ef4444">
+                {devModeEnabled && (
+                <SectionCard icon="🧪" title="Тестовые данные" description="Генерация демо-данных для тестирования" accentColor="#ef4444" testId="settings-fixture-block">
                   <p style={{ margin: "0 0 16px", fontSize: "14px", color: "#6b7280", lineHeight: 1.5 }}>
                     Генерирует демо-набор для проверки групповой аналитики.
                   </p>
@@ -935,6 +954,7 @@ export function SettingsPage() {
 
                   {fixtureMessage && (
                     <div
+                      data-testid="fixture-status-message"
                       style={{
                         marginTop: "12px",
                         padding: "12px 16px",
@@ -992,6 +1012,7 @@ export function SettingsPage() {
                     )}
                   </div>
                 </SectionCard>
+                )}
 
                 {/* Feature Flags */}
                 <SectionCard icon="🚩" title="Предпросмотр функций" description="Локальные переключатели для разработки" accentColor="#6b7280">

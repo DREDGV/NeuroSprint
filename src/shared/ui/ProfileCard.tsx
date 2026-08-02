@@ -168,32 +168,30 @@ export function ProfileCard({
             </span>
           </div>
 
-          {canUpdateRole ? (
-            <div className="profile-role-editor">
-              <select
-                value={draftRole}
-                onChange={(event) => setDraftRole(event.target.value as AppRole)}
-                className="profile-role-select"
-                data-testid={`profile-role-edit-${user.id}`}
-                disabled={isLocked}
-              >
-                {editableRoles.map((item) => (
-                  <option key={item} value={item}>
-                    {ROLE_LABELS[item]}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="btn-profile btn-save-role"
-                onClick={() => onUpdateRole(user, draftRole)}
-                data-testid={`save-profile-role-${user.id}`}
-                disabled={saveRoleDisabled}
-              >
-                Сохранить роль
-              </button>
-            </div>
-          ) : null}
+          <div className="profile-role-editor">
+            <select
+              value={draftRole}
+              onChange={(event) => setDraftRole(event.target.value as AppRole)}
+              className="profile-role-select"
+              data-testid={`profile-role-edit-${user.id}`}
+              disabled={isLocked || !canUpdateRole}
+            >
+              {editableRoles.map((item) => (
+                <option key={item} value={item}>
+                  {ROLE_LABELS[item]}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn-profile btn-save-role"
+              onClick={() => onUpdateRole(user, draftRole)}
+              data-testid={`save-profile-role-${user.id}`}
+              disabled={saveRoleDisabled || !canUpdateRole}
+            >
+              Сохранить роль
+            </button>
+          </div>
 
           {lockTeacherRole ? (
             <p className="status-line">

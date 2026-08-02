@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingModuleFromHub } from "./helpers";
 
 test.describe("NeuroSprint Reaction module", () => {
   test("opens reaction training and runs choice variant with live timer", async ({ page }) => {
@@ -8,10 +9,7 @@ test.describe("NeuroSprint Reaction module", () => {
     await expect(page.getByTestId("active-profile-status")).toContainText("ReactionUser");
     await expect(page.getByTestId("profiles-error")).toHaveCount(0);
 
-    await page.goto("/training");
-    await expect(page.getByTestId("training-hub-page")).toBeVisible();
-    await page.getByTestId("training-open-reaction").click();
-
+    await openTrainingModuleFromHub(page, "reaction", "reaction");
     await expect(page.getByTestId("reaction-page")).toBeVisible();
     await expect(page.getByTestId("reaction-how-to")).toBeVisible();
     await expect(page.getByTestId("reaction-live-timer")).toContainText("Ожидание");

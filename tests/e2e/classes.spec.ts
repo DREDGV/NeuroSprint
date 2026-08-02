@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { enableFeatureFlags } from "./helpers";
 
 test.describe("NeuroSprint classes and themes", () => {
   test("teacher creates class and adds students", async ({ page }) => {
+    await enableFeatureFlags(page, { classes_ui: true });
+
     await page.goto("/profiles");
     await page.getByTestId("profile-name-input").fill("Teacher");
     await page.getByTestId("profile-role-select").selectOption("teacher");
@@ -12,12 +15,20 @@ test.describe("NeuroSprint classes and themes", () => {
     await page.goto("/classes");
     await page.getByTestId("class-name-input").fill("3А");
     await page.getByTestId("create-class-btn").click();
-    await expect(page.getByTestId("class-select")).toHaveValue(/.+/);
 
-    await page.fill("#bulk-students", "Анна\nБорис\nВера\nГлеб\nДана");
-    await page.getByTestId("bulk-add-students-btn").click();
+    await expect(page.getByTestId("classes-list")).toBeVisible();
+    await expect(page.locator('[data-testid^="class-card-"]')).toHaveCount(1);
 
-    await expect(page.locator('[data-testid="class-students-list"] .profile-item')).toHaveCount(5);
+    await expect(page.getByTestId("student-name-input")).toBeVisible();
+
+    const names = ["Анна", "Борис", "Вера", "Глеб", "Дана"];
+    for (const name of names) {
+      await page.getByTestId("student-name-input").fill(name);
+      await page.getByTestId("create-student-btn").click();
+      await expect(page.getByTestId("student-name-input")).toHaveValue("");
+    }
+
+    await expect(page.locator('[data-testid="students-list"] article')).toHaveCount(5, { timeout: 15_000 });
   });
 
   test("3x3 rainbow session completes", async ({ page }) => {

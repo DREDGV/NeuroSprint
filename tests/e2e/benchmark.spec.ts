@@ -2,12 +2,24 @@
 
 test.describe("NeuroSprint benchmark", () => {
   test("dev tools are hidden by default", async ({ page }) => {
+    await page.goto("/profiles");
+    await page.getByTestId("profile-name-input").fill("BenchmarkAdmin");
+    await page.getByTestId("profile-role-select").selectOption("teacher");
+    await page.getByTestId("create-profile-btn").click();
+    await expect(page.getByTestId("active-profile-status")).toContainText("BenchmarkAdmin");
+
     await page.goto("/settings");
     await expect(page.getByTestId("dev-tools-hidden-note")).toBeVisible();
     await expect(page.getByTestId("generate-demo-fixture-btn")).toHaveCount(0);
   });
 
   test("settings benchmark generates period report", async ({ page }) => {
+    await page.goto("/profiles");
+    await page.getByTestId("profile-name-input").fill("BenchmarkAdmin");
+    await page.getByTestId("profile-role-select").selectOption("teacher");
+    await page.getByTestId("create-profile-btn").click();
+    await expect(page.getByTestId("active-profile-status")).toContainText("BenchmarkAdmin");
+
     await page.goto("/settings");
     page.on("dialog", (dialog) => dialog.accept());
 
@@ -16,6 +28,8 @@ test.describe("NeuroSprint benchmark", () => {
       await devToggle.click();
     }
     await page.getByTestId("save-settings-btn").click();
+
+    await page.getByRole("button", { name: "Инструменты" }).click();
 
     await page.getByTestId("generate-demo-fixture-btn").click();
     const fixtureStatus = page.getByTestId("fixture-status-message");
