@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingModuleFromHub } from "./helpers";
 
 test.describe("N-Back Lite", () => {
   test("profile -> training -> nback session -> stats", async ({ page }) => {
@@ -14,8 +15,7 @@ test.describe("N-Back Lite", () => {
     await page.getByTestId("create-profile-btn").click();
     await expect(page.getByTestId("active-profile-status")).toContainText("NBackE2E");
 
-    await page.goto("/training");
-    await page.getByTestId("training-open-n_back").click();
+    await openTrainingModuleFromHub(page, "memory", "n_back");
     await expect(page.getByTestId("nback-setup-page")).toBeVisible();
 
     await page.selectOption("[data-testid='nback-level-select']", "1");
@@ -24,7 +24,17 @@ test.describe("N-Back Lite", () => {
 
     await expect(page.getByTestId("nback-session-page")).toBeVisible();
     await page.getByTestId("nback-start-session-btn").click();
-    await expect(page.getByTestId("nback-result")).toBeVisible({ timeout: 20_000 });
+
+    for (let i = 0; i < 25; i += 1) {
+      if (await page.getByTestId("nback-result").isVisible().catch(() => false)) break;
+      const nonMatch = page.getByTestId("nback-answer-non-match");
+      if (await nonMatch.isVisible().catch(() => false)) {
+        await nonMatch.click();
+      }
+      await page.waitForTimeout(2500);
+    }
+
+    await expect(page.getByTestId("nback-result")).toBeVisible({ timeout: 5_000 });
 
     await page.goto("/stats");
     await page.getByTestId("stats-mode-nback").click();

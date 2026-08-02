@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openTrainingModuleFromHub } from "./helpers";
 
 test.describe("Decision Rush", () => {
   test("profile -> training -> decision rush session -> stats", async ({ page }) => {
@@ -14,8 +15,7 @@ test.describe("Decision Rush", () => {
     await page.getByTestId("create-profile-btn").click();
     await expect(page.getByTestId("active-profile-status")).toContainText("DecisionE2E");
 
-    await page.goto("/training");
-    await page.getByTestId("training-open-decision_rush").click();
+    await openTrainingModuleFromHub(page, "logic", "decision_rush");
     await expect(page.getByTestId("decision-setup-page")).toBeVisible();
 
     await page.selectOption("[data-testid='decision-level-select']", "standard");

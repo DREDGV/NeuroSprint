@@ -14,3 +14,23 @@ export async function enableFeatureFlags(
     }
   );
 }
+
+export type TrainingSkillId =
+  | "attention"
+  | "memory"
+  | "reaction"
+  | "math"
+  | "logic";
+
+export async function openTrainingModuleFromHub(
+  page: Page,
+  skillId: TrainingSkillId,
+  moduleId: string
+): Promise<void> {
+  await page.goto("/training");
+  await page.getByTestId("training-hub-page").waitFor();
+  await page.getByTestId(`training-skill-tab-${skillId}`).click();
+  await page.getByTestId(`training-skill-panel-${skillId}`).waitFor();
+  await page.getByTestId(`training-open-${moduleId}`).click();
+  await page.getByTestId(`training-hero-start-${moduleId}`).click();
+}
