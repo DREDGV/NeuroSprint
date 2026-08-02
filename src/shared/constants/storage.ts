@@ -8,4 +8,3 @@ export const APP_ROLE_KEY = "ns.appRole";
 export const FEATURE_FLAGS_KEY = "ns.featureFlags";
 export const AUTH_RETURN_PATH_KEY = "ns.authReturnPath";
 export const ACCOUNT_IMPORT_DISMISSED_KEY = "ns.accountImportDismissed";
-export const PRIVILEGED_PROFILE_ROLES_KEY = "ns.privilegedProfileRoles";

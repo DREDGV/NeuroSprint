@@ -10,7 +10,6 @@ import { sessionRepository } from "../entities/session/sessionRepository";
 import { isTeacherRole, isUserRoleGuardError, userRoleGuardMessage } from "../entities/user/userRole";
 import { userRepository } from "../entities/user/userRepository";
 import { guardAccess } from "../shared/lib/auth/permissions";
-import { allowPrivilegedProfileRoles } from "../shared/lib/auth/profileRolePolicy";
 import {
   DEFAULT_AUDIO_SETTINGS,
   getAudioSettings,
@@ -423,7 +422,6 @@ export function SettingsPage() {
 
   const isLastTeacherActive = activeUserId != null && activeUserRole === "teacher" && teachersCount <= 1;
   const hasFeatureOverrides = FEATURE_FLAG_DEFINITIONS.some((definition) => getFeatureFlagOverride(definition.key) !== null);
-  const allowPrivilegedRoles = allowPrivilegedProfileRoles();
 
   const accountSettingsHint = !auth.isConfigured
     ? "Сервис аккаунтов ещё подключается. Пока все настройки сохраняются только на этом устройстве."
@@ -438,7 +436,7 @@ export function SettingsPage() {
   const sections: { id: SettingsSection; icon: string; title: string; show: boolean }[] = [
     { id: "general", icon: "⚙️", title: "Основные", show: true },
     { id: "audio", icon: "🔊", title: "Звук", show: access.settings.view },
-    { id: "profile", icon: "👤", title: "Профиль", show: allowPrivilegedRoles },
+    { id: "profile", icon: "👤", title: "Профиль", show: true },
     { id: "export", icon: "📊", title: "Экспорт", show: access.settings.view },
     { id: "devtools", icon: "🛠️", title: "Инструменты", show: access.settings.devtools }
   ];

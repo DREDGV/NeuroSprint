@@ -13,7 +13,6 @@ import {
 } from "../entities/user/userRole";
 import { guardAccess } from "../shared/lib/auth/permissions";
 import {
-  allowPrivilegedProfileRoles,
   getEditableSelfServiceRoles,
   getSelfServiceCreateRoles,
   getSelfServiceDefaultRole
@@ -128,8 +127,6 @@ export function ProfilesPage() {
   const [importStatus, setImportStatus] = useState<"idle" | "importing" | "success" | "error">("idle");
   const [importResult, setImportResult] = useState<{ imported: number; errors: number } | null>(null);
 
-  const allowPrivilegedRoles = allowPrivilegedProfileRoles();
-  const createRoleOptions = getSelfServiceCreateRoles();
 
   const guestProfilesToImport = useMemo(
     () =>
@@ -229,10 +226,14 @@ export function ProfilesPage() {
   );
   const recoveryMode = teachersCount === 0;
   const isFirstProfile = users.length === 0;
-  const canAssignRoleOnCreate =
-    allowPrivilegedRoles && (access.profiles.updateRole || recoveryMode || isFirstProfile);
-  const canUpdateProfileRoles =
-    allowPrivilegedRoles && (access.profiles.updateRole || recoveryMode || isFirstProfile);
+  const recoveryOrBootstrap = recoveryMode || isFirstProfile;
+  const canAssignRoles = access.profiles.updateRole || recoveryOrBootstrap;
+  const createRoleOptions =
+    canAssignRoles
+      ? (["home", "student", "teacher"] as AppRole[])
+      : getSelfServiceCreateRoles();
+  const canAssignRoleOnCreate = canAssignRoles;
+  const canUpdateProfileRoles = canAssignRoles;
 
   const activeUser = useMemo(
     () => users.find((item) => item.id === activeUserId) ?? null,
@@ -1230,7 +1231,7 @@ export function ProfilesPage() {
         </section>
       ) : null}
 
-      {recoveryMode && allowPrivilegedRoles ? (
+      {recoveryMode ? (
         <p className="status-line" data-testid="profiles-recovery-mode-note">
           В системе нет активного профиля с ролью «Учитель». Назначьте хотя бы одного
           пользователя учителем, чтобы вернуть полный набор учебных прав.
@@ -1274,28 +1275,27 @@ export function ProfilesPage() {
           <label htmlFor="profile-avatar">Аватар</label>
           <AvatarSelector selectedAvatar={newAvatar} onSelect={setNewAvatar} />
 
-          {canAssignRoleOnCreate ? (
-            <>
-              <label htmlFor="profile-role">Роль профиля</label>
-              <select
-                id="profile-role"
-                value={newRole}
-                onChange={(event) => setNewRole(event.target.value as AppRole)}
-                data-testid="profile-role-select"
-              >
-                {createRoleOptions.map((role) => (
-                  <option key={role} value={role}>
-                    {getCreateRoleLabel(role)}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : (
+          {canAssignRoleOnCreate ? null : (
             <p className="status-line" data-testid="profiles-create-role-note">
               В публичной версии новые профили создаются как «Домашний» или «Ученик».
               Учебные роли скрыты и не доступны в self-service режиме.
             </p>
           )}
+
+          <label htmlFor="profile-role">Роль профиля</label>
+          <select
+            id="profile-role"
+            value={newRole}
+            onChange={(event) => setNewRole(event.target.value as AppRole)}
+            data-testid="profile-role-select"
+            disabled={!canAssignRoleOnCreate}
+          >
+            {createRoleOptions.map((role) => (
+              <option key={role} value={role}>
+                {getCreateRoleLabel(role)}
+              </option>
+            ))}
+          </select>
 
           <button
             type="submit"

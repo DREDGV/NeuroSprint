@@ -17,6 +17,22 @@ vi.mock("../../src/app/useAuth", () => ({
   })
 }));
 
+vi.mock("../../src/features/competitions/hooks/useChallenges", () => ({
+  useChallenges: () => ({
+    challenges: [],
+    incoming: [],
+    outgoing: [],
+    active: [],
+    loading: false,
+    error: null,
+    sendChallenge: vi.fn().mockResolvedValue(undefined),
+    respondToChallenge: vi.fn().mockResolvedValue(undefined),
+    completeChallenge: vi.fn().mockResolvedValue(undefined),
+    cancelChallenge: vi.fn().mockResolvedValue(undefined),
+    refresh: vi.fn().mockResolvedValue(undefined)
+  })
+}));
+
 const mocks = vi.hoisted(() => {
   let groups = [{ id: "g1", name: "3А", createdAt: "2026-02-24T10:00:00.000Z" }];
   let users = [{ id: "u1", name: "Анна", role: "teacher", createdAt: "2026-02-24T10:00:00.000Z" }];
@@ -29,7 +45,7 @@ const mocks = vi.hoisted(() => {
       users.filter((user) => (groupUsers[groupId] ?? []).includes(user.id))
     ),
     createGroup: vi.fn(async (name: string) => {
-      const group = { id: "g2", name, createdAt: "2026-02-24T10:00:00.000Z" };
+      const group = { id: `g${groups.length + 1}`, name, createdAt: "2026-02-24T10:00:00.000Z" };
       groups = [...groups, group];
       groupUsers[group.id] = [];
       return group;
@@ -68,7 +84,15 @@ const mocks = vi.hoisted(() => {
     list: vi.fn(async () => users)
   };
 
-  return { groupRepository, userRepository };
+  return {
+    groupRepository,
+    userRepository,
+    reset() {
+      groups = [{ id: "g1", name: "3А", createdAt: "2026-02-24T10:00:00.000Z" }];
+      users = [{ id: "u1", name: "Анна", role: "teacher", createdAt: "2026-02-24T10:00:00.000Z" }];
+      groupUsers = { g1: ["u1"] };
+    }
+  };
 });
 
 vi.mock("../../src/entities/group/groupRepository", () => ({
@@ -85,12 +109,59 @@ describe("ClassesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mocks.reset();
     localStorage.setItem(APP_ROLE_KEY, "teacher");
     localStorage.setItem(ACTIVE_USER_KEY, "u1");
     localStorage.setItem(FEATURE_FLAGS_KEY, JSON.stringify({ classes_ui: true }));
   });
 
-  it.todo("creates class and adds student");
+  it("creates class and adds student", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/classes"]}>
+        <ActiveUserProvider>
+          <Routes>
+            <Route path="/classes" element={<ClassesPage />} />
+            <Route path="/classes/:classId" element={<ClassesPage />} />
+          </Routes>
+        </ActiveUserProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId("classes-page")).toBeInTheDocument();
+    expect(screen.getByTestId("class-name-input")).toBeInTheDocument();
+
+    await user.type(screen.getByTestId("class-name-input"), "4Б");
+    await user.click(screen.getByTestId("create-class-btn"));
+
+    await waitFor(() => {
+      expect(mocks.groupRepository.createGroup).toHaveBeenCalledWith(
+        "4Б",
+        expect.objectContaining({ profileId: "u1" })
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("4Б").length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByTestId("student-name-input")).toBeInTheDocument();
+
+    await user.type(screen.getByTestId("student-name-input"), "Миша");
+    await user.click(screen.getByTestId("create-student-btn"));
+
+    await waitFor(() => {
+      expect(mocks.groupRepository.createStudent).toHaveBeenCalled();
+    });
+
+    const createStudentCall = mocks.groupRepository.createStudent.mock.calls[0];
+    expect(createStudentCall[1]).toBe("Миша");
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Миша").length).toBeGreaterThan(0);
+    });
+  });
 
   it("shows restricted state for non-teacher role", async () => {
     localStorage.setItem(APP_ROLE_KEY, "student");
