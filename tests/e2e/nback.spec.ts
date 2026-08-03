@@ -25,7 +25,7 @@ test.describe("N-Back Lite", () => {
     await expect(page.getByTestId("nback-session-page")).toBeVisible();
     await page.getByTestId("nback-start-session-btn").click();
 
-    for (let i = 0; i < 25; i += 1) {
+    for (let i = 0; i < 30; i += 1) {
       if (await page.getByTestId("nback-result").isVisible().catch(() => false)) break;
       const nonMatch = page.getByTestId("nback-answer-non-match");
       if (await nonMatch.isVisible().catch(() => false)) {
@@ -34,7 +34,7 @@ test.describe("N-Back Lite", () => {
       await page.waitForTimeout(2500);
     }
 
-    await expect(page.getByTestId("nback-result")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("nback-result")).toBeVisible({ timeout: 10_000 });
 
     await page.goto("/stats");
     await page.getByTestId("stats-mode-nback").click();

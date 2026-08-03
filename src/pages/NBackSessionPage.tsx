@@ -9,8 +9,10 @@ import { trainingRepository } from "../entities/training/trainingRepository";
 import {
   calculateNBackSteps,
   generateNBackStepTasks,
+  getLevelTimings,
   modeIdFromNBackLevel,
   normalizeNBackSetup,
+  NBACK_FEEDBACK_MS,
   type NBackSessionMetrics,
   type NBackSetup,
   type NBackStepTask
@@ -146,7 +148,8 @@ function buildNBackTip(metrics: NBackSessionMetrics, level: NBackSetup["level"])
 function buildSession(
   userId: string,
   setup: NBackSetup,
-  metrics: NBackSessionMetrics
+  metrics: NBackSessionMetrics,
+  actualDurationMs: number
 ): Session {
   const now = new Date();
   const modeId = modeIdFromNBackLevel(setup.level, setup.gridSize);
@@ -163,7 +166,7 @@ function buildSession(
     adaptiveSource: "manual",
     timestamp: now.toISOString(),
     localDate: toLocalDateKey(now),
-    durationMs: setup.durationSec * 1000,
+    durationMs: actualDurationMs,
     score: metrics.score,
     accuracy: metrics.accuracy,
     speed: metrics.speed,
@@ -234,7 +237,8 @@ export function NBackSessionPage() {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
 
   const lastStimulusCell = useRef<number | null>(null);
-  const stimulusShowMs = 800;
+  const sessionStartMs = useRef<number>(0);
+  const stimulusShowMs = getLevelTimings(progress.currentLevel).stimulusMs;
 
   // Текущая задача
   const currentTask = currentTaskIndex < tasks.length ? tasks[currentTaskIndex] : null;
@@ -298,7 +302,7 @@ export function NBackSessionPage() {
     const timer = setTimeout(() => {
       setFeedbackVisible(false);
       goToNextTask();
-    }, 1000);
+    }, NBACK_FEEDBACK_MS);
 
     return () => clearTimeout(timer);
   }, [phase]);
@@ -343,10 +347,6 @@ export function NBackSessionPage() {
     const answerableTasks = responses.length;
     const accuracy = answerableTasks > 0 ? correct / answerableTasks : 0;
     
-    console.log('[N-Back Calc] Tasks:', tasks.length, 'Level:', level, 'Responses:', responses.length);
-    console.log('[N-Back Calc] Hit:', hit, 'Miss:', miss, 'FA:', falseAlarm, 'CR:', correctReject);
-    console.log('[N-Back Calc] Correct:', correct, 'Errors:', errors, 'Accuracy:', accuracy.toFixed(2));
-    
     const speed = correct;
     const comboBonus = 1 + (maxC * 0.05);
     const score = speed * (0.7 + 0.3 * accuracy) * comboBonus;
@@ -370,11 +370,7 @@ export function NBackSessionPage() {
     setResult(metrics);
 
     // Применяем систему прогрессии
-    console.log('[N-Back Progress] Before:', JSON.stringify(progress));
-    console.log('[N-Back Progress] Accuracy:', accuracy);
     const { progress: newProgress, result: progResult } = applyGameResult(progress, accuracy);
-    console.log('[N-Back Progress] After:', JSON.stringify(newProgress));
-    console.log('[N-Back Progress] Action:', progResult.action.type, progResult.message);
     setProgress(newProgress);
     setProgressResult(progResult);
     setShowProgressModal(true);
@@ -413,7 +409,8 @@ export function NBackSessionPage() {
     if (!activeUserId || !result || saved) return;
 
     let cancelled = false;
-    const session = buildSession(activeUserId, setup, result);
+    const actualDurationMs = sessionStartMs.current > 0 ? Date.now() - sessionStartMs.current : setup.durationSec * 1000;
+    const session = buildSession(activeUserId, setup, result, actualDurationMs);
     const modeId = modeIdFromNBackLevel(setup.level, setup.gridSize);
     setSessionProgress(null);
 
@@ -449,9 +446,7 @@ export function NBackSessionPage() {
   // ─── Старт сессии ──────────────────────────────────────────────────
 
   function startSession(): void {
-    const activeLevel = progress.currentLevel; // Берём актуальный уровень из прогресса
-    console.log('[N-Back Start] Level:', activeLevel, 'Games at level:', progress.gamesAtLevel);
-    
+    const activeLevel = progress.currentLevel;
     const generatedTasks = generateNBackStepTasks(totalTasks, activeLevel, setup.gridSize);
     setTasks(generatedTasks);
     setCurrentTaskIndex(0);
@@ -471,6 +466,7 @@ export function NBackSessionPage() {
     setProgressResult(null);
     setShowProgressModal(false);
     lastStimulusCell.current = null;
+    sessionStartMs.current = Date.now();
 
     // Сразу начинаем с показа первой задачи
     setPhase('show');

@@ -39,9 +39,38 @@ describe("nback engine", () => {
     expect(levelFromModeId("classic_plus")).toBeNull();
   });
 
-  it("calculates steps from duration", () => {
-    expect(calculateNBackSteps(60)).toBe(3);
-    expect(calculateNBackSteps(90)).toBe(3);
+  it("calculates steps from duration and level", () => {
+    // Level 1: cycleMs = 1000 + 1000 + 1000 = 3000ms
+    // 60s → 20 steps, 90s → 30 steps, 120s → 40 steps
+    const steps60 = calculateNBackSteps(60, 1);
+    const steps90 = calculateNBackSteps(90, 1);
+    const steps120 = calculateNBackSteps(120, 1);
+
+    expect(steps60).toBe(20);
+    expect(steps90).toBe(30);
+    expect(steps120).toBe(40);
+    expect(steps60).toBeLessThan(steps90);
+    expect(steps90).toBeLessThan(steps120);
+  });
+
+  it("calculates steps for different levels", () => {
+    // Level 2: cycleMs = 800 + 1000 + 1000 = 2800ms
+    const stepsL2 = calculateNBackSteps(60, 2);
+    // Level 3: cycleMs = 800 + 1200 + 1000 = 3000ms
+    const stepsL3 = calculateNBackSteps(60, 3);
+
+    expect(stepsL2).toBe(21);
+    expect(stepsL3).toBe(20);
+    // Minimum is level + 1
+    expect(stepsL2).toBeGreaterThanOrEqual(3);
+    expect(stepsL3).toBeGreaterThanOrEqual(4);
+  });
+
+  it("respects minimum steps for level", () => {
+    // For very short durations, minimum should be level + 1
+    // With 0 seconds, should still return minimum
+    const steps0 = calculateNBackSteps(0 as any, 1);
+    expect(steps0).toBeGreaterThanOrEqual(2);
   });
 
   it("generates sequence with valid cell indexes", () => {

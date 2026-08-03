@@ -132,10 +132,14 @@ export function getLevelTimings(level: NBackLevel): { stepMs: number; stimulusMs
   return LEVEL_TIMINGS[level];
 }
 
+export const NBACK_FEEDBACK_MS = 1000;
+
 export function calculateNBackSteps(durationSec: NBackDurationSec, level: NBackLevel = 1): number {
-  // 3 задачи на уровень — быстро и динамично
-  // 3 задачи × 3 игры = 9 задач за ~15 секунд на уровень
-  return 3;
+  const timings = LEVEL_TIMINGS[level];
+  const cycleMs = timings.stimulusMs + timings.pauseMs + NBACK_FEEDBACK_MS;
+  const estimatedSteps = Math.floor((durationSec * 1000) / cycleMs);
+  const minimumSteps = level + 1;
+  return Math.max(minimumSteps, estimatedSteps);
 }
 
 /**

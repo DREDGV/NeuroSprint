@@ -1,7 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActiveUserProvider } from "../../src/app/ActiveUserContext";
 import { NBackSessionPage } from "../../src/pages/NBackSessionPage";
 import { NBackSetupPage } from "../../src/pages/NBackSetupPage";
@@ -65,7 +64,7 @@ describe("NBack setup/session", () => {
   });
 
   it("starts session from setup page", async () => {
-    const user = userEvent.setup();
+    const user = await import("@testing-library/user-event").then(m => m.default.setup());
 
     render(
       <MemoryRouter initialEntries={["/training/nback"]}>
@@ -84,8 +83,8 @@ describe("NBack setup/session", () => {
     expect(await screen.findByTestId("nback-session-page")).toBeInTheDocument();
   });
 
-  it("saves nback session with required fields", async () => {
-    const user = userEvent.setup();
+  it("saves nback session with required fields", { timeout: 120_000 }, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
 
     render(
       <MemoryRouter
@@ -106,22 +105,50 @@ describe("NBack setup/session", () => {
 
     expect(await screen.findByTestId("nback-session-page")).toBeInTheDocument();
 
-    await user.click(screen.getByTestId("nback-start-session-btn"));
+    await act(async () => {
+      screen.getByTestId("nback-start-session-btn").click();
+    });
 
-    for (let i = 0; i < 2; i++) {
-      await waitFor(() => {
-        expect(screen.getByTestId("nback-answer-non-match")).toBeInTheDocument();
-      }, { timeout: 3_000 });
-      await user.click(screen.getByTestId("nback-answer-non-match"));
+    const totalSteps = 20;
+    const answerableSteps = totalSteps - 1; // 19
+
+    for (let i = 0; i < answerableSteps; i++) {
+      // Wait for answer phase
+      for (let retry = 0; retry < 20; retry++) {
+        await act(async () => {
+          vi.advanceTimersByTime(200);
+        });
+        if (screen.queryByTestId("nback-answer-non-match") || screen.queryByTestId("nback-result")) break;
+      }
+
+      // Check if already finished
+      if (screen.queryByTestId("nback-result")) break;
+
+      const btn = screen.queryByTestId("nback-answer-non-match");
+      if (btn) {
+        await act(async () => {
+          btn.click();
+        });
+      }
+
+      // Wait for feedback to complete
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
     }
 
-    await waitFor(() => {
-      expect(mocks.sessionRepository.save).toHaveBeenCalledTimes(1);
-    }, { timeout: 5_000 });
+    // Final flush
+    for (let retry = 0; retry < 30; retry++) {
+      if (mocks.sessionRepository.save.mock.calls.length > 0) break;
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+    }
 
-    await waitFor(() => {
-      expect(screen.getByTestId("nback-result")).toBeInTheDocument();
-    });
+    vi.useRealTimers();
+
+    expect(mocks.sessionRepository.save).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("nback-result")).toBeInTheDocument();
 
     const savedSession = mocks.sessionRepository.save.mock.calls[0]?.[0];
     expect(savedSession.taskId).toBe("n_back");
@@ -130,5 +157,6 @@ describe("NBack setup/session", () => {
     expect(savedSession.modeId).toBe("nback_1");
     expect(savedSession.difficulty.gridSize).toBe(3);
     expect(savedSession.difficulty.mode).toBe("n_back");
+    expect(savedSession.difficulty.numbersCount).toBe(totalSteps);
   });
 });

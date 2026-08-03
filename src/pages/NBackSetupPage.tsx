@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  calculateNBackSteps,
   getValidGridSizesForLevel,
   levelFromModeId,
   modeIdFromNBackLevel,
@@ -96,8 +97,7 @@ export function NBackSetupPage() {
     setSetup(resetNBackSetup());
   }
 
-  const totalSteps = Math.floor((setup.durationSec * 1000) / 1500);
-  const targetSteps = Math.floor(totalSteps * 0.3);
+  const estimatedSteps = calculateNBackSteps(setup.durationSec, setup.level);
 
   return (
     <section className="panel" data-testid="nback-setup-page">
@@ -218,7 +218,7 @@ export function NBackSetupPage() {
       <section className="session-brief" data-testid="nback-session-brief">
         <h3>Параметры перед стартом</h3>
         <p>Режим: <strong>{LEVEL_DESCRIPTIONS[setup.level].label}</strong> на сетке <strong>{setup.gridSize}×{setup.gridSize}</strong></p>
-        <p>Всего шагов: <strong>{totalSteps}</strong> (примерно <strong>{targetSteps}</strong> совпадений)</p>
+        <p>Заданий: <strong>{estimatedSteps}</strong> · Длительность: <strong>{setup.durationSec} сек</strong></p>
         <p>Длительность: <strong>{DURATION_DESCRIPTIONS[setup.durationSec]}</strong></p>
         {setup.tutorialMode && (
           <p className="status-line" style={{ color: "#1e7f71" }}>
